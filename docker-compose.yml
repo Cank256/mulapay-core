@@ -1,0 +1,119 @@
+# ============================================================================
+# MulaPay Core API: LOCAL DEVELOPMENT ONLY
+# ============================================================================
+# Infrastructure (default):   docker compose up -d
+#   postgres   16, with the core roles and schema bootstrapped   localhost:5433
+#   pgbouncer  transaction mode, in front of postgres             localhost:6432
+#   redis      7                                                  localhost:6380
+#
+# Application processes too:  docker compose --profile app up --build
+#   migrate (one-shot), api (localhost:4000), worker, consumer
+#
+# Host ports differ from the gateway's compose file (5432, 6379, 3000) so both
+# stacks can run side by side. Credentials here are development-only.
+# ============================================================================
+
+x-app: &app
+  build:
+    context: .
+    target: dev
+  env_file: .env.example
+  environment: &app-env
+    DATABASE_URL: postgres://mulapay_core_rw:core_rw_dev@pgbouncer:6432/mulapay
+    DATABASE_RO_URL: postgres://mulapay_core_ro:core_ro_dev@pgbouncer:6432/mulapay
+    DATABASE_DIRECT_URL: postgres://mulapay_core_rw:core_rw_dev@postgres:5432/mulapay
+    REDIS_URL: redis://redis:6379
+  volumes:
+    - ./src:/app/src
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    pgbouncer:
+      condition: service_started
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  profiles: [app]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mulapay
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_dev
+      CORE_RW_PASSWORD: core_rw_dev
+      CORE_RO_PASSWORD: core_ro_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./src/db/bootstrap:/bootstrap:ro
+    ports:
+      - '5433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d mulapay']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.26.1-p0
+    volumes:
+      - ./docker/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    ports:
+      - '6432:6432'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6380:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    command: ['npm', 'run', 'db:migrate']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    <<: *app
+    environment:
+      <<: *app-env
+      APP_ROLE: api
+    command: ['npm', 'run', 'dev']
+    ports:
+      - '4000:4000'
+
+  worker:
+    <<: *app
+    environment:
+      <<: *app-env
+      APP_ROLE: worker
+    command: ['npm', 'run', 'dev:worker']
+
+  consumer:
+    <<: *app
+    environment:
+      <<: *app-env
+      APP_ROLE: consumer
+    command: ['npm', 'run', 'dev:consumer']
+
+volumes:
+  postgres_data:
+  redis_data:

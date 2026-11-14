@@ -1,0 +1,15 @@
+{
+  "openapi": "3.0.0",
+  "paths": {},
+  "info": {
+    "title": "MulaPay Dashboard API",
+    "description": "API for the merchant dashboard web application.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {}
+  }
+}

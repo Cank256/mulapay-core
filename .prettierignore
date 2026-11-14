@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+package-lock.json
+src/db/migrations/meta
+docs/CORE_API_BUILD_PROMPT.md
+docs/openapi
+.kiro
+AGENTS.md

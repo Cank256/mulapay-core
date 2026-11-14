@@ -1,0 +1,15 @@
+{
+  "openapi": "3.0.0",
+  "paths": {},
+  "info": {
+    "title": "MulaPay Admin API",
+    "description": "API for the MulaPay admin console. Staff only, MFA required.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {}
+  }
+}

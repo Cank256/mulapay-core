@@ -1,0 +1,70 @@
+# CI (spec section 13): typecheck, lint, unit, integration, coverage gate, npm audit,
+# Docker build, image scan. Integration tests start Postgres and Redis with Testcontainers,
+# which uses the runner's Docker daemon.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --ignore-scripts
+      # Unit + integration with coverage; fails below the section 12 gates.
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm audit --omit=dev --audit-level=high
+
+  image:
+    runs-on: ubuntu-latest
+    needs: [checks]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target runtime -t mulapay-core:${{ github.sha }} .
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: mulapay-core:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'

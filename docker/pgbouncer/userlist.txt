@@ -1,0 +1,2 @@
+"mulapay_core_rw" "core_rw_dev"
+"mulapay_core_ro" "core_ro_dev"
