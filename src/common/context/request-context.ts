@@ -25,6 +25,11 @@ export interface RequestContextStore {
   actorLabel?: string;
   /** Number of audit rows written for this request; read by the audit interceptor. */
   auditRows?: number;
+  /**
+   * Set by a handler that changed nothing and so has nothing to audit (an idempotent
+   * replay), so the audit interceptor does not write its backstop row.
+   */
+  auditNotApplicable?: boolean;
 }
 
 const storage = new AsyncLocalStorage<RequestContextStore>();
@@ -37,3 +42,12 @@ export const requestContext = {
     return storage.getStore();
   },
 };
+
+/**
+ * Tells the audit interceptor that this request changed nothing (an idempotent replay, a
+ * repeated cancel), so it must not write its backstop row. Call it only on that path.
+ */
+export function markAuditNotApplicable(): void {
+  const store = requestContext.get();
+  if (store) store.auditNotApplicable = true;
+}

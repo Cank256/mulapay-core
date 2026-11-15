@@ -3,9 +3,10 @@
  * with its HTTP status, message template, whether retrying the same request may succeed,
  * and whether its `details` are safe to return.
  *
- * Phase 0 added the platform-level codes and Phase 1 the identity, merchant and API key
- * codes. Later business codes (INSUFFICIENT_BALANCE, IDEMPOTENCY_KEY_REUSED, ...) are
- * added by the phase that introduces the behaviour.
+ * Phase 0 added the platform-level codes, Phase 1 the identity, merchant and API key
+ * codes, and Phase 2 the ledger codes (including INSUFFICIENT_BALANCE). The payment and
+ * transaction domain adds the idempotency and payment codes. Later business codes are added
+ * by the phase that introduces the behaviour.
  *
  * Message templates use `{name}` placeholders filled from `messageParams`.
  */
@@ -192,6 +193,92 @@ export const ERROR_CATALOGUE = {
     message: 'The API key is already revoked or expired',
     retryable: false,
     exposeDetails: false,
+  },
+  // Phase 2: ledger, accounts and balances (spec 5.3, 6.6, 6.7)
+  LEDGER_POSTING_INVALID: {
+    httpStatus: 422,
+    message: 'The ledger posting is invalid: {reason}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  LEDGER_ENTRY_UNBALANCED: {
+    httpStatus: 422,
+    message: 'The ledger entry does not balance: total debits must equal total credits',
+    retryable: false,
+    exposeDetails: true,
+  },
+  LEDGER_ACCOUNT_NOT_FOUND: {
+    httpStatus: 422,
+    message: 'The ledger account does not exist in this environment',
+    retryable: false,
+    exposeDetails: true,
+  },
+  LEDGER_ACCOUNT_INACTIVE: {
+    httpStatus: 422,
+    message: 'The ledger account is inactive',
+    retryable: false,
+    exposeDetails: true,
+  },
+  LEDGER_IDEMPOTENCY_CONFLICT: {
+    httpStatus: 409,
+    message: 'A different ledger posting already used this idempotency key',
+    retryable: false,
+    exposeDetails: false,
+  },
+  LEDGER_ENTRY_NOT_REVERSIBLE: {
+    httpStatus: 409,
+    message: 'The journal entry cannot be reversed: {reason}',
+    retryable: false,
+    exposeDetails: false,
+  },
+  INSUFFICIENT_BALANCE: {
+    httpStatus: 409,
+    message: 'The balance is insufficient for this operation',
+    retryable: false,
+    exposeDetails: false,
+  },
+  // Phase 4 (payments and transactions): idempotency (spec 8.2) and payments (spec 6.1)
+  IDEMPOTENCY_KEY_REQUIRED: {
+    httpStatus: 400,
+    message: 'The Idempotency-Key header is required and must be 1 to 255 printable characters',
+    retryable: false,
+    exposeDetails: false,
+  },
+  IDEMPOTENCY_KEY_REUSED: {
+    httpStatus: 409,
+    message: 'This Idempotency-Key was already used with a different request',
+    retryable: false,
+    exposeDetails: false,
+  },
+  REQUEST_IN_PROGRESS: {
+    httpStatus: 409,
+    message: 'A request with this Idempotency-Key is still being processed. Retry shortly.',
+    retryable: true,
+    exposeDetails: false,
+  },
+  PAYMENT_INVALID_TRANSITION: {
+    httpStatus: 409,
+    message: 'The payment cannot move from {from} to {to}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  PAYMENT_REQUEST_INVALID: {
+    httpStatus: 422,
+    message: 'The payment request is not acceptable: {reason}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  PAYMENT_LINK_UNAVAILABLE: {
+    httpStatus: 409,
+    message: 'The payment link cannot be used: {reason}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  CHECKOUT_SESSION_UNAVAILABLE: {
+    httpStatus: 409,
+    message: 'The checkout session cannot be used: {reason}',
+    retryable: false,
+    exposeDetails: true,
   },
   PAYLOAD_TOO_LARGE: {
     httpStatus: 413,

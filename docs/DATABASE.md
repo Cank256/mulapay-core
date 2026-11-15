@@ -1,6 +1,8 @@
 # Database
 
-Status: Phase 1. Identity, merchants, roles, API keys and the audit log.
+Status: Phase 2 plus the payment and transaction tables (migration 0003). Identity,
+merchants, roles, API keys, the audit log, the ledger core (currencies, chart of accounts,
+balances, journal), payments, transactions, payment links, checkout sessions and idempotency.
 
 ## Schema and roles (decisions D1, D2)
 
@@ -108,14 +110,122 @@ the role seed). drizzle-kit cannot express partitioning, so its snapshot records
 - List queries always carry a `created_at` window (default 90 days, max 366), so the
   planner prunes partitions; plans are in [query-plans/](query-plans/README.md).
 
-## Open question for Phase 2: table ownership
+## Phase 2 tables (migration 0002)
 
-Decision D2 gives `mulapay_core_rw` full rights on `core`, so it owns the tables its
-migrations create. Decision D5 relies on `REVOKE UPDATE, DELETE ON journal tables FROM
-mulapay_core_rw` and on triggers. A table owner can re-grant itself those rights, disable
-triggers and drop the table, so the revoke does not hold against a compromised rw
-connection. A separate owner role for migrations, with rw holding only DML grants, would
-make D5 enforceable. This needs a decision before the ledger tables are created.
+| Table                | Holds                                                   | Notes                                                                                                  |
+| -------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `currencies`         | ISO 4217 code, minor-unit exponent (spec 3.8)           | seeded with the 17 supported currencies; append-only                                                   |
+| `accounts`           | the chart of accounts (spec 5.4), per environment       | unique `(environment, code)`; purpose fixes code number and type; never deleted                        |
+| `account_balances`   | posted debits and credits per (account, currency)       | written only by the journal line trigger; never deleted                                                |
+| `journal_entry_keys` | one row per entry: idempotency key, ref, reversed entry | unpartitioned, so the three are globally unique; written only by the entry insert trigger; append-only |
+| `journal_entries`    | entry header: source, source id, transaction, reversal  | partitioned by month on `created_at`; append-only                                                      |
+| `journal_lines`      | one debit or credit of a bigint amount on one account   | partitioned by month on `created_at`; append-only                                                      |
 
-The same applies to `audit_logs` since Phase 1: the revoke and the triggers stop
-application code, but not an attacker holding the rw (owner) credentials.
+### Ledger invariants enforced by Postgres (spec 5.3, decision D5)
+
+Each is proven by `test/integration/ledger-schema.int-spec.ts`, which violates it with
+plain SQL as `mulapay_core_rw` (and as the superuser where a trigger backs a revoke).
+
+| Invariant                                  | Mechanism                                                                                                                                                                                                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Debits equal credits, at least two lines   | `journal_entries_balanced` and `journal_lines_balanced`: `CONSTRAINT TRIGGER ... DEFERRABLE INITIALLY DEFERRED`, checked at commit for every entry and every line                                                                                        |
+| Positive bigint amounts                    | `amount_minor bigint`, `CHECK (amount_minor > 0)`; every `*_minor` column is `bigint`                                                                                                                                                                    |
+| Single currency per entry                  | line trigger: line currency = entry currency; account currency (when set) = line currency                                                                                                                                                                |
+| Test never touches live                    | line trigger: account environment = entry environment                                                                                                                                                                                                    |
+| Merchant accounts stay with their merchant | line trigger: a merchant account only in that merchant's entries; `lines.merchant_id` copied from the account                                                                                                                                            |
+| No posting to inactive accounts            | line trigger                                                                                                                                                                                                                                             |
+| Entries are not back-dated                 | entry and line triggers: `created_at` (and `posted_at`) must equal `now()`, the transaction timestamp; a line's foreign key `(entry_id, created_at)` then ties it to an entry of its own transaction                                                     |
+| One entry per idempotency key, unique refs | `journal_entry_keys` primary key and unique `entry_ref`, filled by the entry insert trigger; direct inserts refused                                                                                                                                      |
+| Append-only journal                        | `UPDATE, DELETE, TRUNCATE` revoked on the parents and every partition; `BEFORE UPDATE OR DELETE` and `BEFORE TRUNCATE` triggers raise                                                                                                                    |
+| Corrections are reversals                  | `source = 'reversal'` iff `reverses_entry_id` is set; at most one reversal per entry (unique in the registry); a reversal is never reversed; same environment, currency, merchant and transaction; lines mirror the original exactly (checked at commit) |
+| Balances agree with the ledger             | `account_balances` changes only from the line trigger (trigger depth 2); direct updates, non-zero inserts, deletes and truncates are refused; totals are `CHECK (>= 0)`                                                                                  |
+| Chart of accounts                          | CHECKs: code format, purpose fixes number and type, normal balance follows type, scope columns (merchant, provider, bank key); merchant codes carry the merchant ref; only `name` and `active` change                                                    |
+| Currency exponents never change            | `currencies` append-only                                                                                                                                                                                                                                 |
+
+Not enforced by the database, by design: a merchant liability account going negative.
+`PostingService` refuses it unless the caller passes `allowNegativeMerchantBalance`
+(spec 6.4 `allow_negative_refund` needs that path), and the integrity check reports it.
+
+### Hand edits to the generated migration
+
+drizzle-kit generated 0002; these edits were made by hand and are marked in the file:
+`journal_entries` and `journal_lines` declared `PARTITION BY RANGE (created_at)`, and
+everything after the "Hand-written" marker: the id generators for seed rows
+(`core.gen_uuid_v7()`, `core.gen_public_id(prefix)`), the triggers above, partitions, revokes,
+the seeds, and a column grant (below). As in 0001, the snapshot records the two journal
+tables as plain tables.
+
+**`GRANT UPDATE (created_at)`** on `currencies`, `journal_entry_keys` and
+`journal_entries`. A foreign key check locks the referenced row with `FOR KEY SHARE`, which
+Postgres only allows to a role holding `UPDATE` on some column of that table. Without it,
+inserting an account or a journal line fails with "permission denied". The append-only
+triggers still refuse every `UPDATE`, so the grant opens no write path.
+
+### Partitions and seeds
+
+- `journal_entries` and `journal_lines` get the month the migration ran plus three ahead,
+  via `core.create_monthly_partitions`, and a default partition each. Revokes apply to
+  every partition. Phase 9 partition automation must create months ahead (as for
+  `audit_logs`).
+- Seeds: the 17 currencies, and the 15 platform and provider accounts of spec 5.4 in each
+  environment. Bank accounts (`1100:bank:{key}`) are opened per real bank account with
+  `AccountsService.openBankAccount`. Merchant payable and reserve accounts are opened in
+  both environments in the transaction that creates the merchant; the migration backfills
+  them for merchants that already existed.
+
+## Payment and transaction tables (migration 0003)
+
+| Table                | Holds                                                        | Notes                                                                                                                  |
+| -------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `transactions`       | one row per money movement (only `payment` so far)           | partitioned by month on `created_at`; never deleted; terminal payment rows never change                                |
+| `transaction_keys`   | registry: unique `ref`, unique `(type, gateway_external_id)` | filled only by the `transactions` insert trigger; append-only; lets a lookup by ref read one partition                 |
+| `transaction_events` | one row per distinct event key: applied, no-op or rejected   | append-only; unique `(transaction_id, event_key)`; the merchant timeline and the reconciliation input                  |
+| `payments`           | the merchant-facing charge, one per payment transaction      | shares `created_at` with its transaction (composite FK); unique `(merchant_id, environment, idempotency_key)` for ever |
+| `payment_links`      | reusable links, fixed or open amount                         | `used_count <= max_uses` is a CHECK; terms never change; never deleted                                                 |
+| `checkout_sessions`  | hosted-payment intent with a client secret hash              | `open -> complete \| expired`, final; one payment, set once                                                            |
+| `idempotency_keys`   | request fingerprint and stored response, 24 hours            | unique `(merchant_id, environment, scope, key)`; unpartitioned; a retention job (Phase 9) deletes expired rows         |
+
+### Invariants enforced by Postgres
+
+`test/integration/payments-schema.int-spec.ts` violates each with plain SQL as
+`mulapay_core_rw`.
+
+| Invariant                                    | Mechanism                                                                                                                                                                    |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Payment state machine                        | `core.payment_transition_allowed(from, to)` used by BEFORE UPDATE triggers on `transactions` and `payments`; a test compares it with the domain table for all 49 pairs       |
+| Terminal payments are final                  | the same triggers refuse any update to a `succeeded`, `failed`, `cancelled` or `expired` row, even one that restates its status                                              |
+| A payment starts `created`                   | BEFORE INSERT triggers                                                                                                                                                       |
+| A payment and its transaction agree          | deferred constraint triggers on both tables compare status, amount, currency, merchant, environment and channel at commit; a payment transaction without a payment row fails |
+| Amount, currency, channel, ref never change  | update guards; `net = amount - fee`, `0 <= fee <= amount`                                                                                                                    |
+| Provider and gateway ids are set once        | update guard                                                                                                                                                                 |
+| `unknown` is a flag, never a status          | CHECK `outcome_unknown` only while `processing`                                                                                                                              |
+| Completed means terminal                     | CHECK `completed_at` is set exactly when the status is terminal; a success needs a provider                                                                                  |
+| Unique ref and external id across partitions | `transaction_keys` unique constraints                                                                                                                                        |
+| One use per payer, never over `max_uses`     | CHECK on `payment_links`; `used_count` never decreases (trigger)                                                                                                             |
+| Events are append-only and scoped            | triggers and revokes; an event must match its transaction's merchant and environment                                                                                         |
+| Financial rows are never deleted             | `DELETE`/`TRUNCATE` revoked and refused by triggers on transactions, payments, links and sessions                                                                            |
+
+### Hand edits to the generated migration
+
+drizzle-kit generated 0003; these edits are marked in the file: `transactions` declared
+`PARTITION BY RANGE (created_at)` (the snapshot records it as a plain table), and everything
+after the "Hand-written" marker (state machine functions, triggers, partitions, revokes and
+the two merchant permissions). `core.revoke_on_partitions(parent, privileges)` revokes on
+every partition; Phase 9 partition automation must call it for each partition it creates, as
+it must for `core.create_monthly_partitions`.
+
+`transactions` has the same month partitions as the journal (current month and three ahead,
+plus a default). `transaction_events` and `idempotency_keys` grow per transaction but are not
+partitioned: events are a few rows per payment and are read by transaction id, idempotency
+rows live 24 hours. Revisit both with the Phase 9 load tests.
+
+## Open question: table ownership
+
+Still open. Decision D2 gives `mulapay_core_rw` full rights on `core`, so it owns the
+tables its migrations create. A table owner can re-grant itself the revoked rights,
+disable triggers and drop tables, so the revokes and triggers of migrations 0001 and 0002
+stop application code and mistakes, but not an attacker holding the rw credentials.
+Phase 2 builds the ledger the same way as the Phase 1 audit log, which keeps the
+decision reversible: moving ownership to a separate migration role later is
+`ALTER TABLE ... OWNER TO` plus a bootstrap change, with no schema rewrite. This needs a
+decision before production.

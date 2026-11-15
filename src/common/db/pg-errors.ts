@@ -20,3 +20,8 @@ export function isUniqueViolation(error: unknown, constraint?: string): boolean 
   const pg = findPgError(error);
   return pg?.code === '23505' && (constraint === undefined || pg.constraint === constraint);
 }
+
+/** True for `lock_not_available` (55P03): a lock wait ran past `lock_timeout`. */
+export function isLockNotAvailable(error: unknown): boolean {
+  return findPgError(error)?.code === '55P03';
+}

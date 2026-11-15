@@ -1,0 +1,569 @@
+Pager usage is off.
+SET
+BEGIN
+SET
+ create_monthly_partitions 
+---------------------------
+ 
+(1 row)
+
+INSERT 0 2000
+SELECT 2000
+SELECT 60000
+INSERT 0 60000
+INSERT 0 60000
+UPDATE 57600
+UPDATE 57600
+UPDATE 54000
+UPDATE 54000
+INSERT 0 171600
+INSERT 0 20000
+INSERT 0 20000
+INSERT 0 60000
+ANALYZE
+SELECT 1
+== Payment by public ref, with its transaction (payments_ref_key, then transactions pkey; other partitions pruned at run time)
+                                                         QUERY PLAN                                                         
+----------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=1 loops=1)
+   Buffers: shared hit=4 read=7, local hit=2
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   InitPlan 2 (returns $1)
+     ->  Seq Scan on probe probe_1 (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Nested Loop Left Join (actual rows=1 loops=1)
+         Buffers: shared hit=4 read=7, local hit=2
+         ->  Nested Loop Left Join (actual rows=1 loops=1)
+               Buffers: shared hit=4 read=7, local hit=2
+               ->  Nested Loop (actual rows=1 loops=1)
+                     Buffers: shared hit=4 read=7, local hit=2
+                     ->  Index Scan using payments_ref_key on payments p (actual rows=1 loops=1)
+                           Index Cond: (ref = $0)
+                           Filter: ((merchant_id = $1) AND (environment = 'test'::text))
+                           Buffers: shared read=6, local hit=2
+                     ->  Append (actual rows=1 loops=1)
+                           Buffers: shared hit=4 read=1
+                           ->  Index Scan using transactions_202608_pkey on transactions_202608 t_1 (never executed)
+                                 Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                           ->  Index Scan using transactions_202609_pkey on transactions_202609 t_2 (actual rows=1 loops=1)
+                                 Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                                 Buffers: shared hit=4 read=1
+                           ->  Index Scan using transactions_202610_pkey on transactions_202610 t_3 (never executed)
+                                 Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                           ->  Index Scan using transactions_202611_pkey on transactions_202611 t_4 (never executed)
+                                 Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                           ->  Seq Scan on transactions_202612 t_5 (never executed)
+                                 Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+                           ->  Seq Scan on transactions_202701 t_6 (never executed)
+                                 Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+                           ->  Seq Scan on transactions_202702 t_7 (never executed)
+                                 Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+                           ->  Seq Scan on transactions_default t_8 (never executed)
+                                 Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+               ->  Index Scan using payment_links_pkey on payment_links pl (actual rows=0 loops=1)
+                     Index Cond: (id = p.payment_link_id)
+         ->  Index Scan using checkout_sessions_pkey on checkout_sessions cs (actual rows=0 loops=1)
+               Index Cond: (id = p.checkout_session_id)
+ Planning:
+   Buffers: shared hit=807 read=56
+(43 rows)
+
+== Payments list, newest first, first page (payments_merchant_created_idx)
+                                                                               QUERY PLAN                                                                                
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=26 loops=1)
+   Buffers: shared hit=131 read=72, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Nested Loop Left Join (actual rows=26 loops=1)
+         Buffers: shared hit=131 read=72, local hit=1
+         ->  Nested Loop Left Join (actual rows=26 loops=1)
+               Buffers: shared hit=131 read=72, local hit=1
+               ->  Nested Loop (actual rows=26 loops=1)
+                     Buffers: shared hit=131 read=72, local hit=1
+                     ->  Index Scan using payments_merchant_created_idx on payments p (actual rows=26 loops=1)
+                           Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                           Buffers: shared hit=22 read=55, local hit=1
+                     ->  Append (actual rows=1 loops=26)
+                           Buffers: shared hit=109 read=17
+                           ->  Index Scan using transactions_202608_pkey on transactions_202608 t_1 (never executed)
+                                 Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                           ->  Index Scan using transactions_202609_pkey on transactions_202609 t_2 (never executed)
+                                 Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                           ->  Index Scan using transactions_202610_pkey on transactions_202610 t_3 (never executed)
+                                 Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                           ->  Index Scan using transactions_202611_pkey on transactions_202611 t_4 (actual rows=1 loops=26)
+                                 Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                                 Buffers: shared hit=109 read=17
+                           ->  Seq Scan on transactions_202612 t_5 (never executed)
+                                 Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+                           ->  Seq Scan on transactions_202701 t_6 (never executed)
+                                 Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+                           ->  Seq Scan on transactions_202702 t_7 (never executed)
+                                 Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+                           ->  Seq Scan on transactions_default t_8 (never executed)
+                                 Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+               ->  Index Scan using payment_links_pkey on payment_links pl (actual rows=0 loops=26)
+                     Index Cond: (id = p.payment_link_id)
+         ->  Index Scan using checkout_sessions_pkey on checkout_sessions cs (actual rows=0 loops=26)
+               Index Cond: (id = p.checkout_session_id)
+ Planning:
+   Buffers: shared hit=45
+(39 rows)
+
+== Payments list, keyset page 2 (payments_merchant_created_idx)
+                                                                                                                QUERY PLAN                                                                                                                 
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=26 loops=1)
+   Buffers: shared hit=126 read=86, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Nested Loop (actual rows=26 loops=1)
+         Buffers: shared hit=126 read=86, local hit=1
+         ->  Index Scan using payments_merchant_created_idx on payments p (actual rows=26 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()) AND (created_at <= '2026-10-06 10:22:19.300078+00'::timestamp with time zone))
+               Filter: ((created_at < '2026-10-06 10:22:19.300078+00'::timestamp with time zone) OR ((created_at = '2026-10-06 10:22:19.300078+00'::timestamp with time zone) AND (ref < 'pay_Z'::text)))
+               Buffers: shared hit=28 read=54, local hit=1
+         ->  Append (actual rows=1 loops=26)
+               Buffers: shared hit=98 read=32
+               ->  Index Scan using transactions_202608_pkey on transactions_202608 t_1 (never executed)
+                     Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+               ->  Index Scan using transactions_202609_pkey on transactions_202609 t_2 (never executed)
+                     Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+               ->  Index Scan using transactions_202610_pkey on transactions_202610 t_3 (actual rows=1 loops=26)
+                     Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+                     Buffers: shared hit=98 read=32
+               ->  Index Scan using transactions_202611_pkey on transactions_202611 t_4 (never executed)
+                     Index Cond: ((id = p.transaction_id) AND (created_at = p.created_at))
+               ->  Seq Scan on transactions_202612 t_5 (never executed)
+                     Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+               ->  Seq Scan on transactions_202701 t_6 (never executed)
+                     Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+               ->  Seq Scan on transactions_202702 t_7 (never executed)
+                     Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+               ->  Seq Scan on transactions_default t_8 (never executed)
+                     Filter: ((p.transaction_id = id) AND (p.created_at = created_at))
+ Planning:
+   Buffers: shared hit=39 read=2
+(32 rows)
+
+== Transactions list, 90-day window, first page (transactions_merchant_created_idx per partition)
+                                                                         QUERY PLAN                                                                          
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=26 loops=1)
+   Buffers: shared hit=76 read=15, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Merge Append (actual rows=26 loops=1)
+         Sort Key: transactions.created_at DESC NULLS LAST, transactions.ref DESC NULLS LAST
+         Buffers: shared hit=76 read=15, local hit=1
+         Subplans Removed: 4
+         ->  Index Scan using transactions_202608_merchant_id_environment_created_at_ref_idx on transactions_202608 transactions_1 (actual rows=1 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared read=3, local hit=1
+         ->  Index Scan using transactions_202609_merchant_id_environment_created_at_ref_idx on transactions_202609 transactions_2 (actual rows=1 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared hit=1 read=5
+         ->  Index Scan using transactions_202610_merchant_id_environment_created_at_ref_idx on transactions_202610 transactions_3 (actual rows=1 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared hit=1 read=5
+         ->  Index Scan using transactions_202611_merchant_id_environment_created_at_ref_idx on transactions_202611 transactions_4 (actual rows=26 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared hit=74 read=2
+ Planning:
+   Buffers: shared hit=20
+(23 rows)
+
+== Transactions list, keyset page 2 (range on created_at plus a residual test on ref; Merge Append stops at the LIMIT)
+                                                                                                                   QUERY PLAN                                                                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=26 loops=1)
+   Buffers: shared hit=6859 read=1674 written=309, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Sort (actual rows=26 loops=1)
+         Sort Key: transactions.created_at DESC NULLS LAST, transactions.ref DESC NULLS LAST
+         Sort Method: top-N heapsort  Memory: 31kB
+         Buffers: shared hit=6859 read=1674 written=309, local hit=1
+         ->  Append (actual rows=2959 loops=1)
+               Buffers: shared hit=6859 read=1674 written=309, local hit=1
+               Subplans Removed: 1
+               ->  Index Scan using transactions_202608_merchant_id_environment_created_at_ref_idx on transactions_202608 transactions_1 (actual rows=301 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()) AND (created_at <= '2026-10-06 10:22:19.300078+00'::timestamp with time zone))
+                     Filter: ((created_at < '2026-10-06 10:22:19.300078+00'::timestamp with time zone) OR ((created_at = '2026-10-06 10:22:19.300078+00'::timestamp with time zone) AND (ref < 'txn_Z'::text)))
+                     Buffers: shared hit=812 read=58, local hit=1
+               ->  Index Scan using transactions_202609_merchant_id_environment_created_at_ref_idx on transactions_202609 transactions_2 (actual rows=2242 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()) AND (created_at <= '2026-10-06 10:22:19.300078+00'::timestamp with time zone))
+                     Filter: ((created_at < '2026-10-06 10:22:19.300078+00'::timestamp with time zone) OR ((created_at = '2026-10-06 10:22:19.300078+00'::timestamp with time zone) AND (ref < 'txn_Z'::text)))
+                     Buffers: shared hit=5144 read=1307 written=258
+               ->  Index Scan using transactions_202610_merchant_id_environment_created_at_ref_idx on transactions_202610 transactions_3 (actual rows=416 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()) AND (created_at <= '2026-10-06 10:22:19.300078+00'::timestamp with time zone))
+                     Filter: ((created_at < '2026-10-06 10:22:19.300078+00'::timestamp with time zone) OR ((created_at = '2026-10-06 10:22:19.300078+00'::timestamp with time zone) AND (ref < 'txn_Z'::text)))
+                     Buffers: shared hit=903 read=309 written=51
+ Planning:
+   Buffers: shared hit=5
+(26 rows)
+
+== Transactions list filtered by status (transactions_merchant_status_created_idx per partition)
+                                                                                           QUERY PLAN                                                                                            
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=26 loops=1)
+   Buffers: shared hit=705 read=174, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Sort (actual rows=26 loops=1)
+         Sort Key: transactions.created_at DESC NULLS LAST, transactions.ref DESC NULLS LAST
+         Sort Method: top-N heapsort  Memory: 33kB
+         Buffers: shared hit=705 read=174, local hit=1
+         ->  Append (actual rows=1200 loops=1)
+               Buffers: shared hit=705 read=174, local hit=1
+               Subplans Removed: 4
+               ->  Index Scan using transactions_202608_merchant_id_environment_status_created__idx on transactions_202608 transactions_1 (actual rows=45 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (status = 'failed'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=11 read=3, local hit=1
+               ->  Index Scan using transactions_202609_merchant_id_environment_status_created__idx on transactions_202609 transactions_2 (actual rows=460 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (status = 'failed'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=343 read=9
+               ->  Index Scan using transactions_202610_merchant_id_environment_status_created__idx on transactions_202610 transactions_3 (actual rows=472 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (status = 'failed'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=247 read=110
+               ->  Index Scan using transactions_202611_merchant_id_environment_status_created__idx on transactions_202611 transactions_4 (actual rows=223 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (status = 'failed'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=104 read=52
+ Planning:
+   Buffers: shared hit=20
+(26 rows)
+
+== Transactions list for a small merchant over 90 days
+                                                                         QUERY PLAN                                                                          
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=26 loops=1)
+   Buffers: shared hit=91, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Merge Append (actual rows=26 loops=1)
+         Sort Key: transactions.created_at DESC NULLS LAST, transactions.ref DESC NULLS LAST
+         Buffers: shared hit=91, local hit=1
+         Subplans Removed: 4
+         ->  Index Scan using transactions_202608_merchant_id_environment_created_at_ref_idx on transactions_202608 transactions_1 (actual rows=1 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared hit=3, local hit=1
+         ->  Index Scan using transactions_202609_merchant_id_environment_created_at_ref_idx on transactions_202609 transactions_2 (actual rows=1 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared hit=6
+         ->  Index Scan using transactions_202610_merchant_id_environment_created_at_ref_idx on transactions_202610 transactions_3 (actual rows=1 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared hit=6
+         ->  Index Scan using transactions_202611_merchant_id_environment_created_at_ref_idx on transactions_202611 transactions_4 (actual rows=26 loops=1)
+               Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared hit=76
+ Planning:
+   Buffers: shared hit=20
+(23 rows)
+
+== Transactions list by reference: ref, external id or provider transaction id
+                                                                                                                      QUERY PLAN                                                                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=1 loops=1)
+   Buffers: shared hit=3594 read=658 written=96, local hit=4
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   InitPlan 2 (returns $1)
+     ->  Seq Scan on probe probe_1 (actual rows=1 loops=1)
+           Buffers: local hit=1
+   InitPlan 3 (returns $2)
+     ->  Seq Scan on probe probe_2 (actual rows=1 loops=1)
+           Buffers: local hit=1
+   InitPlan 4 (returns $3)
+     ->  Seq Scan on probe probe_3 (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Sort (actual rows=1 loops=1)
+         Sort Key: transactions.created_at DESC NULLS LAST, transactions.ref DESC NULLS LAST
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=3594 read=658 written=96, local hit=4
+         ->  Append (actual rows=1 loops=1)
+               Buffers: shared hit=3594 read=658 written=96, local hit=4
+               Subplans Removed: 4
+               ->  Index Scan using transactions_202608_merchant_id_environment_created_at_ref_idx on transactions_202608 transactions_1 (actual rows=0 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Filter: ((ref = $1) OR (gateway_external_id = $2) OR (provider_transaction_id = $3))
+                     Rows Removed by Filter: 301
+                     Buffers: shared hit=870, local hit=4
+               ->  Bitmap Heap Scan on transactions_202609 transactions_2 (actual rows=1 loops=1)
+                     Recheck Cond: (((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()) AND (ref = $1)) OR (gateway_external_id = $2) OR (provider_transaction_id = $3))
+                     Filter: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at <= now()) AND (created_at >= (now() - '90 days'::interval)))
+                     Heap Blocks: exact=3
+                     Buffers: shared hit=12 read=85
+                     ->  BitmapOr (actual rows=0 loops=1)
+                           Buffers: shared hit=9 read=85
+                           ->  Bitmap Index Scan on transactions_202609_merchant_id_environment_status_created__idx (actual rows=0 loops=1)
+                                 Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()) AND (ref = $1))
+                                 Buffers: shared hit=9 read=80
+                           ->  Bitmap Index Scan on transactions_202609_gateway_external_id_idx (actual rows=3 loops=1)
+                                 Index Cond: (gateway_external_id = $2)
+                                 Buffers: shared read=3
+                           ->  Bitmap Index Scan on transactions_202609_provider_transaction_id_idx (actual rows=0 loops=1)
+                                 Index Cond: (provider_transaction_id = $3)
+                                 Buffers: shared read=2
+               ->  Bitmap Heap Scan on transactions_202610 transactions_3 (actual rows=0 loops=1)
+                     Recheck Cond: (((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()) AND (ref = $1)) OR (gateway_external_id = $2) OR (provider_transaction_id = $3))
+                     Filter: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at <= now()) AND (created_at >= (now() - '90 days'::interval)))
+                     Buffers: shared hit=9 read=91 written=2
+                     ->  BitmapOr (actual rows=0 loops=1)
+                           Buffers: shared hit=9 read=91 written=2
+                           ->  Bitmap Index Scan on transactions_202610_merchant_id_environment_status_created__idx (actual rows=0 loops=1)
+                                 Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()) AND (ref = $1))
+                                 Buffers: shared hit=9 read=86 written=2
+                           ->  Bitmap Index Scan on transactions_202610_gateway_external_id_idx (actual rows=0 loops=1)
+                                 Index Cond: (gateway_external_id = $2)
+                                 Buffers: shared read=3
+                           ->  Bitmap Index Scan on transactions_202610_provider_transaction_id_idx (actual rows=0 loops=1)
+                                 Index Cond: (provider_transaction_id = $3)
+                                 Buffers: shared read=2
+               ->  Index Scan using transactions_202611_merchant_id_environment_created_at_ref_idx on transactions_202611 transactions_4 (actual rows=0 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Filter: ((ref = $1) OR (gateway_external_id = $2) OR (provider_transaction_id = $3))
+                     Rows Removed by Filter: 1106
+                     Buffers: shared hit=2703 read=482 written=94
+ Planning:
+   Buffers: shared hit=20
+(64 rows)
+
+== Transaction by public ref through the registry (transaction_keys_ref_key, then one partition by primary key)
+                                                   QUERY PLAN                                                   
+----------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=1 loops=1)
+   Buffers: shared hit=4 read=5, local hit=2
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   InitPlan 2 (returns $1)
+     ->  Seq Scan on probe probe_1 (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Nested Loop (actual rows=1 loops=1)
+         Buffers: shared hit=4 read=5, local hit=2
+         ->  Index Scan using transaction_keys_ref_key on transaction_keys k (actual rows=1 loops=1)
+               Index Cond: (ref = $0)
+               Filter: ((merchant_id = $1) AND (environment = 'test'::text))
+               Buffers: shared hit=1 read=3, local hit=2
+         ->  Append (actual rows=1 loops=1)
+               Buffers: shared hit=3 read=2
+               ->  Index Scan using transactions_202608_pkey on transactions_202608 t_1 (never executed)
+                     Index Cond: ((id = k.id) AND (created_at = k.transaction_created_at))
+               ->  Index Scan using transactions_202609_pkey on transactions_202609 t_2 (actual rows=1 loops=1)
+                     Index Cond: ((id = k.id) AND (created_at = k.transaction_created_at))
+                     Buffers: shared hit=3 read=2
+               ->  Index Scan using transactions_202610_pkey on transactions_202610 t_3 (never executed)
+                     Index Cond: ((id = k.id) AND (created_at = k.transaction_created_at))
+               ->  Index Scan using transactions_202611_pkey on transactions_202611 t_4 (never executed)
+                     Index Cond: ((id = k.id) AND (created_at = k.transaction_created_at))
+               ->  Seq Scan on transactions_202612 t_5 (never executed)
+                     Filter: ((k.id = id) AND (k.transaction_created_at = created_at))
+               ->  Seq Scan on transactions_202701 t_6 (never executed)
+                     Filter: ((k.id = id) AND (k.transaction_created_at = created_at))
+               ->  Seq Scan on transactions_202702 t_7 (never executed)
+                     Filter: ((k.id = id) AND (k.transaction_created_at = created_at))
+               ->  Seq Scan on transactions_default t_8 (never executed)
+                     Filter: ((k.id = id) AND (k.transaction_created_at = created_at))
+ Planning:
+   Buffers: shared hit=75 read=4
+(35 rows)
+
+== Lock a transaction by (id, created_at) for a lifecycle step (primary key, one partition)
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ LockRows (actual rows=1 loops=1)
+   Buffers: shared hit=6 dirtied=1, local hit=2
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   InitPlan 2 (returns $1)
+     ->  Seq Scan on probe probe_1 (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Append (actual rows=1 loops=1)
+         Buffers: shared hit=5, local hit=2
+         ->  Index Scan using transactions_202608_pkey on transactions_202608 transactions_1 (never executed)
+               Index Cond: ((id = $0) AND (created_at = $1))
+         ->  Index Scan using transactions_202609_pkey on transactions_202609 transactions_2 (actual rows=1 loops=1)
+               Index Cond: ((id = $0) AND (created_at = $1))
+               Buffers: shared hit=5, local hit=1
+         ->  Index Scan using transactions_202610_pkey on transactions_202610 transactions_3 (never executed)
+               Index Cond: ((id = $0) AND (created_at = $1))
+         ->  Index Scan using transactions_202611_pkey on transactions_202611 transactions_4 (never executed)
+               Index Cond: ((id = $0) AND (created_at = $1))
+         ->  Seq Scan on transactions_202612 transactions_5 (never executed)
+               Filter: ((id = $0) AND (created_at = $1))
+         ->  Seq Scan on transactions_202701 transactions_6 (never executed)
+               Filter: ((id = $0) AND (created_at = $1))
+         ->  Seq Scan on transactions_202702 transactions_7 (never executed)
+               Filter: ((id = $0) AND (created_at = $1))
+         ->  Seq Scan on transactions_default transactions_8 (never executed)
+               Filter: ((id = $0) AND (created_at = $1))
+ Planning:
+   Buffers: shared hit=20
+(29 rows)
+
+== Lock a payment by id for a lifecycle step (payments_pkey)
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
+ LockRows (actual rows=1 loops=1)
+   Buffers: shared hit=5 read=8 dirtied=1, local hit=1
+   InitPlan 2 (returns $1)
+     ->  Index Scan using payments_ref_key on payments payments_1 (actual rows=1 loops=1)
+           Index Cond: (ref = $0)
+           Buffers: shared hit=1 read=5, local hit=1
+           InitPlan 1 (returns $0)
+             ->  Seq Scan on probe (actual rows=1 loops=1)
+                   Buffers: local hit=1
+   ->  Index Scan using payments_pkey on payments (actual rows=1 loops=1)
+         Index Cond: (id = $1)
+         Buffers: shared hit=4 read=8, local hit=1
+ Planning:
+   Buffers: shared hit=2
+(14 rows)
+
+== Timeline of one transaction (transaction_events_transaction_idx)
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Limit (actual rows=3 loops=1)
+   Buffers: shared hit=6, local hit=2
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   InitPlan 2 (returns $1)
+     ->  Seq Scan on probe probe_1 (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Index Scan using transaction_events_transaction_idx on transaction_events (actual rows=3 loops=1)
+         Index Cond: (transaction_id = $0)
+         Filter: ((merchant_id = $1) AND (environment = 'test'::text))
+         Buffers: shared hit=6, local hit=2
+ Planning:
+   Buffers: shared hit=70 read=3
+(14 rows)
+
+== Event dedupe: has this event key been applied (transaction_events_key_idx)
+                                           QUERY PLAN                                            
+-------------------------------------------------------------------------------------------------
+ Limit (actual rows=1 loops=1)
+   Buffers: shared hit=4, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Index Scan using transaction_events_key_idx on transaction_events (actual rows=1 loops=1)
+         Index Cond: ((transaction_id = $0) AND (event_key = 'created'::text))
+         Buffers: shared hit=4, local hit=1
+ Planning:
+   Buffers: shared hit=1
+(10 rows)
+
+== Idempotency claim: conflict check on the key (idempotency_keys_key_idx)
+                                                               QUERY PLAN                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idempotency_keys_key_idx on idempotency_keys (actual rows=0 loops=1)
+   Index Cond: ((merchant_id = $0) AND (environment = 'test'::text) AND (scope = 'payments.create'::text) AND (key = 'idem-2500'::text))
+   Buffers: shared hit=3, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+ Planning:
+   Buffers: shared hit=65
+(8 rows)
+
+== Expiry sweep: unsubmitted payments past their expiry (payments_created_expiry_idx, partial)
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
+ Limit (actual rows=100 loops=1)
+   Buffers: shared hit=1061 read=1562 written=49
+   ->  Index Scan using payments_created_expiry_idx on payments (actual rows=100 loops=1)
+         Index Cond: (expires_at <= now())
+         Buffers: shared hit=1061 read=1562 written=49
+ Planning:
+   Buffers: shared hit=1
+(7 rows)
+
+== Checkout session sweep: open sessions past their expiry (checkout_sessions_open_expiry_idx, partial)
+                                               QUERY PLAN                                                
+---------------------------------------------------------------------------------------------------------
+ Limit (actual rows=100 loops=1)
+   Buffers: shared hit=18
+   ->  Index Scan using checkout_sessions_open_expiry_idx on checkout_sessions (actual rows=100 loops=1)
+         Index Cond: (expires_at <= now())
+         Buffers: shared hit=18
+ Planning:
+   Buffers: shared hit=44
+(7 rows)
+
+== Payment link: take one use by ref (payment_links_ref_key)
+                                                        QUERY PLAN                                                         
+---------------------------------------------------------------------------------------------------------------------------
+ Index Scan using payment_links_ref_key on payment_links (actual rows=1 loops=1)
+   Index Cond: (ref = $0)
+   Filter: (active AND ((max_uses IS NULL) OR (used_count < max_uses)) AND ((expires_at IS NULL) OR (expires_at > now())))
+   Buffers: shared hit=19
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           Buffers: shared hit=16
+           ->  Seq Scan on payment_links payment_links_1 (actual rows=701 loops=1)
+                 Buffers: shared hit=16
+ Planning:
+   Buffers: shared hit=17
+(11 rows)
+
+== Payment link by public slug (payment_links_slug_key)
+                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
+ Index Scan using payment_links_slug_key on payment_links (actual rows=1 loops=1)
+   Index Cond: (slug = 'e5841df2166d'::text)
+   Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=30
+(5 rows)
+
+== Payment links list, newest first (payment_links_merchant_created_idx)
+                                             QUERY PLAN                                              
+-----------------------------------------------------------------------------------------------------
+ Limit (actual rows=10 loops=1)
+   Buffers: shared hit=3, local hit=1
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on probe (actual rows=1 loops=1)
+           Buffers: local hit=1
+   ->  Index Scan using payment_links_merchant_created_idx on payment_links (actual rows=10 loops=1)
+         Index Cond: ((merchant_id = $0) AND (environment = 'test'::text))
+         Buffers: shared hit=3, local hit=1
+(8 rows)
+
+== Checkout session by ref (checkout_sessions_ref_key)
+                                           QUERY PLAN                                            
+-------------------------------------------------------------------------------------------------
+ Nested Loop Left Join (actual rows=1 loops=1)
+   Buffers: shared hit=57
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           Buffers: shared hit=27
+           ->  Seq Scan on checkout_sessions (actual rows=901 loops=1)
+                 Buffers: shared hit=27
+   InitPlan 2 (returns $1)
+     ->  Limit (actual rows=1 loops=1)
+           Buffers: shared hit=27
+           ->  Seq Scan on checkout_sessions checkout_sessions_1 (actual rows=901 loops=1)
+                 Buffers: shared hit=27
+   ->  Index Scan using checkout_sessions_ref_key on checkout_sessions s (actual rows=1 loops=1)
+         Index Cond: (ref = $0)
+         Filter: ((merchant_id = $1) AND (environment = 'test'::text))
+         Buffers: shared hit=57
+   ->  Index Scan using payments_pkey on payments p (actual rows=0 loops=1)
+         Index Cond: (id = s.payment_id)
+ Planning:
+   Buffers: shared hit=1
+(20 rows)
+
+ROLLBACK

@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
+import { AccountsModule } from '../accounts/accounts.module';
+import { BalancesModule } from '../balances/balances.module';
+import { LedgerMerchantBalanceCheck } from '../balances/ledger-merchant-balance.check';
 import { IdentityModule } from '../identity/identity.module';
 import { InvitationsRepository } from './invitations.repository';
 import { InvitationsService } from './invitations.service';
-import { MERCHANT_BALANCE_CHECK, NoLedgerYetBalanceCheck } from './merchant-balance.check';
+import { MERCHANT_BALANCE_CHECK } from './merchant-balance.check';
 import { MembersRepository } from './members.repository';
 import { MerchantsRepository } from './merchants.repository';
 import { MerchantsService } from './merchants.service';
@@ -11,7 +14,7 @@ import { TeamService } from './team.service';
 
 /** Merchants, team membership, invitations and onboarding (spec 6.10). */
 @Module({
-  imports: [IdentityModule],
+  imports: [IdentityModule, AccountsModule, BalancesModule],
   providers: [
     MerchantsRepository,
     MembersRepository,
@@ -20,7 +23,7 @@ import { TeamService } from './team.service';
     InvitationsService,
     TeamService,
     OnboardingService,
-    { provide: MERCHANT_BALANCE_CHECK, useClass: NoLedgerYetBalanceCheck },
+    { provide: MERCHANT_BALANCE_CHECK, useExisting: LedgerMerchantBalanceCheck },
   ],
   exports: [
     MerchantsRepository,

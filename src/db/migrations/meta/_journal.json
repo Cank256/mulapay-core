@@ -15,6 +15,20 @@
       "when": 1794685785624,
       "tag": "0001_identity_merchants_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794727403060,
+      "tag": "0002_ledger_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794731997982,
+      "tag": "0003_payments_transactions",
+      "breakpoints": true
     }
   ]
 }

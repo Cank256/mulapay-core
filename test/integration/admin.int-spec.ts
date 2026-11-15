@@ -356,7 +356,12 @@ describe('roles', () => {
   it('lists roles and permissions, edits a role, and protects super_admin', async () => {
     const list = await admin.client.get('/admin/v1/roles');
     const viewer = list.json().data.roles.find((r: { key: string }) => r.key === 'viewer');
-    expect(viewer.permissions).toEqual(['merchant:read', 'team:read']);
+    expect(viewer.permissions).toEqual([
+      'merchant:read',
+      'payments:read',
+      'team:read',
+      'transactions:read',
+    ]);
 
     const updated = await admin.client.patch('/admin/v1/roles/viewer', {
       permissions: ['merchant:read', 'team:read', 'api_keys:read'],
@@ -369,7 +374,9 @@ describe('roles', () => {
     ]);
     const rows = await auditRows({ action: 'role.permissions_updated', resourceId: 'viewer' });
     expect(rows[0]).toMatchObject({
-      before: { permissions: ['merchant:read', 'team:read'] },
+      before: {
+        permissions: ['merchant:read', 'payments:read', 'team:read', 'transactions:read'],
+      },
       changedFields: ['permissions'],
     });
     await admin.client.patch('/admin/v1/roles/viewer', {

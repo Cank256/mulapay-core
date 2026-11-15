@@ -59,10 +59,12 @@ The specification lives at `docs/CORE_API_BUILD_PROMPT.md`. Build order is spec 
 
 ## Current phase
 
-Phases 0 (foundation) and 1 (identity and merchants, plus API key issuance) are in
-place. Next is Phase 2 (ledger core). Open questions are listed in `docs/ARCHITECTURE.md`
-("Phase 0 decisions to confirm", "Phase 1 decisions to confirm") and `docs/DATABASE.md`
-(table ownership). Phase 2 must replace `NoLedgerYetBalanceCheck` (merchant close).
+Phases 0 (foundation), 1 (identity and merchants, plus API key issuance) and the ledger
+core of Phase 2 are in place. Phase 2 still lacks holds, available balance and the admin
+ledger routes. The payment and transaction domain (transactions, payments, state machine,
+idempotency, links, checkout sessions, queries) is built without the Provider Gateway, ahead
+of Phases 3 and 4; see `docs/ARCHITECTURE.md` ("Payments and transactions"). Open questions are listed in `docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions
+to confirm") and `docs/DATABASE.md` (table ownership).
 
 ## Commands
 
@@ -72,6 +74,8 @@ place. Next is Phase 2 (ledger core). Open questions are listed in `docs/ARCHITE
   if Docker is not on the default socket (see README).
 - `npm run test:coverage`: 80% overall; 100% on `src/modules/{ledger,balances,holds}` and
   `src/common/money`.
+- Ledger: post only through `PostingService.postEntry`; correct only through
+  `ReversalService.reverseEntry`. Amounts are `bigint` minor units.
 - `npm run db:generate` then `npm run db:migrate`. Never `drizzle-kit migrate` or `push`.
 
 ## Conventions

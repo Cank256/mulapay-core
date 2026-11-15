@@ -20,9 +20,21 @@ describe('API docs', () => {
       const docs = buildOpenApiDocuments(app);
       expect(Object.keys(docs).sort()).toEqual(['admin', 'dashboard', 'public']);
       expect(Object.keys(docs.public.paths).sort()).toEqual([
+        '/v1/checkout-sessions',
+        '/v1/checkout-sessions/{ref}',
+        '/v1/checkout-sessions/{ref}/expire',
         '/v1/health',
         '/v1/health/ready',
+        '/v1/payment-links',
+        '/v1/payment-links/{ref}',
+        '/v1/payment-links/{ref}/deactivate',
+        '/v1/payments',
+        '/v1/payments/{ref}',
+        '/v1/payments/{ref}/cancel',
+        '/v1/payments/{ref}/timeline',
         '/v1/ping',
+        '/v1/transactions',
+        '/v1/transactions/{ref}',
       ]);
       const dashboardPaths = Object.keys(docs.dashboard.paths);
       const adminPaths = Object.keys(docs.admin.paths);

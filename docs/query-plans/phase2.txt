@@ -1,0 +1,271 @@
+Pager usage is off.
+SET
+BEGIN
+INSERT 0 2000
+INSERT 0 8000
+SELECT 2000
+INSERT 0 100000
+INSERT 0 200000
+ANALYZE
+== Posting: idempotency key lookup (journal_entry_keys_pkey)
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=1 loops=1)
+   Buffers: shared hit=2 read=2
+   ->  Index Scan using journal_entry_keys_pkey on journal_entry_keys (actual rows=1 loops=1)
+         Index Cond: (idempotency_key = '555f7c5298fa800c9192ccd15c29deee0daaccdfdbd65b306f315f4873f3fd67'::text)
+         Buffers: shared hit=2 read=2
+ Planning:
+   Buffers: shared hit=57 read=4
+(7 rows)
+
+== Reversal: entry by public ref (journal_entry_keys_entry_ref_key)
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Limit (actual rows=1 loops=1)
+   Buffers: shared hit=2 read=17
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           Buffers: shared read=15
+           ->  Seq Scan on journal_entry_keys journal_entry_keys_1 (actual rows=501 loops=1)
+                 Buffers: shared read=15
+   ->  Index Scan using journal_entry_keys_entry_ref_key on journal_entry_keys (actual rows=1 loops=1)
+         Index Cond: (entry_ref = $0)
+         Buffers: shared hit=2 read=17
+(10 rows)
+
+== Posting: resolve account codes (accounts_environment_code_key)
+                                                               QUERY PLAN                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using accounts_environment_code_key on accounts (actual rows=3 loops=1)
+   Index Cond: ((environment = 'test'::text) AND (code = ANY (ARRAY['1000:provider_clearing:mtn'::text, '4000:fee_revenue'::text, $0])))
+   Buffers: shared hit=9 read=5
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           Buffers: shared hit=1
+           ->  Seq Scan on accounts accounts_1 (actual rows=1 loops=1)
+                 Filter: (purpose = 'merchant_payable'::text)
+                 Rows Removed by Filter: 30
+                 Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=89 read=5
+(12 rows)
+
+== Posting: lock balance rows in account id order (account_balances_account_id_currency_pk)
+                                                      QUERY PLAN                                                       
+-----------------------------------------------------------------------------------------------------------------------
+ LockRows (actual rows=3 loops=1)
+   Buffers: shared hit=16
+   ->  Sort (actual rows=3 loops=1)
+         Sort Key: account_balances.account_id
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=13
+         ->  Nested Loop (actual rows=3 loops=1)
+               Buffers: shared hit=13
+               ->  HashAggregate (actual rows=3 loops=1)
+                     Group Key: "ANY_subquery".id
+                     Batches: 1  Memory Usage: 24kB
+                     Buffers: shared hit=1
+                     ->  Subquery Scan on "ANY_subquery" (actual rows=3 loops=1)
+                           Buffers: shared hit=1
+                           ->  Limit (actual rows=3 loops=1)
+                                 Buffers: shared hit=1
+                                 ->  Seq Scan on accounts (actual rows=3 loops=1)
+                                       Filter: ((environment = 'test'::text) AND (purpose = 'merchant_payable'::text))
+                                       Rows Removed by Filter: 36
+                                       Buffers: shared hit=1
+               ->  Bitmap Heap Scan on account_balances (actual rows=1 loops=3)
+                     Recheck Cond: ((account_id = "ANY_subquery".id) AND (currency = 'UGX'::bpchar))
+                     Heap Blocks: exact=6
+                     Buffers: shared hit=12
+                     ->  Bitmap Index Scan on account_balances_account_id_currency_pk (actual rows=2 loops=3)
+                           Index Cond: ((account_id = "ANY_subquery".id) AND (currency = 'UGX'::bpchar))
+                           Buffers: shared hit=6
+ Planning:
+   Buffers: shared hit=49 read=1
+(29 rows)
+
+== Entry and lines by id and created_at, pruned to one partition (journal_entries / journal_lines pkeys)
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
+ Sort (actual rows=2 loops=1)
+   Sort Key: l.line_no
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=46 read=6
+   InitPlan 1 (returns $0)
+     ->  Limit (actual rows=1 loops=1)
+           Buffers: shared hit=21
+           ->  Seq Scan on journal_entry_keys (actual rows=701 loops=1)
+                 Buffers: shared hit=21
+   InitPlan 2 (returns $1)
+     ->  Limit (actual rows=1 loops=1)
+           Buffers: shared hit=15 read=6
+           ->  Seq Scan on journal_entry_keys journal_entry_keys_1 (actual rows=701 loops=1)
+                 Buffers: shared hit=15 read=6
+   ->  Nested Loop (actual rows=2 loops=1)
+         Buffers: shared hit=46 read=6
+         ->  Append (actual rows=2 loops=1)
+               Buffers: shared hit=40 read=6
+               ->  Index Scan using journal_lines_202611_pkey on journal_lines_202611 l_1 (actual rows=2 loops=1)
+                     Index Cond: ((entry_id = $0) AND (created_at = $1))
+                     Buffers: shared hit=25
+               ->  Seq Scan on journal_lines_202612 l_2 (never executed)
+                     Filter: ((entry_id = $0) AND (created_at = $1))
+               ->  Seq Scan on journal_lines_202701 l_3 (never executed)
+                     Filter: ((entry_id = $0) AND (created_at = $1))
+               ->  Seq Scan on journal_lines_202702 l_4 (never executed)
+                     Filter: ((entry_id = $0) AND (created_at = $1))
+               ->  Seq Scan on journal_lines_default l_5 (never executed)
+                     Filter: ((entry_id = $0) AND (created_at = $1))
+         ->  Index Scan using accounts_pkey on accounts a (actual rows=1 loops=2)
+               Index Cond: (id = l.account_id)
+               Buffers: shared hit=6
+ Planning:
+   Buffers: shared hit=321 read=12
+(34 rows)
+
+== Merchant close: any non-zero live balance (accounts_merchant_idx, account_balances pkey)
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Limit (actual rows=0 loops=1)
+   Buffers: shared hit=5 read=2, local hit=32
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on seed_payables (actual rows=1 loops=1)
+           Filter: (n = 17)
+           Rows Removed by Filter: 1999
+           Buffers: local hit=32
+   ->  Nested Loop (actual rows=0 loops=1)
+         Buffers: shared hit=5 read=2, local hit=32
+         ->  Index Scan using accounts_merchant_idx on accounts a (actual rows=2 loops=1)
+               Index Cond: (merchant_id = $0)
+               Filter: (environment = 'live'::text)
+               Rows Removed by Filter: 2
+               Buffers: shared hit=1 read=2, local hit=32
+         ->  Bitmap Heap Scan on account_balances b (actual rows=0 loops=2)
+               Recheck Cond: (account_id = a.id)
+               Filter: (posted_debits_minor <> posted_credits_minor)
+               Buffers: shared hit=4
+               ->  Bitmap Index Scan on account_balances_account_id_currency_pk (actual rows=0 loops=2)
+                     Index Cond: (account_id = a.id)
+                     Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=12
+(23 rows)
+
+== Merchant balances in one environment (accounts_merchant_idx)
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Sort (actual rows=1 loops=1)
+   Sort Key: a.code, b.currency
+   Sort Method: quicksort  Memory: 25kB
+   Buffers: shared hit=9, local hit=32
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on seed_payables (actual rows=1 loops=1)
+           Filter: (n = 17)
+           Rows Removed by Filter: 1999
+           Buffers: local hit=32
+   ->  Nested Loop (actual rows=1 loops=1)
+         Buffers: shared hit=9, local hit=32
+         ->  Index Scan using accounts_merchant_idx on accounts a (actual rows=2 loops=1)
+               Index Cond: (merchant_id = $0)
+               Filter: (environment = 'test'::text)
+               Rows Removed by Filter: 2
+               Buffers: shared hit=3, local hit=32
+         ->  Bitmap Heap Scan on account_balances b (actual rows=0 loops=2)
+               Recheck Cond: (account_id = a.id)
+               Heap Blocks: exact=2
+               Buffers: shared hit=6
+               ->  Bitmap Index Scan on account_balances_account_id_currency_pk (actual rows=1 loops=2)
+                     Index Cond: (account_id = a.id)
+                     Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=12
+(25 rows)
+
+== Account lines, newest first, 90-day window (journal_lines_account_created_idx)
+                                                                       QUERY PLAN                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=25 loops=1)
+   Buffers: shared hit=4, local hit=32
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on seed_payables (actual rows=1 loops=1)
+           Filter: (n = 17)
+           Rows Removed by Filter: 1999
+           Buffers: local hit=32
+   ->  Sort (actual rows=25 loops=1)
+         Sort Key: journal_lines.created_at DESC
+         Sort Method: quicksort  Memory: 28kB
+         Buffers: shared hit=4, local hit=32
+         ->  Append (actual rows=50 loops=1)
+               Buffers: shared hit=4, local hit=32
+               Subplans Removed: 3
+               ->  Index Scan using journal_lines_202611_account_id_created_at_idx on journal_lines_202611 journal_lines_1 (actual rows=50 loops=1)
+                     Index Cond: ((account_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at < (now() + '00:00:01'::interval)))
+                     Buffers: shared hit=4, local hit=32
+               ->  Seq Scan on journal_lines_default journal_lines_2 (actual rows=0 loops=1)
+                     Filter: ((account_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at < (now() + '00:00:01'::interval)))
+ Planning:
+   Buffers: shared hit=20
+(21 rows)
+
+== Merchant lines, newest first, 90-day window (journal_lines_merchant_created_idx)
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=25 loops=1)
+   Buffers: shared hit=4, local hit=32
+   InitPlan 1 (returns $0)
+     ->  Seq Scan on seed_payables (actual rows=1 loops=1)
+           Filter: (n = 17)
+           Rows Removed by Filter: 1999
+           Buffers: local hit=32
+   ->  Sort (actual rows=25 loops=1)
+         Sort Key: journal_lines.created_at DESC
+         Sort Method: quicksort  Memory: 31kB
+         Buffers: shared hit=4, local hit=32
+         ->  Append (actual rows=50 loops=1)
+               Buffers: shared hit=4, local hit=32
+               Subplans Removed: 3
+               ->  Index Scan using journal_lines_202611_merchant_id_created_at_idx on journal_lines_202611 journal_lines_1 (actual rows=50 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at < (now() + '00:00:01'::interval)))
+                     Buffers: shared hit=4, local hit=32
+               ->  Seq Scan on journal_lines_default journal_lines_2 (actual rows=0 loops=1)
+                     Filter: ((merchant_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at < (now() + '00:00:01'::interval)))
+ Planning:
+   Buffers: shared hit=23
+(21 rows)
+
+== Integrity: invalid entries in a 1-day window (partition pruning; a scan of the window by design)
+                                                                                                              QUERY PLAN                                                                                                              
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=0 loops=1)
+   Buffers: shared hit=41894
+   ->  GroupAggregate (actual rows=0 loops=1)
+         Group Key: e.id, e.created_at
+         Filter: ((count(l.entry_id) < 2) OR (COALESCE(sum(l.amount_minor) FILTER (WHERE (l.direction = 'debit'::text)), '0'::numeric) <> COALESCE(sum(l.amount_minor) FILTER (WHERE (l.direction = 'credit'::text)), '0'::numeric)))
+         Rows Removed by Filter: 100000
+         Buffers: shared hit=41894
+         ->  Merge Left Join (actual rows=200000 loops=1)
+               Merge Cond: (e.id = l.entry_id)
+               Join Filter: (l.created_at = e.created_at)
+               Buffers: shared hit=41894
+               ->  Merge Append (actual rows=100000 loops=1)
+                     Sort Key: e.id, e.created_at
+                     Buffers: shared hit=22470
+                     Subplans Removed: 4
+                     ->  Index Scan using journal_entries_202611_pkey on journal_entries_202611 e_1 (actual rows=100000 loops=1)
+                           Index Cond: ((created_at >= (now() - '1 day'::interval)) AND (created_at < (now() + '00:00:01'::interval)))
+                           Buffers: shared hit=22470
+               ->  Materialize (actual rows=200000 loops=1)
+                     Buffers: shared hit=19424
+                     ->  Merge Append (actual rows=200000 loops=1)
+                           Sort Key: l.entry_id
+                           Buffers: shared hit=19424
+                           Subplans Removed: 4
+                           ->  Index Scan using journal_lines_202611_pkey on journal_lines_202611 l_1 (actual rows=200000 loops=1)
+                                 Index Cond: ((created_at >= (now() - '1 day'::interval)) AND (created_at < (now() + '00:00:01'::interval)))
+                                 Buffers: shared hit=19424
+ Planning:
+   Buffers: shared hit=283 read=8
+(29 rows)
+
+ROLLBACK

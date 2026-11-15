@@ -24,3 +24,53 @@ psql "postgres://mulapay_core_rw:...@localhost:5433/mulapay" -f docs/query-plans
 | Admin audit list, 90-day window           | per-partition `merchant_id, created_at` index; pruned to 4 months |
 
 Seed sizes: 20k merchants, 60k users, 200k sessions, 40k API keys, 200k audit rows.
+
+## Phase 2 ([phase2.sql](phase2.sql), [phase2.txt](phase2.txt))
+
+| Query                                          | Index used                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------------- |
+| Posting: idempotency key lookup                | `journal_entry_keys_pkey`                                                       |
+| Reversal: entry by public ref                  | `journal_entry_keys_entry_ref_key`                                              |
+| Posting: resolve account codes                 | `accounts_environment_code_key`                                                 |
+| Posting: lock balance rows in account id order | `account_balances_account_id_currency_pk`                                       |
+| Entry lines by (entry id, created_at)          | per-partition `journal_lines` pkey; other partitions pruned at run time         |
+| Merchant close: any non-zero live balance      | `accounts_merchant_idx`, then `account_balances` pkey                           |
+| Merchant balances in one environment           | `accounts_merchant_idx`, then `account_balances` pkey                           |
+| Account lines, newest first, 90-day window     | per-partition `journal_lines_account_created_idx`; out-of-window months pruned  |
+| Merchant lines, newest first, 90-day window    | per-partition `journal_lines_merchant_created_idx`; out-of-window months pruned |
+| Integrity: invalid entries in a window         | scans the window's partitions only (a full read of the window is the point)     |
+
+Seed sizes: 2k merchants (8k accounts), 100k entries and 200k lines, inserted through the
+ledger triggers. The balance-agreement integrity query recomputes every account from all
+lines and is a full scan by design; it runs on a schedule (Phase 6), not per request.
+
+## Payments and transactions ([phase4.sql](phase4.sql), [phase4.txt](phase4.txt))
+
+| Query                                           | Index used                                                                                                           |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Payment by ref with its transaction             | `payments_ref_key`, then the transaction primary key in one partition (the rest never executed)                      |
+| Payments list, first page and keyset page       | `payments_merchant_created_idx`, 26 rows, then 26 primary-key probes                                                 |
+| Transactions list, first page                   | per-partition `transactions_merchant_created_idx` under Merge Append, stopping at the limit                          |
+| Transactions list, keyset page, status filter   | the same indexes; at this seed size the planner sorts the 1 to 3 thousand matching rows instead                      |
+| Transactions by reference                       | per-partition indexes on `gateway_external_id`, `provider_transaction_id` or the merchant index                      |
+| Transaction by ref                              | `transaction_keys_ref_key`, then one partition by primary key                                                        |
+| Lifecycle locks (payment, transaction)          | `payments_pkey`, then the transaction primary key in one partition                                                   |
+| Timeline, event dedupe                          | `transaction_events_transaction_idx`, `transaction_events_key_idx`                                                   |
+| Idempotency claim                               | `idempotency_keys_key_idx`                                                                                           |
+| Expiry sweeps                                   | partial `payments_created_expiry_idx`, partial `checkout_sessions_open_expiry_idx`                                   |
+| Link by ref and slug, link list, session by ref | `payment_links_ref_key`, `payment_links_slug_key`, `payment_links_merchant_created_idx`, `checkout_sessions_ref_key` |
+
+Seed sizes: 2k merchants, 60k payments (one merchant has 6k) spread over 80 days across four
+monthly partitions, 140k events, 20k links, 20k sessions, 60k idempotency keys.
+
+Two findings from the first run changed the code:
+
+- **`ORDER BY created_at DESC` does not match a `DESC NULLS LAST` index.** Postgres read the
+  whole 90-day window and sorted it (6,000 rows for a 26-row page). The queries now say
+  `NULLS LAST` (`src/common/pagination/keyset.ts`); the first page reads 26 rows from the
+  newest partition and one from each older one. Phase 1 and 2 lists that use drizzle's
+  `desc()` have the same mismatch; they are small tables, but re-check them in Phase 9.
+- **A keyset cursor written as one `OR`, or as a row comparison, makes the planner sort.**
+  The condition is now `created_at <= cursor AND (created_at < cursor OR ref < cursor_ref)`.
+- `transactions_merchant_status_created_idx` gained `ref desc` so a status-filtered list can
+  be served in order.

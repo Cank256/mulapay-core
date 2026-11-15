@@ -7,7 +7,22 @@
  * controllers are not.
  */
 import { Module } from '@nestjs/common';
+import { PaymentsModule } from '../../modules/payments/payments.module';
+import { TransactionsModule } from '../../modules/transactions/transactions.module';
+import { CheckoutSessionsController } from './checkout-sessions.controller';
+import { PaymentLinksController } from './payment-links.controller';
+import { PaymentsController } from './payments.controller';
 import { PingController } from './ping.controller';
+import { TransactionsController } from './transactions.controller';
 
-@Module({ controllers: [PingController] })
+@Module({
+  imports: [PaymentsModule, TransactionsModule],
+  controllers: [
+    PingController,
+    PaymentsController,
+    PaymentLinksController,
+    CheckoutSessionsController,
+    TransactionsController,
+  ],
+})
 export class PublicSurfaceModule {}

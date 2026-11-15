@@ -15,6 +15,12 @@ export const ID_PREFIXES = {
   invitation: 'inv',
   session: 'ses',
   apiKey: 'ak',
+  account: 'acct',
+  journalEntry: 'je',
+  transaction: 'txn',
+  payment: 'pay',
+  paymentLink: 'pl',
+  checkoutSession: 'cs',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

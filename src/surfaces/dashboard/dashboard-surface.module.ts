@@ -9,18 +9,26 @@ import { Module } from '@nestjs/common';
 import { ApiKeysModule } from '../../modules/api-keys/api-keys.module';
 import { AuthModule } from '../../modules/auth/auth.module';
 import { MerchantsModule } from '../../modules/merchants/merchants.module';
+import { PaymentsModule } from '../../modules/payments/payments.module';
+import { TransactionsModule } from '../../modules/transactions/transactions.module';
 import { DashboardApiKeysController } from './api-keys.controller';
 import { DashboardAuthController } from './auth.controller';
 import { DashboardMerchantController } from './merchant.controller';
+import {
+  DashboardPaymentsController,
+  DashboardTransactionsController,
+} from './payments.controller';
 import { DashboardTeamController } from './team.controller';
 
 @Module({
-  imports: [AuthModule, MerchantsModule, ApiKeysModule],
+  imports: [AuthModule, MerchantsModule, ApiKeysModule, PaymentsModule, TransactionsModule],
   controllers: [
     DashboardAuthController,
     DashboardMerchantController,
     DashboardTeamController,
     DashboardApiKeysController,
+    DashboardPaymentsController,
+    DashboardTransactionsController,
   ],
 })
 export class DashboardSurfaceModule {}

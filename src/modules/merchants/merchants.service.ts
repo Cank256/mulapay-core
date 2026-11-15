@@ -19,6 +19,7 @@ import {
   type Page,
 } from '../../common/pagination/cursor';
 import { CLOCK } from '../../common/tokens';
+import { AccountsService } from '../accounts/accounts.service';
 import { nextMerchantStatus, type MerchantEvent } from './domain/merchant-lifecycle';
 import { InvitationsService } from './invitations.service';
 import { MERCHANT_BALANCE_CHECK, type MerchantBalanceCheck } from './merchant-balance.check';
@@ -55,6 +56,7 @@ export class MerchantsService {
     private readonly invitations: InvitationsService,
     private readonly unitOfWork: UnitOfWork,
     private readonly audit: AuditService,
+    private readonly accounts: AccountsService,
     @Inject(MERCHANT_BALANCE_CHECK) private readonly balances: MerchantBalanceCheck,
     @Inject(CLOCK) private readonly clock: Clock
   ) {}
@@ -79,6 +81,7 @@ export class MerchantsService {
         supportEmail: input.supportEmail ?? null,
         metadata: input.metadata ?? {},
       });
+      await this.accounts.openMerchantAccounts(tx, row);
       await this.audit.record(tx, {
         action: 'merchant.created',
         resourceType: 'merchant',
@@ -156,7 +159,7 @@ export class MerchantsService {
     return this.unitOfWork.run(async (tx) => {
       const current = await this.lock(tx, { ref });
       const to = nextMerchantStatus(current.status as MerchantStatus, event, 'admin');
-      if (event === 'close' && (await this.balances.hasNonZeroBalance(current.id))) {
+      if (event === 'close' && (await this.balances.hasNonZeroBalance(current.id, tx))) {
         throw new AppError('MERCHANT_BALANCE_NOT_ZERO');
       }
       const updated = await this.merchants.setStatus(tx, current.id, to);

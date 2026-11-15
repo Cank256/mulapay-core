@@ -16,6 +16,7 @@ import { UnitOfWork } from '../../common/db/unit-of-work';
 import { AppError } from '../../common/errors/app-error';
 import { publicId, uuidv7 } from '../../common/ids/ids';
 import { CLOCK } from '../../common/tokens';
+import { AccountsService } from '../accounts/accounts.service';
 import { UsersRepository } from '../identity/users.repository';
 import { merchantAuditSnapshot, toMerchantView, type MerchantView } from './merchant.views';
 import { MembersRepository } from './members.repository';
@@ -47,6 +48,7 @@ export class OnboardingService {
     private readonly passwords: PasswordHasher,
     private readonly unitOfWork: UnitOfWork,
     private readonly audit: AuditService,
+    private readonly accounts: AccountsService,
     @Inject(CLOCK) private readonly clock: Clock
   ) {}
 
@@ -73,6 +75,7 @@ export class OnboardingService {
           defaultCurrency: input.merchant.defaultCurrency,
           status: 'draft',
         });
+        await this.accounts.openMerchantAccounts(tx, merchant);
         await this.members.insert(tx, {
           id: uuidv7(now),
           merchantId: merchant.id,

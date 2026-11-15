@@ -95,14 +95,16 @@ Step-up routes: `POST /dashboard/v1/auth/mfa/disable`, `POST /admin/v1/merchants
 
 ### Merchant roles (spec 6.10)
 
-| Permission        | owner | admin | developer | finance | support | viewer |
-| ----------------- | :---: | :---: | :-------: | :-----: | :-----: | :----: |
-| `merchant:read`   |   x   |   x   |     x     |    x    |    x    |   x    |
-| `merchant:update` |   x   |   x   |           |         |         |        |
-| `team:read`       |   x   |   x   |     x     |    x    |    x    |   x    |
-| `team:manage`     |   x   |   x   |           |         |         |        |
-| `api_keys:read`   |   x   |   x   |     x     |         |         |        |
-| `api_keys:manage` |   x   |   x   |     x     |         |         |        |
+| Permission          | owner | admin | developer | finance | support | viewer |
+| ------------------- | :---: | :---: | :-------: | :-----: | :-----: | :----: |
+| `merchant:read`     |   x   |   x   |     x     |    x    |    x    |   x    |
+| `merchant:update`   |   x   |   x   |           |         |         |        |
+| `team:read`         |   x   |   x   |     x     |    x    |    x    |   x    |
+| `team:manage`       |   x   |   x   |           |         |         |        |
+| `api_keys:read`     |   x   |   x   |     x     |         |         |        |
+| `api_keys:manage`   |   x   |   x   |     x     |         |         |        |
+| `payments:read`     |   x   |   x   |     x     |    x    |    x    |   x    |
+| `transactions:read` |   x   |   x   |     x     |    x    |    x    |   x    |
 
 Rules in code, independent of the matrix: only the owner transfers ownership; the owner
 cannot be removed or demoted except by transferring; exactly one active owner per
@@ -161,3 +163,27 @@ npm run seed:admin -- --email ops@mulapay.com --name "Ops Admin" [--role super_a
 
 Needs `DATABASE_URL` and `DATA_ENCRYPTION_KEY`. Prints the password, TOTP secret and
 otpauth URI once, to stdout. Writes a `staff.bootstrapped` audit row with actor `system`.
+
+## Payments, transactions and idempotency
+
+- **Scopes.** The `/v1` payment routes need `payments:read` or `payments:write`; payment
+  links and checkout sessions use the same two; transactions need `transactions:read`. The
+  dashboard lists need the merchant permissions `payments:read` and `transactions:read`
+  (every team role has them).
+- **Scope of data.** Every repository method takes a `MerchantScope` (merchant and
+  environment) built from the principal, never from the request. A payment, link, session or
+  transaction of another merchant or environment is `404`. A test key cannot read live data.
+- **Idempotency** (spec 8.2): `Idempotency-Key` is required on every route that creates a
+  payment, link or checkout session. Postgres decides, in the transaction of the work; the
+  Redis marker is only an early check. Stored responses never contain a client secret.
+- **Client secrets.** A checkout session's secret is `{sessionRef}_secret_{random}`, stored
+  only as SHA-256, compared in constant time, shown once. A wrong secret and an unknown
+  session are both `404`.
+- **Phone numbers** are AES-GCM encrypted (`payments.msisdn:{paymentRef}` as associated data);
+  only the last four digits are stored in clear, and only they are returned.
+- **Provider detail.** Failure reasons, gateway operation and reference ids and rejected
+  events are stored but never returned to merchants.
+- **Audit.** Merchant-initiated changes (create, cancel, link and session changes) write an
+  audit row in their transaction. Status changes driven by the gateway, the chase job or the
+  expiry sweep are recorded in `transaction_events` (which is append-only), not in the audit
+  chain, to keep the chain-head lock off the event path.

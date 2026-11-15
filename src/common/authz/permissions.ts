@@ -14,6 +14,8 @@ export const MERCHANT_PERMISSIONS = [
   'team:manage',
   'api_keys:read',
   'api_keys:manage',
+  'payments:read',
+  'transactions:read',
 ] as const;
 
 export const STAFF_PERMISSIONS = [
@@ -52,8 +54,9 @@ export const STAFF_ROLES = [
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
 /**
- * API key scopes gate public route groups (spec 6.11). Phase 1 issues and stores them;
- * the routes they gate arrive with Phases 4 to 7.
+ * API key scopes gate public route groups (spec 6.11). Phase 1 issues and stores them; the
+ * payment, payment link, checkout session and transaction routes use `payments:*` and
+ * `transactions:read`. The scopes of the other route groups arrive with their phases.
  */
 export const API_KEY_SCOPES = [
   'payments:read',

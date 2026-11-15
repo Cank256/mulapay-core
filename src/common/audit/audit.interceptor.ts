@@ -70,7 +70,8 @@ export class AuditInterceptor implements NestInterceptor {
   }
 
   private async afterSuccess(meta: AuditedMetadata, request: FastifyRequest, rowsBefore: number) {
-    if ((requestContext.get()?.auditRows ?? 0) > rowsBefore) return;
+    const store = requestContext.get();
+    if ((store?.auditRows ?? 0) > rowsBefore || store?.auditNotApplicable) return;
     await this.write(meta, request, 'success');
   }
 

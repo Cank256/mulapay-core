@@ -56,3 +56,33 @@ export const authFailures = new Counter({
   labelNames: ['surface', 'reason'] as const,
   registers: [metricsRegistry],
 });
+
+/**
+ * Spec section 10. `scope` is the idempotency operation (`payments.create`, ...), a fixed
+ * set declared next to each `@Idempotent` route.
+ */
+export const idempotencyReplays = new Counter({
+  name: 'core_idempotency_replays_total',
+  help: 'Requests answered from a stored idempotent response',
+  labelNames: ['scope'] as const,
+  registers: [metricsRegistry],
+});
+
+/** Spec section 10. Incremented after the transition commits, never inside the transaction. */
+export const transactionStateTransitions = new Counter({
+  name: 'core_transaction_state_transitions_total',
+  help: 'Transaction status changes',
+  labelNames: ['type', 'from', 'to', 'source'] as const,
+  registers: [metricsRegistry],
+});
+
+/**
+ * Events that were refused (terminal state, invalid transition, amount mismatch, ...).
+ * Not in the spec's list; each one is a reconciliation candidate, so it is worth alerting on.
+ */
+export const transactionEventRejections = new Counter({
+  name: 'core_transaction_event_rejections_total',
+  help: 'Transaction events refused by the state machine or by verification',
+  labelNames: ['type', 'reason', 'source'] as const,
+  registers: [metricsRegistry],
+});
