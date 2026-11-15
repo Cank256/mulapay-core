@@ -2709,6 +2709,1646 @@
           "Audit"
         ]
       }
+    },
+    "/admin/v1/accounts": {
+      "get": {
+        "operationId": "AdminLedgerController_listAccounts",
+        "parameters": [
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          },
+          {
+            "name": "purpose",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 40,
+              "type": "string"
+            }
+          },
+          {
+            "name": "merchant",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "ref": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "environment": {
+                                "type": "string",
+                                "enum": [
+                                  "test",
+                                  "live"
+                                ]
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "normalBalance": {
+                                "type": "string",
+                                "enum": [
+                                  "debit",
+                                  "credit"
+                                ]
+                              },
+                              "purpose": {
+                                "type": "string"
+                              },
+                              "provider": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "currency": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ref",
+                              "code",
+                              "name",
+                              "environment",
+                              "type",
+                              "normalBalance",
+                              "purpose",
+                              "provider",
+                              "currency",
+                              "active",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Accounts of one environment, ordered by code",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    },
+    "/admin/v1/accounts/{code}": {
+      "get": {
+        "operationId": "AdminLedgerController_account",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 120,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "account": {
+                          "type": "object",
+                          "properties": {
+                            "ref": {
+                              "type": "string"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "environment": {
+                              "type": "string",
+                              "enum": [
+                                "test",
+                                "live"
+                              ]
+                            },
+                            "type": {
+                              "type": "string"
+                            },
+                            "normalBalance": {
+                              "type": "string",
+                              "enum": [
+                                "debit",
+                                "credit"
+                              ]
+                            },
+                            "purpose": {
+                              "type": "string"
+                            },
+                            "provider": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "currency": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "active": {
+                              "type": "boolean"
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "ref",
+                            "code",
+                            "name",
+                            "environment",
+                            "type",
+                            "normalBalance",
+                            "purpose",
+                            "provider",
+                            "currency",
+                            "active",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "balances": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "currency": {
+                                "type": "string"
+                              },
+                              "debitsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "creditsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "postedMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "currency",
+                              "debitsMinor",
+                              "creditsMinor",
+                              "postedMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "account",
+                        "balances"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "One account with its posted balance per currency",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    },
+    "/admin/v1/accounts/{code}/statement": {
+      "get": {
+        "operationId": "AdminLedgerController_statement",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 120,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          },
+          {
+            "name": "currency",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "account": {
+                          "type": "object",
+                          "properties": {
+                            "ref": {
+                              "type": "string"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "environment": {
+                              "type": "string",
+                              "enum": [
+                                "test",
+                                "live"
+                              ]
+                            },
+                            "type": {
+                              "type": "string"
+                            },
+                            "normalBalance": {
+                              "type": "string",
+                              "enum": [
+                                "debit",
+                                "credit"
+                              ]
+                            },
+                            "purpose": {
+                              "type": "string"
+                            },
+                            "provider": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "currency": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "active": {
+                              "type": "boolean"
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "ref",
+                            "code",
+                            "name",
+                            "environment",
+                            "type",
+                            "normalBalance",
+                            "purpose",
+                            "provider",
+                            "currency",
+                            "active",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entryRef": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "lineNo": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "debit",
+                                  "credit"
+                                ]
+                              },
+                              "amountMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "kind": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "balanceAfterMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "entryRef",
+                              "createdAt",
+                              "lineNo",
+                              "direction",
+                              "amountMinor",
+                              "kind",
+                              "description",
+                              "balanceAfterMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "account",
+                        "currency",
+                        "from",
+                        "to",
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Account statement with a running balance, oldest first",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    },
+    "/admin/v1/journal-entries": {
+      "get": {
+        "operationId": "AdminLedgerController_listEntries",
+        "parameters": [
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          },
+          {
+            "name": "merchant",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "source",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment",
+                "payout",
+                "refund",
+                "fee",
+                "settlement",
+                "adjustment",
+                "reversal"
+              ]
+            }
+          },
+          {
+            "name": "transactionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "ref": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "environment": {
+                                "type": "string",
+                                "enum": [
+                                  "test",
+                                  "live"
+                                ]
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "string"
+                              },
+                              "sourceId": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "merchantRef": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "transactionId": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "reversesEntryRef": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ref",
+                              "createdAt",
+                              "environment",
+                              "currency",
+                              "source",
+                              "sourceId",
+                              "kind",
+                              "description",
+                              "merchantRef",
+                              "transactionId",
+                              "reversesEntryRef"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Journal entries, newest first, within a date window (default 90 days)",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    },
+    "/admin/v1/journal-entries/{ref}": {
+      "get": {
+        "operationId": "AdminLedgerController_entry",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ref": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "postedAt": {
+                          "type": "string"
+                        },
+                        "environment": {
+                          "type": "string",
+                          "enum": [
+                            "test",
+                            "live"
+                          ]
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string"
+                        },
+                        "sourceId": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "transactionId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdBy": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "lineNo": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "accountCode": {
+                                "type": "string"
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "debit",
+                                  "credit"
+                                ]
+                              },
+                              "amountMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "lineNo",
+                              "accountCode",
+                              "direction",
+                              "amountMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "ref",
+                        "createdAt",
+                        "postedAt",
+                        "environment",
+                        "currency",
+                        "source",
+                        "sourceId",
+                        "kind",
+                        "description",
+                        "transactionId",
+                        "createdBy",
+                        "lines"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "One journal entry with its lines",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    },
+    "/admin/v1/trial-balance": {
+      "get": {
+        "operationId": "AdminLedgerController_trialBalance",
+        "parameters": [
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          },
+          {
+            "name": "currency",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "environment": {
+                          "type": "string",
+                          "enum": [
+                            "test",
+                            "live"
+                          ]
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "accounts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "accountCode": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "debitsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "creditsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "balanceMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "accountCode",
+                              "name",
+                              "type",
+                              "debitsMinor",
+                              "creditsMinor",
+                              "balanceMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totalDebitsMinor": {
+                          "type": "string",
+                          "pattern": "^-?\\d+$"
+                        },
+                        "totalCreditsMinor": {
+                          "type": "string",
+                          "pattern": "^-?\\d+$"
+                        },
+                        "balanced": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "environment",
+                        "currency",
+                        "accounts",
+                        "totalDebitsMinor",
+                        "totalCreditsMinor",
+                        "balanced"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Trial balance of one currency",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    },
+    "/admin/v1/ledger/integrity": {
+      "get": {
+        "description": "Unbalanced entries, accounts whose balance disagrees with the journal, non-zero suspense, negative merchant balances.",
+        "operationId": "AdminLedgerController_integrityReport",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "checkedAt": {
+                          "type": "string"
+                        },
+                        "windowFrom": {
+                          "type": "string"
+                        },
+                        "windowTo": {
+                          "type": "string"
+                        },
+                        "invalidEntries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entryRef": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "reasons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "lineCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "debitsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "creditsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "entryRef",
+                              "createdAt",
+                              "reasons",
+                              "lineCount",
+                              "debitsMinor",
+                              "creditsMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "balanceMismatches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "accountCode": {
+                                "type": "string"
+                              },
+                              "environment": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "recordedDebitsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "recordedCreditsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "journalDebitsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "journalCreditsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "accountCode",
+                              "environment",
+                              "currency",
+                              "recordedDebitsMinor",
+                              "recordedCreditsMinor",
+                              "journalDebitsMinor",
+                              "journalCreditsMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nonZeroSuspense": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "accountCode": {
+                                "type": "string"
+                              },
+                              "environment": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "balanceMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "accountCode",
+                              "environment",
+                              "currency",
+                              "balanceMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "negativeMerchantBalances": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "accountCode": {
+                                "type": "string"
+                              },
+                              "environment": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "balanceMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "accountCode",
+                              "environment",
+                              "currency",
+                              "balanceMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "unbalancedTotals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "environment": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "debitsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              },
+                              "creditsMinor": {
+                                "type": "string",
+                                "pattern": "^-?\\d+$"
+                              }
+                            },
+                            "required": [
+                              "environment",
+                              "currency",
+                              "debitsMinor",
+                              "creditsMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "checkedAt",
+                        "windowFrom",
+                        "windowTo",
+                        "invalidEntries",
+                        "balanceMismatches",
+                        "nonZeroSuspense",
+                        "negativeMerchantBalances",
+                        "unbalancedTotals"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Ledger integrity report",
+        "tags": [
+          "Ledger"
+        ]
+      }
+    },
+    "/admin/v1/balances": {
+      "get": {
+        "operationId": "AdminBalancesController_balancesOf",
+        "parameters": [
+          {
+            "name": "merchant",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "currency": {
+                            "type": "string"
+                          },
+                          "postedMinor": {
+                            "type": "string",
+                            "pattern": "^-?\\d+$"
+                          },
+                          "heldMinor": {
+                            "type": "string",
+                            "pattern": "^-?\\d+$"
+                          },
+                          "pendingMinor": {
+                            "type": "string",
+                            "pattern": "^-?\\d+$"
+                          },
+                          "reservedMinor": {
+                            "type": "string",
+                            "pattern": "^-?\\d+$"
+                          },
+                          "availableMinor": {
+                            "type": "string",
+                            "pattern": "^-?\\d+$"
+                          }
+                        },
+                        "required": [
+                          "currency",
+                          "postedMinor",
+                          "heldMinor",
+                          "pendingMinor",
+                          "reservedMinor",
+                          "availableMinor"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Posted, held, pending, reserved and available balance per currency",
+        "tags": [
+          "Balances"
+        ]
+      }
+    },
+    "/admin/v1/holds": {
+      "get": {
+        "operationId": "AdminBalancesController_holdsOf",
+        "parameters": [
+          {
+            "name": "merchant",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ref": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "captured",
+                              "released",
+                              "expired"
+                            ]
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "amountMinor": {
+                            "type": "string",
+                            "pattern": "^-?\\d+$"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "expiresAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "capturedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "releasedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "expiredAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "ref",
+                          "state",
+                          "currency",
+                          "amountMinor",
+                          "reason",
+                          "expiresAt",
+                          "capturedAt",
+                          "releasedAt",
+                          "expiredAt",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Active holds of a merchant, newest first (up to 100)",
+        "tags": [
+          "Balances"
+        ]
+      }
     }
   },
   "info": {

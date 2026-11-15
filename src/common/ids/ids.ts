@@ -21,6 +21,7 @@ export const ID_PREFIXES = {
   payment: 'pay',
   paymentLink: 'pl',
   checkoutSession: 'cs',
+  hold: 'hold',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

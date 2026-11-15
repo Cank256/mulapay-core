@@ -164,6 +164,7 @@ describe('financial amounts are bigint minor units', () => {
       'account_balances.posted_credits_minor',
       'account_balances.posted_debits_minor',
       'checkout_sessions.amount_minor',
+      'holds.amount_minor',
       'journal_lines.amount_minor',
       'payment_links.amount_minor',
       'payments.amount_minor',

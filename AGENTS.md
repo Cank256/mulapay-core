@@ -59,12 +59,13 @@ The specification lives at `docs/CORE_API_BUILD_PROMPT.md`. Build order is spec 
 
 ## Current phase
 
-Phases 0 (foundation), 1 (identity and merchants, plus API key issuance) and the ledger
-core of Phase 2 are in place. Phase 2 still lacks holds, available balance and the admin
-ledger routes. The payment and transaction domain (transactions, payments, state machine,
-idempotency, links, checkout sessions, queries) is built without the Provider Gateway, ahead
-of Phases 3 and 4; see `docs/ARCHITECTURE.md` ("Payments and transactions"). Open questions are listed in `docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions
-to confirm") and `docs/DATABASE.md` (table ownership).
+Phases 0 (foundation), 1 (identity and merchants, plus API key issuance) and 2 (ledger core,
+holds, available balance and the read-only admin ledger routes) are in place. The payment and
+transaction domain (transactions, payments, state machine, idempotency, links, checkout
+sessions, queries) is built without the Provider Gateway, ahead of Phases 3 and 4; see
+`docs/ARCHITECTURE.md` ("Payments and transactions"). Open questions are listed in
+`docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions to confirm") and `docs/DATABASE.md` (table
+ownership).
 
 ## Commands
 

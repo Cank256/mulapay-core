@@ -18,3 +18,16 @@ export interface BalanceTotals {
 export function applyDelta(current: BalanceTotals, delta: BalanceTotals): BalanceTotals {
   return { debits: current.debits + delta.debits, credits: current.credits + delta.credits };
 }
+export interface MerchantBalanceParts {
+  readonly postedMinor: bigint;
+  readonly heldMinor: bigint;
+  readonly reservedMinor: bigint;
+}
+/**
+ * Spec 6.7: `available = posted - held - reserved`. This is what payouts, refunds and
+ * settlement draw on. It can be negative only if postings outran holds (an adjustment
+ * with `allowNegativeMerchantBalance`); nothing may then be placed against it.
+ */
+export function availableBalance(parts: MerchantBalanceParts): bigint {
+  return parts.postedMinor - parts.heldMinor - parts.reservedMinor;
+}

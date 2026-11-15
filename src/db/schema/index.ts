@@ -12,3 +12,4 @@ export * from './ledger';
 export * from './transactions';
 export * from './payments';
 export * from './idempotency';
+export * from './holds';

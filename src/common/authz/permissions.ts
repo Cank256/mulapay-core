@@ -27,6 +27,9 @@ export const STAFF_PERMISSIONS = [
   'audit_logs:verify',
   'roles:read',
   'roles:manage',
+  'ledger:read',
+  'balances:read',
+  'holds:read',
 ] as const;
 
 export type MerchantPermission = (typeof MERCHANT_PERMISSIONS)[number];

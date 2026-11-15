@@ -26,6 +26,8 @@ import {
   type PostEntryInput,
   type PostingLineInput,
 } from '../../src/modules/ledger/domain/posting';
+import { HoldsService } from '../../src/modules/holds/holds.service';
+import { HoldsModule } from '../../src/modules/holds/holds.module';
 import { LedgerIntegrityService } from '../../src/modules/ledger/ledger-integrity.service';
 import { LedgerModule } from '../../src/modules/ledger/ledger.module';
 import { PostingService } from '../../src/modules/ledger/posting.service';
@@ -42,6 +44,7 @@ export interface LedgerContext {
   readonly integrity: LedgerIntegrityService;
   readonly accounts: AccountsService;
   readonly balances: BalancesService;
+  readonly holds: HoldsService;
   readonly unitOfWork: UnitOfWork;
   readonly merchants: MerchantsService;
   readonly merchantsRepository: MerchantsRepository;
@@ -54,7 +57,7 @@ export async function startLedgerContext(
   const logger = pino({ level: process.env.TEST_LOGS ? 'error' : 'silent' });
   const app = await createTestApp(testConfig({ DB_POOL_MAX: '20', ...overrides }), {
     logger,
-    extraImports: [LedgerModule],
+    extraImports: [LedgerModule, HoldsModule],
   });
   const get = <T>(token: new (...args: never[]) => T): T => app.get(token, { strict: false });
   return {
@@ -64,6 +67,7 @@ export async function startLedgerContext(
     integrity: get(LedgerIntegrityService),
     accounts: get(AccountsService),
     balances: get(BalancesService),
+    holds: get(HoldsService),
     unitOfWork: get(UnitOfWork),
     merchants: get(MerchantsService),
     merchantsRepository: get(MerchantsRepository),

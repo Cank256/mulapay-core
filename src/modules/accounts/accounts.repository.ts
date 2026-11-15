@@ -1,6 +1,6 @@
 /** SQL for `core.accounts`. Accounts are never deleted (migration 0002). */
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray } from 'drizzle-orm';
 import type { Executor } from '../../common/db/database.types';
 import { DB_RW } from '../../common/db/tokens';
 import { accounts } from '../../db/schema';
@@ -48,5 +48,28 @@ export class AccountsRepository {
       .from(accounts)
       .where(eq(accounts.merchantId, merchantId))
       .orderBy(asc(accounts.environment), asc(accounts.code));
+  }
+
+  /** Accounts of one environment ordered by code, after `afterCode` (keyset on the unique index). */
+  async list(
+    filter: {
+      readonly environment: LedgerEnvironment;
+      readonly purpose?: string;
+      readonly merchantId?: string;
+      readonly afterCode?: string;
+      readonly limit: number;
+    },
+    tx: Executor = this.db
+  ): Promise<AccountRow[]> {
+    const conditions = [eq(accounts.environment, filter.environment)];
+    if (filter.purpose) conditions.push(eq(accounts.purpose, filter.purpose));
+    if (filter.merchantId) conditions.push(eq(accounts.merchantId, filter.merchantId));
+    if (filter.afterCode) conditions.push(gt(accounts.code, filter.afterCode));
+    return tx
+      .select()
+      .from(accounts)
+      .where(and(...conditions))
+      .orderBy(asc(accounts.code))
+      .limit(filter.limit);
   }
 }

@@ -6,22 +6,37 @@
  * shared; controllers are not.
  */
 import { Module } from '@nestjs/common';
+import { BalancesModule } from '../../modules/balances/balances.module';
+import { HoldsModule } from '../../modules/holds/holds.module';
+import { LedgerModule } from '../../modules/ledger/ledger.module';
 import { AuditLogsModule } from '../../modules/audit/audit-logs.module';
 import { AuthModule } from '../../modules/auth/auth.module';
 import { IdentityModule } from '../../modules/identity/identity.module';
 import { MerchantsModule } from '../../modules/merchants/merchants.module';
+import { AdminBalancesController } from './admin-balances.controller';
+import { AdminLedgerController } from './admin-ledger.controller';
 import { AdminAuditController } from './admin-audit.controller';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminMerchantsController } from './admin-merchants.controller';
 import { AdminRolesController } from './admin-roles.controller';
 
 @Module({
-  imports: [AuthModule, MerchantsModule, IdentityModule, AuditLogsModule],
+  imports: [
+    AuthModule,
+    MerchantsModule,
+    IdentityModule,
+    AuditLogsModule,
+    LedgerModule,
+    BalancesModule,
+    HoldsModule,
+  ],
   controllers: [
     AdminAuthController,
     AdminMerchantsController,
     AdminRolesController,
     AdminAuditController,
+    AdminLedgerController,
+    AdminBalancesController,
   ],
 })
 export class AdminSurfaceModule {}

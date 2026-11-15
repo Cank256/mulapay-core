@@ -231,9 +231,23 @@ export const ERROR_CATALOGUE = {
     retryable: false,
     exposeDetails: false,
   },
+  // Details (`available`, `requested`, `currency`) are what spec 8.1 shows for this code.
   INSUFFICIENT_BALANCE: {
     httpStatus: 409,
     message: 'The balance is insufficient for this operation',
+    retryable: false,
+    exposeDetails: true,
+  },
+  // Phase 2 remainder: holds (spec 6.7)
+  HOLD_NOT_ACTIVE: {
+    httpStatus: 409,
+    message: 'The hold cannot be changed: {reason}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  HOLD_CONFLICT: {
+    httpStatus: 409,
+    message: 'This hold key was already used for a different hold',
     retryable: false,
     exposeDetails: false,
   },

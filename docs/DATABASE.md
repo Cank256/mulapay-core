@@ -219,6 +219,16 @@ plus a default). `transaction_events` and `idempotency_keys` grow per transactio
 partitioned: events are a few rows per payment and are read by transaction id, idempotency
 rows live 24 hours. Revisit both with the Phase 9 load tests.
 
+## Holds (migration 0004)
+
+`core.holds` (spec 5.2, 6.7), unpartitioned. Rules enforced by Postgres: a hold is placed
+`active` on an active `merchant_payable` account of its own merchant, environment and
+currency; amount, account, expiry and the placing key never change; `state` leaves `active`
+once, each end state carries its own timestamp and key (`holds_end_state_check`); capture and
+release keys are unique per environment; rows are never deleted (DELETE and TRUNCATE revoked
+and refused by trigger). Hand-written part of the migration: the two guard functions, the
+triggers, the revoke and the staff permissions `ledger:read`, `balances:read`, `holds:read`.
+
 ## Open question: table ownership
 
 Still open. Decision D2 gives `mulapay_core_rw` full rights on `core`, so it owns the

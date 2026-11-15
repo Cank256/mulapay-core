@@ -1,7 +1,7 @@
 # Architecture
 
-Status: Phase 2 ledger core (without holds) on top of Phases 0 and 1, plus the payment and
-transaction domain without the Provider Gateway. This document
+Status: Phase 2 ledger core, holds and available balance on top of Phases 0 and 1, plus the
+payment and transaction domain without the Provider Gateway. This document
 grows with each phase. The specification is [CORE_API_BUILD_PROMPT.md](CORE_API_BUILD_PROMPT.md).
 Authentication, authorization and key handling are detailed in [SECURITY.md](SECURITY.md).
 
@@ -343,6 +343,26 @@ IDEMPOTENCY_KEY_REUSED`.
   (migration 0003). Three older tests that listed all routes, amount columns or the viewer
   role's permissions were updated for the new entries.
 
+## Holds and available balance
+
+- `HoldsService.place` locks the merchant's payable `account_balances` row, then checks
+  `available >= amount` and inserts the hold. The lock serialises placements per merchant and
+  currency, so parallel payouts or refunds cannot reserve the same funds (spec 12).
+- A hold ends once: `captured`, `released` or `expired`. Capture and release are idempotent on
+  their own key; capturing a released hold is an error (spec 6.7). A key belongs to one hold.
+- Capture does not post. The caller captures and posts the ledger entry in one transaction.
+- `expires_at` is nullable. Payout and refund holds carry none: a hold must outlive an
+  ambiguous gateway outcome (spec 6.3, 17.5). Only holds with an expiry are swept.
+- `available` is computed from `account_balances` (payable), `holds` and, informationally,
+  `transactions` in `processing`. `reserved` is 0 until Phase 6. The spec 5.5 settlement
+  posting already moves the reserve out of the payable account, so subtracting reserves
+  again would count them twice. **Open question for Phase 6.**
+- Admin reads: `/admin/v1/{accounts, accounts/:code, accounts/:code/statement,
+journal-entries, journal-entries/:ref, trial-balance, ledger/integrity, balances, holds}`
+  with staff permissions `ledger:read`, `balances:read`, `holds:read` (migration 0004).
+  The statement computes the running balance with a window function over the account's
+  history up to the window end: exact, admin-only, not a hot path.
+
 ## Phase 2 decisions to confirm
 
 Choices made where the spec is silent, ambiguous or conflicts with the request. Each is
@@ -354,10 +374,11 @@ easy to change.
   suspense and bank accounts, `account_balances`, `postEntry`, `reverseEntry`, all
   database invariants, integrity validation, trial balance, and the ledger-backed
   merchant close check (replacing `NoLedgerYetBalanceCheck`).
-- **Not built, still Phase 2 in spec 14:** holds (place, capture, release, expiry job),
-  available balance (`posted - held - reserved`), and the admin routes for accounts,
-  journal entries, statements, trial balance and integrity. The request did not list them;
-  holds are payout machinery and the request excluded payouts.
+- **Built after the first Phase 2 pass:** holds (place, capture, release, expiry sweep),
+  available balance (`posted - held - reserved`) and the read-only admin routes for accounts,
+  statements, journal entries, trial balance, integrity, balances and holds. See "Holds and
+  available balance" below. Admin holds writes, adjustments and reversals wait for the
+  approvals workflow (Phase 4).
 - **Not built, later phases:** the scheduled integrity run and the sev1 incident on
   failure (Phases 6 and 8), adjustments and reversals through the approvals workflow
   (Phase 4), ledger metrics (`core_ledger_*`).
