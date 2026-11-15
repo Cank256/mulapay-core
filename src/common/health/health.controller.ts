@@ -5,11 +5,13 @@
 import { Controller, Get, Header, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { FastifyReply } from 'fastify';
+import { Public } from '../authz/policy.decorators';
 import { ApiRawResponses } from '../http/response-schema.decorator';
 import { livenessSchema, readinessSchema, type Liveness, type Readiness } from './health.schemas';
 import { HealthService } from './health.service';
 
 @ApiTags('Health')
+@Public()
 @Controller('v1/health')
 export class HealthController {
   constructor(private readonly health: HealthService) {}

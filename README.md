@@ -7,8 +7,11 @@ The service that owns money, merchants and compliance for MulaPay. Provider comm
 The master specification is [docs/CORE_API_BUILD_PROMPT.md](docs/CORE_API_BUILD_PROMPT.md).
 Engineering rules are in [AGENTS.md](AGENTS.md).
 
-**Status: Phase 0 (foundation).** No business modules exist yet. See
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for what is in place and what comes next.
+**Status: Phase 1 (identity and merchants).** Users, sessions, MFA, roles and
+permissions, merchants and their teams, API keys and the hash-chained audit log. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for what is in place, what comes next and
+the decisions awaiting confirmation, and [docs/SECURITY.md](docs/SECURITY.md) for the
+auth model.
 
 ## Requirements
 
@@ -89,9 +92,19 @@ curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:4000/metrics
 | `npm run db:migrate`                          | Apply migrations (uses `DATABASE_DIRECT_URL`)                  |
 | `npm run db:studio`                           | Drizzle Studio                                                 |
 | `npm run openapi:export`                      | Write `docs/openapi/{public,dashboard,admin}.json`             |
+| `npm run seed:admin -- --email E --name N`    | Bootstrap a staff user; prints a password and TOTP URI once    |
 
-`test:load`, `db:seed`, `seed:admin` and `gateway:verify` arrive with the phases that
-need them.
+`test:load`, `db:seed` and `gateway:verify` arrive with the phases that need them.
+
+The API needs `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEY`, `JWT_KID` and `DATA_ENCRYPTION_KEY` for
+logins and MFA. For local development:
+
+```bash
+openssl genpkey -algorithm ed25519 -out jwt.pem          # *.pem is git-ignored
+openssl pkey -in jwt.pem -pubout -out jwt.pub.pem
+# put both into .env with literal \n line breaks, plus JWT_KID=local-1
+openssl rand -base64 32                                  # DATA_ENCRYPTION_KEY
+```
 
 ### Testcontainers and Docker contexts
 
@@ -118,4 +131,6 @@ containers.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): processes, layering, request lifecycle, Phase 0 decisions
 - [docs/DATABASE.md](docs/DATABASE.md): schema, roles, grants, migration workflow
+- [docs/SECURITY.md](docs/SECURITY.md): authentication, sessions, MFA, authorization, API keys
+- [docs/query-plans/](docs/query-plans/README.md): committed plans for the hot queries
 - [docs/GATEWAY_INTEGRATION.md](docs/GATEWAY_INTEGRATION.md): differences between the spec and the gateway code

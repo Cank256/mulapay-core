@@ -123,18 +123,36 @@ interface LooseError {
  * (Postgres `detail` contains the conflicting key, which may be PII), so only a fixed set
  * of scalar fields is kept. `cause` is followed a few levels.
  */
+/**
+ * Drizzle query errors carry the SQL and its bound parameter values in the message (and
+ * so in the stack): `Failed query: select ... \nparams: a@b.com,<hash>`. Parameters are
+ * row values, including emails and token hashes, so the text after the prefix is dropped.
+ */
+const QUERY_ERROR_PREFIX = 'Failed query:';
+const SCRUBBED_QUERY_MESSAGE = 'Failed query: [sql and parameters omitted]';
+
+function scrubQueryText(message: unknown, stack: unknown): { message: unknown; stack: unknown } {
+  if (typeof message !== 'string' || !message.startsWith(QUERY_ERROR_PREFIX)) {
+    return { message, stack };
+  }
+  const scrubbedStack =
+    typeof stack === 'string' ? stack.split(message).join(SCRUBBED_QUERY_MESSAGE) : stack;
+  return { message: SCRUBBED_QUERY_MESSAGE, stack: scrubbedStack };
+}
+
 export function toLoggableError(error: unknown, depth = 0): Record<string, unknown> {
   if (error === null || typeof error !== 'object') {
     return { message: String(error) };
   }
   const e = error as LooseError;
-  const safe: Record<string, unknown> = { name: e.name, message: e.message };
+  const { message, stack } = scrubQueryText(e.message, e.stack);
+  const safe: Record<string, unknown> = { name: e.name, message };
   if (typeof e.code === 'string' || typeof e.code === 'number') safe.code = e.code;
   const status = e.statusCode ?? e.status;
   if (typeof status === 'number') safe.status = status;
   if (typeof e.constraint === 'string') safe.constraint = e.constraint;
   if (typeof e.table === 'string') safe.table = e.table;
-  if (typeof e.stack === 'string') safe.stack = e.stack;
+  if (typeof stack === 'string') safe.stack = stack;
   if (e.cause !== undefined && depth < 3) safe.cause = toLoggableError(e.cause, depth + 1);
   return safe;
 }

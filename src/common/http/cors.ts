@@ -25,7 +25,13 @@ export function corsOptionsFor(
     origin: [...origins],
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Request-Id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Idempotency-Key',
+      'X-Request-Id',
+      'X-CSRF-Token',
+    ],
     exposedHeaders: ['X-Request-Id', 'Retry-After'],
     maxAge: 600,
   };

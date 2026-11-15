@@ -41,6 +41,11 @@ CREATE SCHEMA IF NOT EXISTS core AUTHORIZATION mulapay_core_rw;
 ALTER SCHEMA core OWNER TO mulapay_core_rw;
 REVOKE ALL ON SCHEMA core FROM PUBLIC;
 
+-- Extensions core's migrations rely on. mulapay_core_rw cannot create extensions (no
+-- CREATE on the database), so they are installed here, into the core schema.
+--   citext  case-insensitive email columns (spec section 5.2, users.email)
+CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA core;
+
 -- mulapay_core_rw must never hold rights on gateway tables in `public`. Tables grant
 -- nothing to new roles by default; this revokes anything granted by hand.
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM mulapay_core_rw;

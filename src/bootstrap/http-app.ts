@@ -3,6 +3,7 @@
  * main.api.ts, the integration tests and the OpenAPI export, so all three exercise the
  * same configuration.
  */
+import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { NestFactory } from '@nestjs/core';
@@ -60,6 +61,9 @@ export async function createHttpApp(
   registerRequestHooks(fastify, logger);
   await app.register(helmet, helmetOptions);
   await app.register(cors, corsDelegator(config));
+  // Unsigned cookies: the refresh token is itself an unguessable secret checked against
+  // its hash, and the CSRF cookie is compared with a header (double submit).
+  await app.register(cookie);
 
   if (config.ENABLE_API_DOCS) {
     await registerApiDocs(app, buildOpenApiDocuments(app));

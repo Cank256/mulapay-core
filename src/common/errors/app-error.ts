@@ -6,11 +6,14 @@ export interface AppErrorOptions {
   readonly messageParams?: Readonly<Record<string, string>>;
   /** Internal cause. Logged, never returned. */
   readonly cause?: unknown;
+  /** Seconds the client should wait before retrying; sent as `Retry-After`. */
+  readonly retryAfterSeconds?: number;
 }
 
 /** An error with a catalogue code. The only error type that reaches clients with detail. */
 export class AppError extends Error {
   readonly details?: Readonly<Record<string, unknown>>;
+  readonly retryAfterSeconds?: number;
 
   constructor(
     readonly code: ErrorCode,
@@ -21,6 +24,7 @@ export class AppError extends Error {
     });
     this.name = 'AppError';
     this.details = options.details;
+    this.retryAfterSeconds = options.retryAfterSeconds;
   }
 
   get httpStatus(): number {

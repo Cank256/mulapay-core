@@ -14,14 +14,24 @@ import { testConfig } from '../support/test-env';
 const logger = pino({ level: 'silent' });
 
 describe('API docs', () => {
-  it('builds one document per surface with health only in the public one', async () => {
+  it('builds one document per surface, each holding only its own routes', async () => {
     const app = await createTestApp(testConfig());
     try {
       const docs = buildOpenApiDocuments(app);
       expect(Object.keys(docs).sort()).toEqual(['admin', 'dashboard', 'public']);
-      expect(Object.keys(docs.public.paths)).toEqual(['/v1/health', '/v1/health/ready']);
-      expect(docs.dashboard.paths).toEqual({});
-      expect(docs.admin.paths).toEqual({});
+      expect(Object.keys(docs.public.paths).sort()).toEqual([
+        '/v1/health',
+        '/v1/health/ready',
+        '/v1/ping',
+      ]);
+      const dashboardPaths = Object.keys(docs.dashboard.paths);
+      const adminPaths = Object.keys(docs.admin.paths);
+      expect(dashboardPaths).toContain('/dashboard/v1/auth/login');
+      expect(dashboardPaths).toContain('/dashboard/v1/api-keys');
+      expect(adminPaths).toContain('/admin/v1/merchants');
+      expect(adminPaths).toContain('/admin/v1/audit-logs/verify');
+      expect(dashboardPaths.every((p) => p.startsWith('/dashboard/v1/'))).toBe(true);
+      expect(adminPaths.every((p) => p.startsWith('/admin/v1/'))).toBe(true);
       expect(JSON.stringify(docs.public)).not.toContain('/metrics');
     } finally {
       await app.close();

@@ -19,7 +19,16 @@ const UNMATCHED_ROUTE = 'unmatched';
 export function registerRequestHooks(fastify: FastifyInstance, logger: Logger): void {
   fastify.addHook('onRequest', (request, reply, done) => {
     void reply.header(REQUEST_ID_HEADER, request.id);
-    requestContext.run({ requestId: request.id, surface: resolveSurface(request.url) }, done);
+    const userAgent = request.headers['user-agent'];
+    requestContext.run(
+      {
+        requestId: request.id,
+        surface: resolveSurface(request.url),
+        ip: request.ip,
+        userAgent: typeof userAgent === 'string' ? userAgent.slice(0, 512) : undefined,
+      },
+      done
+    );
   });
 
   fastify.addHook('onResponse', (request, reply, done) => {

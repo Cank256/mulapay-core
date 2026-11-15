@@ -1,11 +1,27 @@
 /**
- * `/admin/v1` surface (spec section 4.2): the admin console, authenticated by JWT plus MFA, staff-scoped (Phase 1).
+ * `/admin/v1` surface (spec section 4.2): the admin console, authenticated by an admin
+ * JWT that carries an MFA assertion, staff only.
  *
- * Controllers for this surface live in this module tree only, with this surface's guards,
- * so a controller here can never serve another surface's routes. Domain services are
- * shared; controllers are not. Phase 0 registers no routes.
+ * Controllers for this surface live in this module tree only. Domain services are
+ * shared; controllers are not.
  */
 import { Module } from '@nestjs/common';
+import { AuditLogsModule } from '../../modules/audit/audit-logs.module';
+import { AuthModule } from '../../modules/auth/auth.module';
+import { IdentityModule } from '../../modules/identity/identity.module';
+import { MerchantsModule } from '../../modules/merchants/merchants.module';
+import { AdminAuditController } from './admin-audit.controller';
+import { AdminAuthController } from './admin-auth.controller';
+import { AdminMerchantsController } from './admin-merchants.controller';
+import { AdminRolesController } from './admin-roles.controller';
 
-@Module({})
+@Module({
+  imports: [AuthModule, MerchantsModule, IdentityModule, AuditLogsModule],
+  controllers: [
+    AdminAuthController,
+    AdminMerchantsController,
+    AdminRolesController,
+    AdminAuditController,
+  ],
+})
 export class AdminSurfaceModule {}

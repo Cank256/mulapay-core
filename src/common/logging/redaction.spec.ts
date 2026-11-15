@@ -131,6 +131,20 @@ describe('toLoggableError', () => {
     expect(JSON.stringify(safe).match(/"message"/g)).toHaveLength(4);
   });
 
+  it('drops SQL and bound parameters from Drizzle query errors, in message and stack', () => {
+    const message =
+      'Failed query: select * from core.users where email = $1\nparams: ada@example.com';
+    const error = new Error(message, {
+      cause: Object.assign(new Error('syntax error'), { code: '42601' }),
+    });
+    const safe = toLoggableError(error);
+    const text = JSON.stringify(safe);
+    expect(text).not.toContain('ada@example.com');
+    expect(text).not.toContain('select *');
+    expect(safe.message).toBe('Failed query: [sql and parameters omitted]');
+    expect(safe.cause).toMatchObject({ code: '42601', message: 'syntax error' });
+  });
+
   it('handles non-errors and HTTP status fields', () => {
     expect(toLoggableError('boom')).toEqual({ message: 'boom' });
     expect(toLoggableError(Object.assign(new Error('x'), { statusCode: 413 })).status).toBe(413);

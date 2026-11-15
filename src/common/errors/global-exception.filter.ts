@@ -9,6 +9,7 @@ import { Catch, Inject, type ArgumentsHost, type ExceptionFilter } from '@nestjs
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Logger } from 'pino';
 import { toLoggableError } from '../logging/redaction';
+import { AppError } from './app-error';
 import { ROOT_LOGGER } from '../tokens';
 import { errorDocUrl } from './catalogue';
 import type { ErrorEnvelope } from './envelope';
@@ -40,6 +41,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     if (reply.sent) return;
+
+    if (exception instanceof AppError && exception.retryAfterSeconds !== undefined) {
+      void reply.header('Retry-After', String(Math.max(1, Math.ceil(exception.retryAfterSeconds))));
+    }
 
     const body: ErrorEnvelope = {
       success: false,

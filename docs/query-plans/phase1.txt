@@ -1,0 +1,182 @@
+== API key authentication (api_keys_key_id_key)
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Limit (actual rows=1 loops=1)
+   Buffers: shared hit=6
+   ->  Nested Loop (actual rows=1 loops=1)
+         Buffers: shared hit=6
+         ->  Index Scan using api_keys_key_id_key on api_keys k (actual rows=1 loops=1)
+               Index Cond: (key_id = '00000000000004d2'::text)
+               Buffers: shared hit=3
+         ->  Index Scan using merchants_pkey on merchants m (actual rows=1 loops=1)
+               Index Cond: (id = k.merchant_id)
+               Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=160 read=5
+(12 rows)
+
+== Dashboard principal resolution, every request (users_ref_key, merchants_ref_key, merchant_members_merchant_user_key)
+                                                    QUERY PLAN                                                     
+-------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=1 loops=1)
+   Buffers: shared hit=5 read=5
+   ->  Sort (actual rows=1 loops=1)
+         Sort Key: mm.joined_at
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=5 read=5
+         ->  Nested Loop (actual rows=1 loops=1)
+               Buffers: shared hit=5 read=5
+               ->  Nested Loop (actual rows=1 loops=1)
+                     Buffers: shared hit=2 read=5
+                     ->  Index Scan using users_ref_key on users u (actual rows=1 loops=1)
+                           Index Cond: (ref = 'usr_00000000000000000000004000'::text)
+                           Buffers: shared hit=1 read=3
+                     ->  Index Scan using merchant_members_user_idx on merchant_members mm (actual rows=1 loops=1)
+                           Index Cond: (user_id = u.id)
+                           Filter: (status = 'active'::text)
+                           Buffers: shared hit=1 read=2
+               ->  Index Scan using merchants_pkey on merchants m (actual rows=1 loops=1)
+                     Index Cond: (id = mm.merchant_id)
+                     Filter: (ref = 'mch_00000000000000000000001334'::text)
+                     Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=97 read=20
+(23 rows)
+
+== Refresh-token rotation (sessions_refresh_token_hash_key)
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Update on sessions (actual rows=1 loops=1)
+   Buffers: shared hit=14 read=16 dirtied=6
+   ->  Index Scan using sessions_refresh_token_hash_key on sessions (actual rows=1 loops=1)
+         Index Cond: (refresh_token_hash = '26d228663f13a88592a12d16cf9587caab0388b262d6d9f126ed62f9333aca94'::text)
+         Filter: ((revoked_at IS NULL) AND (expires_at > now()))
+         Buffers: shared hit=1 read=3
+ Planning:
+   Buffers: shared hit=46 read=4
+ Trigger for constraint sessions_user_id_users_id_fk: calls=1
+ Trigger for constraint sessions_merchant_id_merchants_id_fk: calls=1
+ Trigger sessions_set_updated_at: calls=1
+(11 rows)
+
+== Active sessions of a user (sessions_user_active_idx)
+                                         QUERY PLAN                                          
+---------------------------------------------------------------------------------------------
+ Limit (actual rows=0 loops=1)
+   Buffers: shared hit=3 read=3
+   InitPlan 1 (returns $0)
+     ->  Index Scan using users_ref_key on users (actual rows=1 loops=1)
+           Index Cond: (ref = 'usr_00000000000000000000000100'::text)
+           Buffers: shared hit=3 read=1
+   ->  Sort (actual rows=0 loops=1)
+         Sort Key: s.created_at DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=3 read=3
+         ->  Index Scan using sessions_user_active_idx on sessions s (actual rows=0 loops=1)
+               Index Cond: ((user_id = $0) AND (expires_at > now()))
+               Filter: (surface = 'dashboard'::text)
+               Buffers: shared hit=3 read=3
+ Planning:
+   Buffers: shared hit=44
+(16 rows)
+
+== Session family revocation (sessions_family_idx)
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Update on sessions (actual rows=0 loops=1)
+   Buffers: shared hit=5
+   ->  Index Scan using sessions_family_idx on sessions (actual rows=0 loops=1)
+         Index Cond: (family_id = 'ses_00000000000000000000000100'::text)
+         Filter: (revoked_at IS NULL)
+         Rows Removed by Filter: 4
+         Buffers: shared hit=5
+(7 rows)
+
+== Merchant API key list (api_keys_merchant_revoked_idx)
+                                          QUERY PLAN                                          
+----------------------------------------------------------------------------------------------
+ Limit (actual rows=2 loops=1)
+   Buffers: shared hit=5 read=2
+   InitPlan 1 (returns $0)
+     ->  Index Scan using merchants_ref_key on merchants (actual rows=1 loops=1)
+           Index Cond: (ref = 'mch_00000000000000000000000077'::text)
+           Buffers: shared hit=1 read=2
+   ->  Sort (actual rows=2 loops=1)
+         Sort Key: api_keys.created_at DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=5 read=2
+         ->  Bitmap Heap Scan on api_keys (actual rows=2 loops=1)
+               Recheck Cond: (merchant_id = $0)
+               Heap Blocks: exact=2
+               Buffers: shared hit=5 read=2
+               ->  Bitmap Index Scan on api_keys_merchant_revoked_idx (actual rows=2 loops=1)
+                     Index Cond: (merchant_id = $0)
+                     Buffers: shared hit=3 read=2
+(17 rows)
+
+== Admin merchant list, keyset page 2 (merchants_status_created_idx)
+                                                                                                    QUERY PLAN                                                                                                     
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=26 loops=1)
+   Buffers: shared hit=331 read=60
+   ->  Sort (actual rows=26 loops=1)
+         Sort Key: created_at DESC, ref DESC
+         Sort Method: top-N heapsort  Memory: 28kB
+         Buffers: shared hit=331 read=60
+         ->  Bitmap Heap Scan on merchants (actual rows=3800 loops=1)
+               Recheck Cond: (((status = 'active'::text) AND (created_at < (now() - '16:40:00'::interval))) OR ((created_at = (now() - '16:40:00'::interval)) AND (ref < 'mch_00000000000000000000001000'::text)))
+               Filter: ((status = 'active'::text) AND ((created_at < (now() - '16:40:00'::interval)) OR ((created_at = (now() - '16:40:00'::interval)) AND (ref < 'mch_00000000000000000000001000'::text))))
+               Heap Blocks: exact=331
+               Buffers: shared hit=331 read=60
+               ->  BitmapOr (actual rows=0 loops=1)
+                     Buffers: shared read=60
+                     ->  Bitmap Index Scan on merchants_status_created_idx (actual rows=3800 loops=1)
+                           Index Cond: ((status = 'active'::text) AND (created_at < (now() - '16:40:00'::interval)))
+                           Buffers: shared read=58
+                     ->  Bitmap Index Scan on merchants_created_idx (actual rows=0 loops=1)
+                           Index Cond: ((created_at = (now() - '16:40:00'::interval)) AND (ref < 'mch_00000000000000000000001000'::text))
+                           Buffers: shared read=2
+ Planning:
+   Buffers: shared hit=44
+(21 rows)
+
+== Admin audit list for a merchant, 90-day window (partition pruning, audit_logs_merchant_created_idx)
+                                                                QUERY PLAN                                                                 
+-------------------------------------------------------------------------------------------------------------------------------------------
+ Limit (actual rows=7 loops=1)
+   Buffers: shared hit=18
+   InitPlan 1 (returns $0)
+     ->  Index Scan using merchants_ref_key on merchants (actual rows=1 loops=1)
+           Index Cond: (ref = 'mch_00000000000000000000000005'::text)
+           Buffers: shared hit=3
+   ->  Sort (actual rows=7 loops=1)
+         Sort Key: audit_logs.created_at DESC, audit_logs.seq DESC
+         Sort Method: quicksort  Memory: 26kB
+         Buffers: shared hit=18
+         ->  Append (actual rows=7 loops=1)
+               Buffers: shared hit=18
+               Subplans Removed: 23
+               ->  Index Scan using audit_logs_202608_merchant_id_created_at_idx on audit_logs_202608 audit_logs_1 (actual rows=1 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=6
+               ->  Bitmap Heap Scan on audit_logs_202609 audit_logs_2 (actual rows=2 loops=1)
+                     Recheck Cond: ((merchant_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Heap Blocks: exact=2
+                     Buffers: shared hit=4
+                     ->  Bitmap Index Scan on audit_logs_202609_merchant_id_created_at_idx (actual rows=2 loops=1)
+                           Index Cond: ((merchant_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                           Buffers: shared hit=2
+               ->  Bitmap Heap Scan on audit_logs_202610 audit_logs_3 (actual rows=2 loops=1)
+                     Recheck Cond: ((merchant_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Heap Blocks: exact=2
+                     Buffers: shared hit=4
+                     ->  Bitmap Index Scan on audit_logs_202610_merchant_id_created_at_idx (actual rows=2 loops=1)
+                           Index Cond: ((merchant_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                           Buffers: shared hit=2
+               ->  Index Scan using audit_logs_202611_merchant_id_created_at_idx on audit_logs_202611 audit_logs_4 (actual rows=2 loops=1)
+                     Index Cond: ((merchant_id = $0) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=4
+ Planning:
+   Buffers: shared hit=1986 read=84 written=76
+(35 rows)
+

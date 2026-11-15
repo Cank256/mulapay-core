@@ -1,8 +1,13 @@
 /** Root module of the `api` process: HTTP only, no workers, no pollers (spec 4.1). */
 import { Module, type DynamicModule, type ModuleMetadata } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, RouterModule } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE, RouterModule } from '@nestjs/core';
 import { ZodValidationPipe } from 'nestjs-zod';
 import type { Logger } from 'pino';
+import type { Clock } from './common/clock/clock';
+import { AuditInterceptor } from './common/audit/audit.interceptor';
+import { AuditModule } from './common/audit/audit.module';
+import { AuthCoreModule } from './common/auth/auth-core.module';
+import { AuthGuard } from './common/auth/auth.guard';
 import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './common/db/database.module';
 import { GlobalExceptionFilter } from './common/errors/global-exception.filter';
@@ -12,11 +17,15 @@ import { QueueModule } from './common/queue/queue.module';
 import { RedisModule } from './common/redis/redis.module';
 import { TelemetryModule } from './common/telemetry/telemetry.module';
 import type { AppConfig } from './config/configuration';
+import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { SURFACE_MODULES, SURFACE_ROUTES } from './surfaces/surfaces';
 
 export interface AppModuleOptions {
   /** Extra modules, for tests only. */
   readonly extraImports?: ModuleMetadata['imports'];
+  /** Replaces the system clock, for tests only. */
+  readonly clock?: Clock;
 }
 
 @Module({})
@@ -25,11 +34,15 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [
-        CommonModule.forRoot(config, logger),
+        CommonModule.forRoot(config, logger, options.clock),
         DatabaseModule,
         RedisModule,
         QueueModule,
         TelemetryModule.forRoot(config),
+        AuditModule,
+        AuthCoreModule,
+        AuthModule,
+        ApiKeysModule,
         HealthModule,
         ...SURFACE_MODULES,
         RouterModule.register(SURFACE_ROUTES),
@@ -37,7 +50,10 @@ export class AppModule {
       ],
       providers: [
         { provide: APP_PIPE, useClass: ZodValidationPipe },
+        // Every route passes the AuthGuard; a route without a policy decorator is refused.
+        { provide: APP_GUARD, useClass: AuthGuard },
         { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
+        { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
         { provide: APP_FILTER, useClass: GlobalExceptionFilter },
       ],
     };

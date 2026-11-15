@@ -2,13 +2,14 @@
  * Prometheus metrics (spec section 10), `core_` prefix, one registry per process.
  *
  * Label values come from small fixed sets (surfaces, route templates, pool and queue
- * names) so request input cannot drive cardinality. Phase 0 defines only the
- * infrastructure metrics; domain metrics are added by the phase that owns them.
+ * names) so request input cannot drive cardinality. Phase 0 defines the
+ * infrastructure metrics and Phase 1 the auth failure counter; domain metrics are added by
+ * the phase that owns them.
  *
  * Default Node.js process metrics are unprefixed, as in the gateway, so one dashboard
  * covers both services.
  */
-import { collectDefaultMetrics, Gauge, Histogram, Registry } from 'prom-client';
+import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client';
 import { SERVICE_NAME } from '../../config/configuration';
 
 export const metricsRegistry = new Registry();
@@ -45,5 +46,13 @@ export const queueOldestJobSeconds = new Gauge({
   name: 'core_queue_oldest_job_seconds',
   help: 'Age of the oldest waiting job per queue',
   labelNames: ['queue'] as const,
+  registers: [metricsRegistry],
+});
+
+/** Spec section 10. `reason` is one of a fixed set (see AuthGuard and the login flows). */
+export const authFailures = new Counter({
+  name: 'core_auth_failures_total',
+  help: 'Authentication and authorization failures',
+  labelNames: ['surface', 'reason'] as const,
   registers: [metricsRegistry],
 });

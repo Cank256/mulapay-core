@@ -59,9 +59,10 @@ The specification lives at `docs/CORE_API_BUILD_PROMPT.md`. Build order is spec 
 
 ## Current phase
 
-Phase 0 (foundation) is in place. No business modules exist. Next is Phase 1
-(identity and merchants). Open questions are listed in `docs/ARCHITECTURE.md`
-("Phase 0 decisions to confirm") and `docs/DATABASE.md` (table ownership).
+Phases 0 (foundation) and 1 (identity and merchants, plus API key issuance) are in
+place. Next is Phase 2 (ledger core). Open questions are listed in `docs/ARCHITECTURE.md`
+("Phase 0 decisions to confirm", "Phase 1 decisions to confirm") and `docs/DATABASE.md`
+(table ownership). Phase 2 must replace `NoLedgerYetBalanceCheck` (merchant close).
 
 ## Commands
 
@@ -86,6 +87,12 @@ Phase 0 (foundation) is in place. No business modules exist. Next is Phase 1
 - Transactions: `UnitOfWork.run`. No HTTP, S3 or queue calls inside it.
 - SQL: repositories only, drizzle `sql` tag or `$n` placeholders. Lint rejects interpolation.
 - Time: inject `CLOCK`; tests use `test/support/fixed-clock.ts`.
+- Routes: every route carries `@Public()`, `@Authenticated()` or `@RequirePermission()`;
+  every write route carries `@Audited(action, resourceType)`. A test enforces both.
+- Audit: write the success row with `AuditService.record(tx, ...)` inside the same
+  `UnitOfWork.run` as the change, last.
+- Merchant scoping: repository methods on merchant-scoped tables take `merchantId`; take it
+  from the principal, never from the request.
 - Queue jobs: implement `QueueProcessor`, register in `src/jobs/jobs.module.ts`, keep
   payloads to identifiers, and make processing idempotent.
 - Dependency injection: use explicit `@Inject(TOKEN)` for non-class providers.

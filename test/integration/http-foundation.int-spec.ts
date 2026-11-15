@@ -9,6 +9,7 @@ import { createZodDto } from 'nestjs-zod';
 import type { Logger } from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { Public } from '../../src/common/authz/policy.decorators';
 import { AppError } from '../../src/common/errors/app-error';
 import { ApiEnvelopedResponses } from '../../src/common/http/response-schema.decorator';
 import { ROOT_LOGGER } from '../../src/common/tokens';
@@ -23,6 +24,7 @@ const createSchema = z.strictObject({
 class CreateDto extends createZodDto(createSchema) {}
 const resultSchema = z.object({ amount: z.string(), currency: z.string() });
 
+@Public()
 @Controller('__test')
 class FoundationTestController {
   constructor(@Inject(ROOT_LOGGER) private readonly logger: Logger) {}

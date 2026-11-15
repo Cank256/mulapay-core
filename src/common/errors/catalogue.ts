@@ -3,8 +3,9 @@
  * with its HTTP status, message template, whether retrying the same request may succeed,
  * and whether its `details` are safe to return.
  *
- * Phase 0 holds only platform-level codes. Business codes (INSUFFICIENT_BALANCE,
- * IDEMPOTENCY_KEY_REUSED, ...) are added by the phase that introduces the behaviour.
+ * Phase 0 added the platform-level codes and Phase 1 the identity, merchant and API key
+ * codes. Later business codes (INSUFFICIENT_BALANCE, IDEMPOTENCY_KEY_REUSED, ...) are
+ * added by the phase that introduces the behaviour.
  *
  * Message templates use `{name}` placeholders filled from `messageParams`.
  */
@@ -45,6 +46,150 @@ export const ERROR_CATALOGUE = {
   NOT_FOUND: {
     httpStatus: 404,
     message: 'The requested resource was not found',
+    retryable: false,
+    exposeDetails: false,
+  },
+  INVALID_CURSOR: {
+    httpStatus: 400,
+    message: 'The pagination cursor is invalid or does not match the filters',
+    retryable: false,
+    exposeDetails: false,
+  },
+
+  // Phase 1: authentication (spec section 8.3)
+  INVALID_CREDENTIALS: {
+    httpStatus: 401,
+    message: 'The email or password is incorrect',
+    retryable: false,
+    exposeDetails: false,
+  },
+  TOO_MANY_LOGIN_ATTEMPTS: {
+    httpStatus: 429,
+    message: 'Too many failed attempts. Try again later.',
+    retryable: true,
+    exposeDetails: false,
+  },
+  MFA_CHALLENGE_INVALID: {
+    httpStatus: 401,
+    message: 'The MFA challenge is invalid or has expired. Log in again.',
+    retryable: false,
+    exposeDetails: false,
+  },
+  INVALID_MFA_CODE: {
+    httpStatus: 401,
+    message: 'The authentication code is incorrect',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MFA_ENROLLMENT_REQUIRED: {
+    httpStatus: 403,
+    message: 'Multi-factor authentication must be enrolled for this account',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MFA_ALREADY_ENABLED: {
+    httpStatus: 409,
+    message: 'Multi-factor authentication is already enabled',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MFA_NOT_ENABLED: {
+    httpStatus: 409,
+    message: 'Multi-factor authentication is not enabled',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MFA_ENROLLMENT_NOT_STARTED: {
+    httpStatus: 409,
+    message: 'Start MFA enrollment before confirming it',
+    retryable: false,
+    exposeDetails: false,
+  },
+  STEP_UP_REQUIRED: {
+    httpStatus: 403,
+    message: 'Re-authenticate to perform this action',
+    retryable: false,
+    exposeDetails: false,
+  },
+  REFRESH_TOKEN_INVALID: {
+    httpStatus: 401,
+    message: 'The session has expired. Log in again.',
+    retryable: false,
+    exposeDetails: false,
+  },
+  CSRF_TOKEN_INVALID: {
+    httpStatus: 403,
+    message: 'The CSRF token is missing or invalid',
+    retryable: false,
+    exposeDetails: false,
+  },
+  EMAIL_ALREADY_REGISTERED: {
+    httpStatus: 409,
+    message: 'An account with this email already exists',
+    retryable: false,
+    exposeDetails: false,
+  },
+
+  // Phase 1: merchants and team (spec section 6.10)
+  MERCHANT_INVALID_TRANSITION: {
+    httpStatus: 409,
+    message: 'The merchant cannot move from {from} to {to}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  MERCHANT_CLOSED: {
+    httpStatus: 403,
+    message: 'The merchant account is closed. Only reads are allowed.',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MERCHANT_NOT_ACTIVE: {
+    httpStatus: 409,
+    message: 'The merchant must be active for this action',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MERCHANT_BALANCE_NOT_ZERO: {
+    httpStatus: 409,
+    message: 'The merchant has a non-zero balance and cannot be closed',
+    retryable: false,
+    exposeDetails: false,
+  },
+  INVITATION_INVALID: {
+    httpStatus: 400,
+    message: 'The invitation is invalid, expired or already used',
+    retryable: false,
+    exposeDetails: false,
+  },
+  INVITATION_ALREADY_PENDING: {
+    httpStatus: 409,
+    message: 'An invitation for this email is already pending',
+    retryable: false,
+    exposeDetails: false,
+  },
+  ALREADY_A_MEMBER: {
+    httpStatus: 409,
+    message: 'This user is already a member of the merchant',
+    retryable: false,
+    exposeDetails: false,
+  },
+  OWNER_PROTECTED: {
+    httpStatus: 409,
+    message: 'Only the owner can change ownership, and the owner cannot be removed',
+    retryable: false,
+    exposeDetails: false,
+  },
+
+  // Phase 1: roles and API keys
+  ROLE_UPDATE_REJECTED: {
+    httpStatus: 409,
+    message: 'The role change was rejected: {reason}',
+    retryable: false,
+    exposeDetails: false,
+  },
+  API_KEY_REVOKED: {
+    httpStatus: 409,
+    message: 'The API key is already revoked or expired',
     retryable: false,
     exposeDetails: false,
   },

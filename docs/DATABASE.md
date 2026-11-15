@@ -1,6 +1,6 @@
 # Database
 
-Status: Phase 0. Tables arrive from Phase 1 onward.
+Status: Phase 1. Identity, merchants, roles, API keys and the audit log.
 
 ## Schema and roles (decisions D1, D2)
 
@@ -25,7 +25,9 @@ The integration suite proves each of these against a real Postgres
 Run as a DBA or superuser, in this order:
 
 1. `src/db/bootstrap/001_core_roles_and_schema.sql`: roles, passwords, defaults, the `core`
-   schema. Idempotent; re-run it to rotate passwords.
+   schema and the `citext` extension (installed into `core`; the rw role cannot create
+   extensions). Idempotent; re-run it to rotate passwords, and once on databases
+   bootstrapped before Phase 1 so `citext` exists.
 
    ```bash
    psql "$ADMIN_DATABASE_URL" -v ON_ERROR_STOP=1 \
@@ -71,6 +73,41 @@ prepared statements. Per-transaction settings use `set_config(name, value, true)
   check that the bootstrap created it, and adds `core.set_updated_at()`, the trigger
   function for `updated_at` columns (spec section 5).
 
+## Phase 1 tables (migration 0001)
+
+| Table                                      | Holds                                             | Notes                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `users`                                    | staff and merchant users                          | `email citext` unique; argon2id hash; encrypted MFA secret; lockout counters                                          |
+| `sessions`                                 | one row per refresh token, grouped by `family_id` | token hash unique; partial index on live rows per user                                                                |
+| `roles`, `permissions`, `role_permissions` | the authorization matrix (seeded)                 | a trigger refuses a permission of another actor type                                                                  |
+| `staff_role_assignments`                   | staff role grants                                 | a trigger refuses non-staff users and merchant roles                                                                  |
+| `merchants`                                | merchant profile and lifecycle status             | status, country, currency, MCC and KYC level checked; FKs to fee plans and settlement cycles arrive with those tables |
+| `merchant_members`                         | team membership and role                          | unique (merchant, user); partial unique index: one active owner; a trigger refuses staff users                        |
+| `invitations`                              | pending, accepted and revoked invitations         | token hash unique; partial unique index: one pending invite per (merchant, email)                                     |
+| `api_keys`                                 | merchant API keys                                 | `key_id` unique; secret hash format checked; `ip_allowlist cidr[]`                                                    |
+| `audit_logs`                               | the hash-chained audit trail                      | partitioned by month on `created_at`; append-only                                                                     |
+| `audit_chain_head`                         | single row: last `seq` and `hash`                 | locked by every append; cannot be deleted                                                                             |
+
+### Hand edits to the generated migration
+
+drizzle-kit generated 0001; these edits were made by hand and are marked in the file:
+`core.citext` unquoted, `audit_logs` declared `PARTITION BY RANGE (created_at)`, and
+everything after the "Hand-written" marker (updated_at triggers, the append-only trigger
+function, the partition function and initial partitions, revokes, actor-type triggers and
+the role seed). drizzle-kit cannot express partitioning, so its snapshot records
+`audit_logs` as a plain table; future `db:generate` runs still diff columns correctly.
+
+### Audit log storage
+
+- Monthly partitions `audit_logs_YYYYMM` from 2025-01 to three months after the migration
+  ran, created by `core.create_monthly_partitions(parent, start, months, append_only)`,
+  plus `audit_logs_default`. Phase 9 schedules partition creation (spec 5.1).
+- `UPDATE`, `DELETE` and `TRUNCATE` are revoked from `mulapay_core_rw` on the parent and on
+  every partition, and a `BEFORE UPDATE OR DELETE` row trigger and a `BEFORE TRUNCATE`
+  trigger raise. `test/integration/identity-schema.int-spec.ts` proves both.
+- List queries always carry a `created_at` window (default 90 days, max 366), so the
+  planner prunes partitions; plans are in [query-plans/](query-plans/README.md).
+
 ## Open question for Phase 2: table ownership
 
 Decision D2 gives `mulapay_core_rw` full rights on `core`, so it owns the tables its
@@ -79,3 +116,6 @@ mulapay_core_rw` and on triggers. A table owner can re-grant itself those rights
 triggers and drop the table, so the revoke does not hold against a compromised rw
 connection. A separate owner role for migrations, with rw holding only DML grants, would
 make D5 enforceable. This needs a decision before the ledger tables are created.
+
+The same applies to `audit_logs` since Phase 1: the revoke and the triggers stop
+application code, but not an attacker holding the rw (owner) credentials.
