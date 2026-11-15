@@ -24,10 +24,12 @@ import { UnitOfWork } from '../../common/db/unit-of-work';
 import { AppError } from '../../common/errors/app-error';
 import { publicId, uuidv7 } from '../../common/ids/ids';
 import { toLoggableError } from '../../common/logging/redaction';
+import { decodeCursor, filterFingerprint, toPage, type Page } from '../../common/pagination/cursor';
 import { isSupportedCurrency } from '../../common/money/currency-codes';
 import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import type { LedgerEnvironment } from '../accounts/domain/chart-of-accounts';
 import { BalancesService } from '../balances/balances.service';
+import { MerchantEventsService } from '../events/merchant-events.service';
 import {
   decideCapture,
   decideRelease,
@@ -35,6 +37,7 @@ import {
   type HoldSnapshot,
   type HoldState,
 } from './domain/hold-state';
+import { toHoldView, type HoldView } from './hold.views';
 import { HoldsRepository, type HoldRow } from './holds.repository';
 export interface PlaceHoldInput {
   readonly merchantId: string;
@@ -71,6 +74,7 @@ export class HoldsService {
   constructor(
     private readonly holds: HoldsRepository,
     private readonly balances: BalancesService,
+    private readonly events: MerchantEventsService,
     private readonly unitOfWork: UnitOfWork,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
@@ -114,6 +118,7 @@ export class HoldsService {
       idempotencyKey: input.idempotencyKey,
       createdBy: input.createdBy,
     });
+    await this.announce(tx, hold, 'hold.created');
     return { hold, replayed: false };
   }
   /**
@@ -140,6 +145,7 @@ export class HoldsService {
     if (decision.kind === 'replay') return { hold, replayed: true };
     try {
       const ended = await this.holds.markReleased(tx, hold.id, key, this.clock.now());
+      await this.announce(tx, ended, 'hold.released');
       return { hold: ended, replayed: false };
     } catch (error) {
       throw conflictIfKeyReused(error, 'holds_release_key_key');
@@ -149,6 +155,27 @@ export class HoldsService {
   findByRef(merchantId: string, environment: LedgerEnvironment, ref: string) {
     return this.holds.findByRef(merchantId, environment, ref);
   }
+  /** A merchant's holds, newest first, as the API shows them (spec 7.1 `GET /v1/holds`). */
+  async list(
+    scope: { merchantId: string; environment: LedgerEnvironment },
+    query: { state?: HoldState; limit: number; cursor?: string }
+  ): Promise<Page<HoldView>> {
+    const fingerprint = filterFingerprint({ environment: scope.environment, state: query.state });
+    const after = query.cursor ? decodeCursor(query.cursor, fingerprint) : undefined;
+    const rows = await this.holds.list({
+      merchantId: scope.merchantId,
+      environment: scope.environment,
+      state: query.state,
+      after: after ? { createdAt: after.createdAt, ref: after.id } : undefined,
+      limit: query.limit,
+    });
+    const page = toPage(rows, query.limit, fingerprint, (row) => ({
+      createdAt: row.createdAt,
+      id: row.ref,
+    }));
+    return { items: page.items.map(toHoldView), nextCursor: page.nextCursor };
+  }
+
   listActive(merchantId: string, environment: LedgerEnvironment, limit = 100) {
     return this.holds.listActive(merchantId, environment, limit);
   }
@@ -173,7 +200,8 @@ export class HoldsService {
           ) {
             return false;
           }
-          await this.holds.markExpired(tx, id, now);
+          const expiredHold = await this.holds.markExpired(tx, id, now);
+          await this.announce(tx, expiredHold, 'hold.released');
           return true;
         });
         if (ended) expired += 1;
@@ -185,6 +213,22 @@ export class HoldsService {
     }
     return { expired, skipped, failed };
   }
+  /** Tells the merchant, in the transaction that changed the hold, that funds moved in or out of `available`. */
+  private async announce(
+    tx: Executor,
+    hold: HoldRow,
+    type: 'hold.created' | 'hold.released'
+  ): Promise<void> {
+    await this.events.emit(tx, {
+      merchantId: hold.merchantId,
+      environment: hold.environment as LedgerEnvironment,
+      type,
+      resourceType: 'hold',
+      resourceId: hold.ref,
+      object: toHoldView(hold),
+    });
+  }
+
   private async lock(tx: Executor, holdId: string): Promise<HoldRow> {
     const hold = await this.holds.lockById(tx, holdId);
     if (!hold) throw new AppError('NOT_FOUND');

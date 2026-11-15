@@ -16,6 +16,9 @@ export const MERCHANT_PERMISSIONS = [
   'api_keys:manage',
   'payments:read',
   'transactions:read',
+  'webhooks:read',
+  'webhooks:manage',
+  'request_logs:read',
 ] as const;
 
 export const STAFF_PERMISSIONS = [

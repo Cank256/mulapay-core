@@ -10,6 +10,7 @@ import { scopeOfApiKey } from '../../common/auth/merchant-scope';
 import type { ApiKeyPrincipal } from '../../common/auth/principal';
 import { Audited } from '../../common/audit/audited.decorator';
 import { RequirePermission } from '../../common/authz/policy.decorators';
+import { ApiErrors } from '../../common/openapi/api-docs.decorators';
 import { ApiEnvelopedResponses } from '../../common/http/response-schema.decorator';
 import { IdempotencyKey, Idempotent } from '../../common/idempotency/idempotent.decorator';
 import type { IdempotencyContext } from '../../common/idempotency/idempotency.types';
@@ -31,6 +32,7 @@ export class CheckoutSessionsController {
 
   @Post()
   @RequirePermission('payments:write')
+  @ApiErrors('PAYMENT_REQUEST_INVALID', 'MERCHANT_NOT_ACTIVE')
   @Idempotent('checkout_sessions.create')
   @Audited('checkout_session.created', 'checkout_session')
   @ApiOperation({
@@ -59,6 +61,7 @@ export class CheckoutSessionsController {
   @Post(':ref/expire')
   @HttpCode(200)
   @RequirePermission('payments:write')
+  @ApiErrors('CHECKOUT_SESSION_UNAVAILABLE')
   @Audited('checkout_session.expired', 'checkout_session')
   @ApiOperation({
     summary: 'Expire a checkout session',

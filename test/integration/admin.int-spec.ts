@@ -361,6 +361,7 @@ describe('roles', () => {
       'payments:read',
       'team:read',
       'transactions:read',
+      'webhooks:read',
     ]);
 
     const updated = await admin.client.patch('/admin/v1/roles/viewer', {
@@ -375,7 +376,13 @@ describe('roles', () => {
     const rows = await auditRows({ action: 'role.permissions_updated', resourceId: 'viewer' });
     expect(rows[0]).toMatchObject({
       before: {
-        permissions: ['merchant:read', 'payments:read', 'team:read', 'transactions:read'],
+        permissions: [
+          'merchant:read',
+          'payments:read',
+          'team:read',
+          'transactions:read',
+          'webhooks:read',
+        ],
       },
       changedFields: ['permissions'],
     });

@@ -27,6 +27,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = http.getRequest<FastifyRequest>();
     const reply = http.getResponse<FastifyReply>();
     const resolved = resolveError(exception);
+    request.errorCode = resolved.code;
 
     const logFields = {
       errorCode: resolved.code,

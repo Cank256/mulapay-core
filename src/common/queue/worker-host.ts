@@ -23,7 +23,7 @@ import { toLoggableError } from '../logging/redaction';
 import { closeRedisClient, createRedisClient } from '../redis/redis.factory';
 import { APP_CONFIG, CLOCK, ROOT_LOGGER } from '../tokens';
 import { QUEUE_PROCESSORS, type QueueProcessor } from './queue-processor';
-import { DEAD_LETTER_QUEUE, QUEUE_PREFIX } from './queue.definitions';
+import { DEAD_LETTER_QUEUE } from './queue.definitions';
 import { QueueRegistry } from './queue.registry';
 
 export interface DeadLetterRecord {
@@ -57,8 +57,11 @@ export class WorkerHost implements OnApplicationBootstrap, OnApplicationShutdown
     private readonly queues: QueueRegistry
   ) {}
 
-  onApplicationBootstrap(): void {
+  async onApplicationBootstrap(): Promise<void> {
     for (const processor of this.processors) this.start(processor);
+    // A worker closed before its connections are ready rejects internal promises nobody
+    // awaits, so wait until each one is running.
+    await Promise.all(this.workers.map(({ worker }) => worker.waitUntilReady()));
     this.logger.info(
       { queues: this.processors.map((p) => p.definition.name) },
       this.processors.length > 0 ? 'workers started' : 'no queue processors registered'
@@ -70,7 +73,7 @@ export class WorkerHost implements OnApplicationBootstrap, OnApplicationShutdown
     const connection = createRedisClient(this.config, 'queue-worker', this.logger);
     const worker = new Worker(definition.name, (job) => processor.process(job), {
       connection,
-      prefix: QUEUE_PREFIX,
+      prefix: this.config.QUEUE_PREFIX,
       concurrency: definition.concurrency,
       telemetry: new BullMQOtel(SERVICE_NAME),
     });

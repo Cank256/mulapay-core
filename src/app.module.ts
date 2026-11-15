@@ -8,6 +8,7 @@ import { AuditInterceptor } from './common/audit/audit.interceptor';
 import { AuditModule } from './common/audit/audit.module';
 import { AuthCoreModule } from './common/auth/auth-core.module';
 import { AuthGuard } from './common/auth/auth.guard';
+import { RequestSignatureGuard } from './common/auth/request-signature.guard';
 import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './common/db/database.module';
 import { GlobalExceptionFilter } from './common/errors/global-exception.filter';
@@ -51,7 +52,10 @@ export class AppModule {
       providers: [
         { provide: APP_PIPE, useClass: ZodValidationPipe },
         // Every route passes the AuthGuard; a route without a policy decorator is refused.
+        // The AuthGuard authenticates, rate limits API keys, then authorizes; the signature
+        // guard runs after it and only acts on API key requests (spec 8.5, 6.11).
         { provide: APP_GUARD, useClass: AuthGuard },
+        { provide: APP_GUARD, useClass: RequestSignatureGuard },
         { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
         { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
         { provide: APP_FILTER, useClass: GlobalExceptionFilter },

@@ -51,6 +51,10 @@ export interface ApiKeyPrincipal {
   readonly environment: Environment;
   readonly scopes: readonly string[];
   readonly ability: AppAbility;
+  /** Per-key override of the write rate limit (spec 8.5), requests per minute. */
+  readonly rateLimitRpm: number | null;
+  /** Request signing (spec 6.11). `secretEnc` is ciphertext; only the guard decrypts it. */
+  readonly signing: { readonly required: boolean; readonly secretEnc: string | null };
 }
 
 export type UserPrincipal = MerchantUserPrincipal | StaffPrincipal;

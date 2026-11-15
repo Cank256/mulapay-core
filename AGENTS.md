@@ -63,9 +63,12 @@ Phases 0 (foundation), 1 (identity and merchants, plus API key issuance) and 2 (
 holds, available balance and the read-only admin ledger routes) are in place. The payment and
 transaction domain (transactions, payments, state machine, idempotency, links, checkout
 sessions, queries) is built without the Provider Gateway, ahead of Phases 3 and 4; see
-`docs/ARCHITECTURE.md` ("Payments and transactions"). Open questions are listed in
-`docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions to confirm") and `docs/DATABASE.md` (table
-ownership).
+`docs/ARCHITECTURE.md` ("Payments and transactions"). Phase 5 (developer platform: API key
+cache, scopes, IP allowlists, request signing, rate limits, events and the outbox, webhooks,
+request logs, the sandbox, the public OpenAPI document) is built, also ahead of Phases 3 and 4;
+the `/v1` groups that need the unbuilt money domains are listed in `docs/API_PUBLIC.md` ("What
+is built"). Open questions are listed in `docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions to
+confirm", "Phase 5 decisions to confirm") and `docs/DATABASE.md` (table ownership).
 
 ## Commands
 
@@ -78,6 +81,8 @@ ownership).
 - Ledger: post only through `PostingService.postEntry`; correct only through
   `ReversalService.reverseEntry`. Amounts are `bigint` minor units.
 - `npm run db:generate` then `npm run db:migrate`. Never `drizzle-kit migrate` or `push`.
+- `npm run openapi:export` writes `docs/openapi/*.json`; `test/integration/api-contract.int-spec.ts`
+  fails if they differ from the code (`OPENAPI_UPDATE=1` regenerates them).
 
 ## Conventions
 

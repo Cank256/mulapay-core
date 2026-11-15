@@ -241,3 +241,34 @@ describe('isOrigin', () => {
     expect(isOrigin('not a url')).toBe(false);
   });
 });
+
+describe('developer platform settings (Phase 5)', () => {
+  it('defaults to the limits in the specification and a closed network policy', () => {
+    const config = parseConfig(BASE);
+    expect(config.RATE_LIMIT_WRITE_PER_MIN).toBe(100);
+    expect(config.RATE_LIMIT_READ_PER_MIN).toBe(600);
+    expect(config.RATE_LIMIT_PAYOUT_PER_MIN).toBe(60);
+    expect(config.RATE_LIMIT_BURST_CAPACITY).toBe(20);
+    expect(config.RATE_LIMIT_BURST_REFILL_PER_SECOND).toBe(10);
+    expect(config.SIGNATURE_TOLERANCE_SECONDS).toBe(300);
+    expect(config.WEBHOOK_ALLOW_PRIVATE_NETWORKS).toBe(false);
+    expect(config.QUEUE_PREFIX).toBe('mulapay-core');
+    expect(config.SANDBOX_PENDING_SECONDS).toBe(5);
+  });
+
+  it('refuses webhook delivery to private networks in production', () => {
+    expect(issuesFor(productionEnv({ WEBHOOK_ALLOW_PRIVATE_NETWORKS: 'true' }))).toContain(
+      'WEBHOOK_ALLOW_PRIVATE_NETWORKS: must be false in production (webhook delivery would reach internal networks)'
+    );
+    expect(issuesFor({ ...BASE, WEBHOOK_ALLOW_PRIVATE_NETWORKS: 'true' })).toEqual([]);
+  });
+
+  it('bounds the signature tolerance, the rate limits and the queue prefix', () => {
+    expect(issuesFor({ ...BASE, SIGNATURE_TOLERANCE_SECONDS: '5' })).not.toEqual([]);
+    expect(issuesFor({ ...BASE, SIGNATURE_TOLERANCE_SECONDS: '901' })).not.toEqual([]);
+    expect(issuesFor({ ...BASE, RATE_LIMIT_BURST_CAPACITY: '0' })).not.toEqual([]);
+    expect(issuesFor({ ...BASE, RATE_LIMIT_AUTH_FAILURE_PER_MIN: '0' })).not.toEqual([]);
+    expect(issuesFor({ ...BASE, QUEUE_PREFIX: 'Bad Prefix' })).not.toEqual([]);
+    expect(issuesFor({ ...BASE, QUEUE_PREFIX: 'staging:core' })).toEqual([]);
+  });
+});

@@ -4,6 +4,7 @@
  * reads, cancellation and the audit trail.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ApiKeyCache } from '../../src/common/auth/api-key-cache';
 import { Client } from '../support/identity';
 import {
   apiClient,
@@ -227,6 +228,8 @@ describe('POST /v1/payments', () => {
     const sus = await createTestMerchant(ctx, { active: true, label: 'sus' });
     expect((await postPayment(sus.live!)).statusCode).toBe(201);
     await sql("update core.merchants set status = 'suspended' where ref = $1", [sus.ref]);
+    // Out-of-band change: a lifecycle transition through the service evicts cached keys itself.
+    await ctx.app.get(ApiKeyCache, { strict: false }).evictMerchant(sus.id);
     for (const client of [sus.live!, sus.test]) {
       const res = await postPayment(client);
       expect(res.statusCode).toBe(409);

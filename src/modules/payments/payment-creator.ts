@@ -22,8 +22,11 @@ import type { Transaction } from '../../common/db/database.types';
 import { FieldEncryption } from '../../common/crypto/field-encryption';
 import { AppError } from '../../common/errors/app-error';
 import { uuidv7 } from '../../common/ids/ids';
+import { OutboxService } from '../../common/outbox/outbox.service';
 import { APP_CONFIG, CLOCK } from '../../common/tokens';
 import type { AppConfig } from '../../config/configuration';
+import { isSandboxScenario } from '../developer/sandbox/domain/sandbox-scenario';
+import { MerchantEventsService } from '../events/merchant-events.service';
 import { TransactionsRepository } from '../transactions/transactions.repository';
 import {
   assertMerchantMayTransact,
@@ -34,7 +37,11 @@ import {
 } from './domain/payment-input';
 import type { PaymentProvider } from './domain/payment-event';
 import { gatewayExternalIdFor, newPaymentIds } from './domain/payment-references';
+import { toPaymentView } from './payment.views';
 import { PaymentsRepository, type PaymentDetail } from './payments.repository';
+
+/** The outbox type that starts the sandbox simulation of a test-environment payment. */
+export const SANDBOX_PAYMENT_OUTBOX_TYPE = 'sandbox.payment_created';
 
 export interface NewPaymentInput {
   readonly amountMinor: bigint;
@@ -67,6 +74,8 @@ export class PaymentCreator {
     private readonly payments: PaymentsRepository,
     private readonly transactions: TransactionsRepository,
     private readonly encryption: FieldEncryption,
+    private readonly events: MerchantEventsService,
+    private readonly outbox: OutboxService,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(APP_CONFIG) private readonly config: Pick<AppConfig, 'PAYMENT_EXPIRY_MINUTES'>
   ) {}
@@ -100,7 +109,12 @@ export class PaymentCreator {
     const now = this.clock.now();
     const ids = newPaymentIds(now);
     const paymentMethod = this.paymentMethod(input, ids.paymentRef);
-
+    // In the sandbox `metadata.simulate` picks the outcome, so a typo must not silently fall
+    // back to success. On a live payment the key is ordinary metadata.
+    const simulate = input.metadata?.simulate;
+    if (scope.environment === 'test' && simulate !== undefined && !isSandboxScenario(simulate)) {
+      throw invalid('simulate_value_invalid');
+    }
     const transaction = await this.transactions.insert(tx, {
       id: ids.transactionId,
       ref: ids.transactionRef,
@@ -152,6 +166,25 @@ export class PaymentCreator {
     });
     const detail = await this.payments.findDetailById(ids.paymentId, tx);
     if (!detail) throw new Error('payment not found after insert');
+    await this.events.emit(tx, {
+      merchantId: scope.merchantId,
+      environment: scope.environment,
+      type: 'payment.created',
+      resourceType: 'payment',
+      resourceId: ids.paymentRef,
+      object: toPaymentView(detail),
+    });
+    // Test keys never reach the gateway (spec 6.11): the sandbox simulator resolves the
+    // payment, driven by this outbox row once the transaction has committed.
+    if (scope.environment === 'test') {
+      await this.outbox.enqueue(tx, {
+        eventType: SANDBOX_PAYMENT_OUTBOX_TYPE,
+        aggregateType: 'payment',
+        aggregateId: ids.paymentId,
+        payload: { paymentId: ids.paymentId },
+        dedupeKey: `sandbox:payment:${ids.paymentId}`,
+      });
+    }
     return detail;
   }
 }

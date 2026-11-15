@@ -13,6 +13,9 @@ import type { Logger } from 'pino';
 import { AppModule, type AppModuleOptions } from '../app.module';
 import { corsDelegator } from '../common/http/cors';
 import { generateRequestId } from '../common/http/request-id';
+import { registerRawBodyCapture } from '../common/http/raw-body';
+import { registerRequestLogHook } from '../modules/developer/request-logs/request-log.hook';
+import { RequestLogService } from '../modules/developer/request-logs/request-log.service';
 import { registerRequestHooks } from '../common/http/request-hooks';
 import { helmetOptions } from '../common/http/security-headers';
 import { NestPinoLogger } from '../common/logging/nest-logger';
@@ -58,7 +61,10 @@ export async function createHttpApp(
 
   const fastify = app.getHttpAdapter().getInstance();
   fastify.removeContentTypeParser(['text/plain']);
+  registerRawBodyCapture(fastify);
   registerRequestHooks(fastify, logger);
+  // API request logging (spec 6.11): buffered in Redis, flushed by the worker.
+  registerRequestLogHook(fastify, app.get(RequestLogService, { strict: false }));
   await app.register(helmet, helmetOptions);
   await app.register(cors, corsDelegator(config));
   // Unsigned cookies: the refresh token is itself an unguessable secret checked against

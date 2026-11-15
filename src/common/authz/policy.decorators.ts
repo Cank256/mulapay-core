@@ -10,7 +10,8 @@
  *
  * `@RequiresStepUp()` adds the step-up check (spec 8.3) on top of the policy.
  */
-import { SetMetadata } from '@nestjs/common';
+import { applyDecorators, SetMetadata } from '@nestjs/common';
+import { ApiExtension } from '@nestjs/swagger';
 import type { Permission } from './permissions';
 
 export const POLICY = Symbol('POLICY');
@@ -25,7 +26,11 @@ export const Public = () => SetMetadata(POLICY, { kind: 'public' } satisfies Pol
 
 export const Authenticated = () => SetMetadata(POLICY, { kind: 'authenticated' } satisfies Policy);
 
+/** Also documents the permission (a scope, on `/v1`) as `x-required-permission` for OpenAPI. */
 export const RequirePermission = (permission: Permission) =>
-  SetMetadata(POLICY, { kind: 'permission', permission } satisfies Policy);
+  applyDecorators(
+    SetMetadata(POLICY, { kind: 'permission', permission } satisfies Policy),
+    ApiExtension('x-required-permission', permission)
+  );
 
 export const RequiresStepUp = () => SetMetadata(STEP_UP, true);

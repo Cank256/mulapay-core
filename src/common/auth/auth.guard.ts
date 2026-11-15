@@ -28,6 +28,8 @@ import { AppError } from '../errors/app-error';
 import type { ErrorCode } from '../errors/catalogue';
 import { resolveSurface, type Surface } from '../http/surface';
 import { toLoggableError } from '../logging/redaction';
+import { AuthFailureLimiter } from '../ratelimit/auth-failure-limiter';
+import { RateLimitGuard } from '../ratelimit/rate-limit.guard';
 import { authFailures } from '../telemetry/metrics';
 import { APP_CONFIG, CLOCK, ROOT_LOGGER } from '../tokens';
 import { AccessTokenService, type TokenAudience } from './access-token.service';
@@ -58,6 +60,8 @@ export class AuthGuard implements CanActivate {
     @Inject(PRINCIPAL_RESOLVER) private readonly principals: PrincipalResolver,
     @Inject(API_KEY_AUTHENTICATOR) private readonly apiKeys: ApiKeyAuthenticator,
     private readonly audit: AuditService,
+    private readonly authFailureLimiter: AuthFailureLimiter,
+    private readonly rateLimit: RateLimitGuard,
     @Inject(APP_CONFIG) private readonly config: Pick<AppConfig, 'STEP_UP_WINDOW_SECONDS'>,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
@@ -81,6 +85,9 @@ export class AuthGuard implements CanActivate {
     }
     request.principal = principal;
     this.bindContext(principal);
+    // Every authenticated API key request is metered, including ones about to be refused for
+    // a missing scope, so refusals cannot be used as free probing (spec 8.5).
+    if (principal.kind === 'api_key') await this.rateLimit.canActivate(context);
 
     if (policy.kind === 'permission' && !abilityAllows(principal.ability, policy.permission)) {
       return this.deny(context, request, surface, 'FORBIDDEN', 'forbidden');
@@ -104,8 +111,8 @@ export class AuthGuard implements CanActivate {
 
   private async authenticate(surface: Surface, request: FastifyRequest): Promise<Principal | null> {
     const token = bearerToken(request);
+    if (surface === 'public') return this.authenticateApiKey(token, request);
     if (!token) return null;
-    if (surface === 'public') return this.apiKeys.authenticate(token, request.ip);
     if (surface !== 'dashboard' && surface !== 'admin') return null;
     const audience: TokenAudience = surface;
     const claims = this.accessTokens.verify(token, audience);
@@ -115,6 +122,19 @@ export class AuthGuard implements CanActivate {
     return this.principals.resolve(claims);
   }
 
+  /**
+   * API key authentication with the failure limiter (spec 8.5): a client that has failed
+   * too often is answered 429 before its credential is examined, and every failure counts.
+   */
+  private async authenticateApiKey(
+    token: string | null,
+    request: FastifyRequest
+  ): Promise<Principal | null> {
+    await this.authFailureLimiter.assertNotBlocked(request.ip);
+    const principal = token ? await this.apiKeys.authenticate(token, request.ip) : null;
+    if (!principal) await this.authFailureLimiter.recordFailure(request.ip);
+    return principal;
+  }
   /** Step-up (spec 8.3): a password or MFA assertion within STEP_UP_WINDOW_SECONDS. */
   private hasFreshAuth(principal: Principal): boolean {
     if (principal.kind === 'api_key') return false;

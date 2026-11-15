@@ -28,6 +28,15 @@ export function testConfig(overrides: Record<string, string | undefined> = {}): 
     JWT_PUBLIC_KEY: TEST_JWT.publicKey,
     JWT_KID: TEST_JWT.kid,
     DATA_ENCRYPTION_KEY,
+    // Existing suites send bursts and concurrent requests through one key; the rate limit
+    // suites set small values explicitly.
+    RATE_LIMIT_WRITE_PER_MIN: '1000000',
+    RATE_LIMIT_READ_PER_MIN: '1000000',
+    RATE_LIMIT_PAYOUT_PER_MIN: '1000000',
+    RATE_LIMIT_BURST_CAPACITY: '100000',
+    RATE_LIMIT_BURST_REFILL_PER_SECOND: '100000',
+    RATE_LIMIT_AUTH_FAILURE_PER_MIN: '100000',
+    WEBHOOK_ALLOW_PRIVATE_NETWORKS: 'true',
     ...overrides,
   });
 }

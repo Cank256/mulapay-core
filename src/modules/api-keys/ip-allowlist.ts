@@ -5,6 +5,7 @@
  * the prefix), so a bad entry is a 400 from validation, not a database error.
  */
 import { BlockList, isIP } from 'node:net';
+import { normalizeIp } from '../../common/http/client-ip';
 
 function toBigInt(address: string, family: 4 | 6): bigint {
   if (family === 4) {
@@ -39,8 +40,9 @@ export function isCidrEntry(entry: string): boolean {
 }
 
 /** True when `ip` falls inside any entry; an empty or null allowlist allows every IP. */
-export function ipAllowed(allowlist: readonly string[] | null, ip: string): boolean {
+export function ipAllowed(allowlist: readonly string[] | null, rawIp: string): boolean {
   if (!allowlist || allowlist.length === 0) return true;
+  const ip = normalizeIp(rawIp);
   const family = isIP(ip);
   if (family === 0) return false;
   const list = new BlockList();

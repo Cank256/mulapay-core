@@ -1,7 +1,8 @@
 # Security
 
-Status: Phase 1. Covers authentication, authorization, sessions, MFA, API keys, secrets at
-rest and the audit trail. Spec sections 8.3, 8.4 and 11.
+Status: Phase 5. Covers authentication, authorization, sessions, MFA, API keys and their
+cache, request signing, rate limits, webhooks, secrets at rest and the audit trail. Spec
+sections 6.11, 8.3, 8.4, 8.5 and 11.
 
 ## Surfaces and authentication
 
@@ -105,6 +106,9 @@ Step-up routes: `POST /dashboard/v1/auth/mfa/disable`, `POST /admin/v1/merchants
 | `api_keys:manage`   |   x   |   x   |     x     |         |         |        |
 | `payments:read`     |   x   |   x   |     x     |    x    |    x    |   x    |
 | `transactions:read` |   x   |   x   |     x     |    x    |    x    |   x    |
+| `webhooks:read`     |   x   |   x   |     x     |         |    x    |   x    |
+| `webhooks:manage`   |   x   |   x   |     x     |         |         |        |
+| `request_logs:read` |   x   |   x   |     x     |         |    x    |        |
 
 Rules in code, independent of the matrix: only the owner transfers ownership; the owner
 cannot be removed or demoted except by transferring; exactly one active owner per
@@ -130,13 +134,99 @@ merchant (unique index).
 
 - `mp_{live|test}_{keyId}_{secret}`: `keyId` 16 chars `[a-z0-9]`, secret 32 random bytes
   (hex). Only `SHA-256(secret)` is stored; the full key is returned once, by create or roll.
-- Authentication: parse, look up by `key_id`, `timingSafeEqual` on the hashes, refuse a
-  prefix environment that differs from the stored one, revoked or expired keys, and
-  clients outside the IP allowlist. Client IPs come from `TRUST_PROXY` CIDRs only.
+- Authentication (`DbApiKeyAuthenticator`): parse, find by `key_id` (Redis, then Postgres),
+  `timingSafeEqual` on the hashes, refuse a prefix environment that differs from the stored
+  one, revoked or expired keys (judged on every request), and clients outside the IP
+  allowlist. Every refusal is the same `401`, so nothing distinguishes a wrong secret from a
+  revoked key or a blocked address.
 - Live keys need an `active` merchant. Roll creates a successor and stops the old key after
-  0 to 168 hours; a key can be rolled once. Revocation is immediate (no cache yet).
-- Phase 5 adds the Redis cache, request signing, rate limits and scope enforcement on
-  money routes.
+  0 to 168 hours; a key can be rolled once.
+- **Cache** (`ApiKeyCache`, spec 8.3): `apikey:{keyId}` 60 s, `apikey:neg:{keyId}` 30 s for
+  unknown ids. Revocation, a roll, and a merchant suspension or closure evict through
+  Redis _eviction markers_ stamped with the Redis clock. Every entry records the Redis time at
+  which its database read began, and is honoured only if that is after the latest marker, so a
+  reader that read the old row before the change and cached it after the delete is still
+  discarded. If Redis cannot be reached at eviction time the change is committed anyway and
+  cached copies lapse within 60 s (logged at error level). A status or key change made
+  directly in SQL, outside the services, is not evicted: operators must go through the
+  services (or call `ApiKeyCache.evictMerchant`).
+- `last_used_at` is a Redis sorted set flushed every 10 s by the worker, never written on the
+  request path.
+- **Client address.** `request.ip` comes from Fastify `trustProxy` (`TRUST_PROXY` CIDRs) only.
+  With no trusted proxy, forwarding headers are ignored entirely; with one, the address is the
+  rightmost one the proxy chain did not itself append, so addresses a client writes into
+  `X-Forwarded-For` ahead of it are ignored. IPv4-mapped IPv6 and zone ids are normalised
+  before matching an allowlist. Tests: `api-key-security.int-spec.ts`.
+
+## Scopes
+
+`API_KEY_SCOPES` (16) gate `/v1` routes through `@RequirePermission(scope)` and the key's CASL
+ability (`apiKeyAbility`); an unknown scope can neither be issued (400) nor granted (dropped).
+`api-key-security.int-spec.ts` asserts that every `/v1` route except `ping` requires a defined
+scope, that each route refuses a valid key without its scope (403) and that read scopes do not
+imply write scopes. A dashboard or admin token is never accepted on `/v1`.
+
+## Request signing (spec 6.11)
+
+- Headers `X-MulaPay-Timestamp` and `X-MulaPay-Signature: v1=<hex>`; HMAC-SHA256 of
+  `timestamp.METHOD.path.sha256(rawBody)` keyed with the key's **signing secret**.
+- The spec names the headers and the signing string but not the key. It cannot be the API key
+  secret (the server stores only its hash, and the HMAC must be recomputed), and using the hash
+  as the key would make the signature derivable from the bearer secret and add nothing. Each key
+  therefore gets a separate `mpsig_` secret, shown once and stored AES-256-GCM encrypted bound to
+  the key (`api_keys.signing_secret_enc`). **Decision to confirm.**
+- `path` is the request target as sent, query string included. The spec says "path"; including
+  the query closes tampering with filters and is what a client library naturally has.
+  **Decision to confirm.**
+- Required for keys with `signing_required`, which is forced on for every live key holding
+  `payouts:write`; such a key must sign every request. A signature that is present is always
+  verified. Raw body bytes are captured by a wrapper around Fastify's JSON parser
+  (`raw-body.ts`), which keeps its prototype-poisoning protection.
+- Order of checks: both headers, a signing secret, timestamp (digits only, within
+  `SIGNATURE_TOLERANCE_SECONDS`, default 300, both directions), header shape, constant-time MAC
+  comparison, and only then replay (`SET sigreplay:{key}:{mac} NX EX 2 x tolerance + 5`). The
+  record is written after the MAC verifies, so forged signatures cannot burn real ones, and it
+  lives for twice the tolerance because a timestamp is acceptable for that long. If Redis is
+  down the request gets `503`: no signed request is accepted without replay protection.
+- A consequence: two identical requests signed in the same second have the same signature, so
+  the second is refused as a replay. Clients retry with a fresh timestamp.
+
+## Rate limiting (spec 8.5)
+
+One Lua script per request evaluates all limits atomically against Redis time: the key's read
+or write sliding window, the merchant's payout window (routes needing `payouts:write`) and the
+key's burst token bucket (20 / 10 per s). A refused request consumes nothing from any limit.
+Limits are keyed by API key and merchant, never by IP or path, so spoofed addresses and
+forwarding headers, URL spelling and query strings buy nothing. Requests refused for a missing
+scope are counted. Failed authentications are limited per client (`RATE_LIMIT_AUTH_FAILURE_PER_MIN`,
+per /64 for IPv6): a client over the limit gets `429` before its credential is examined. Redis
+down: reads pass, writes get `503`. Keys carry TTLs (window length, or twice the refill time).
+
+## Webhooks
+
+- Merchant-controlled URLs are an SSRF vector, so they are checked at registration **and** at
+  delivery: `https` only (plain `http` only where `WEBHOOK_ALLOW_PRIVATE_NETWORKS` allows, which
+  production refuses), no credentials or fragment, and the connection address is validated
+  inside the socket `lookup` from the very addresses DNS returned, so rebinding cannot swap a
+  public name for an internal address. Loopback, private, link-local (including the cloud
+  metadata address), carrier-grade NAT, multicast, reserved and mapped-IPv4 ranges are refused.
+  Redirects are never followed. 10 s timeout. 1 KiB of the response kept, control characters
+  removed. Failures are stored as short codes, never the network error.
+- Signing: `MulaPay-Signature: t=<unix>,v1=<hmac("t.payload")>`; two `v1` during a rotation's
+  grace period. `t` is covered by the MAC and fresh on every attempt; `MulaPay-Event-Id` is stable
+  across attempts and replays. Endpoint secrets are encrypted at rest and shown once.
+- Delivery is at least once with effect once per attempt: a lease on the delivery row plus a
+  conditional update (`attempt` and `status = 'pending'`) mean a duplicate job sends nothing. A
+  delivery that left `pending` is final in the database, so a delivered event cannot be re-sent
+  by editing a row; a replay is a new row.
+- Logs carry refs, status and timings, never the URL, payload, secret or response body.
+
+## Sandbox
+
+Test keys never reach the gateway: there is no gateway client yet, the simulator and the payment
+code import nothing from `integrations/gateway` (`sandbox-boundary.spec.ts`), and
+`assertGatewayEligible(environment)` is what the Phase 3 client must call before any request.
+The simulator refuses a payment of any other environment.
 
 ## Secrets at rest
 

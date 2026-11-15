@@ -13,7 +13,10 @@ import { DocumentBuilder, SwaggerModule, type OpenAPIObject } from '@nestjs/swag
 import scalar from '@scalar/fastify-api-reference';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 import { SURFACES, type SurfaceKey } from '../../surfaces/surfaces';
+import { merchantEventSchema } from '../../modules/events/merchant-event.views';
 import { docsCsp } from '../http/security-headers';
+import { toOpenApiSchema } from '../http/json-schema';
+import { enrichPublicDocument } from './public-api-document';
 
 export const API_VERSION = '0.1.0';
 
@@ -29,7 +32,11 @@ export function buildOpenApiDocuments(app: INestApplication): Record<SurfaceKey,
       include: [...surface.documentModules],
       deepScanRoutes: false,
     });
-    documents[surface.key] = cleanupOpenApiDoc(document);
+    const cleaned = cleanupOpenApiDoc(document);
+    documents[surface.key] =
+      surface.key === 'public'
+        ? enrichPublicDocument(cleaned, toOpenApiSchema(merchantEventSchema))
+        : cleaned;
   }
   return documents;
 }

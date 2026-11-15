@@ -849,7 +849,8 @@
         "summary": "List merchants, newest first",
         "tags": [
           "Merchants"
-        ]
+        ],
+        "x-required-permission": "merchants:read"
       },
       "post": {
         "operationId": "AdminMerchantsController_create",
@@ -1054,7 +1055,8 @@
         "summary": "Create a draft merchant, optionally inviting its owner",
         "tags": [
           "Merchants"
-        ]
+        ],
+        "x-required-permission": "merchants:create"
       }
     },
     "/admin/v1/merchants/{ref}": {
@@ -1203,7 +1205,8 @@
         "summary": "One merchant",
         "tags": [
           "Merchants"
-        ]
+        ],
+        "x-required-permission": "merchants:read"
       },
       "patch": {
         "operationId": "AdminMerchantsController_update",
@@ -1360,7 +1363,8 @@
         "summary": "Edit a merchant profile",
         "tags": [
           "Merchants"
-        ]
+        ],
+        "x-required-permission": "merchants:update"
       }
     },
     "/admin/v1/merchants/{ref}/activate": {
@@ -1519,7 +1523,8 @@
         "summary": "Reinstate a suspended merchant",
         "tags": [
           "Merchants"
-        ]
+        ],
+        "x-required-permission": "merchants:lifecycle"
       }
     },
     "/admin/v1/merchants/{ref}/suspend": {
@@ -1678,7 +1683,8 @@
         "summary": "Suspend an active merchant",
         "tags": [
           "Merchants"
-        ]
+        ],
+        "x-required-permission": "merchants:lifecycle"
       }
     },
     "/admin/v1/merchants/{ref}/close": {
@@ -1837,7 +1843,8 @@
         "summary": "Close a merchant. Needs a zero balance; closing is final",
         "tags": [
           "Merchants"
-        ]
+        ],
+        "x-required-permission": "merchants:lifecycle"
       }
     },
     "/admin/v1/merchants/{ref}/users": {
@@ -1941,7 +1948,8 @@
         "summary": "Team members of a merchant",
         "tags": [
           "Merchants"
-        ]
+        ],
+        "x-required-permission": "merchants:read"
       }
     },
     "/admin/v1/roles": {
@@ -2056,7 +2064,8 @@
         "summary": "Roles with their permissions, and every permission that exists",
         "tags": [
           "Roles"
-        ]
+        ],
+        "x-required-permission": "roles:read"
       }
     },
     "/admin/v1/roles/{key}": {
@@ -2155,7 +2164,8 @@
         "summary": "Replace the permissions of a role",
         "tags": [
           "Roles"
-        ]
+        ],
+        "x-required-permission": "roles:manage"
       }
     },
     "/admin/v1/audit-logs": {
@@ -2431,7 +2441,8 @@
         "summary": "Audit rows, newest first, within a date window (default 90 days)",
         "tags": [
           "Audit"
-        ]
+        ],
+        "x-required-permission": "audit_logs:read"
       }
     },
     "/admin/v1/audit-logs/verify": {
@@ -2529,7 +2540,8 @@
         "summary": "Walk the hash chain and report the first break",
         "tags": [
           "Audit"
-        ]
+        ],
+        "x-required-permission": "audit_logs:verify"
       }
     },
     "/admin/v1/audit-logs/{seq}": {
@@ -2707,7 +2719,8 @@
         "summary": "One audit row",
         "tags": [
           "Audit"
-        ]
+        ],
+        "x-required-permission": "audit_logs:read"
       }
     },
     "/admin/v1/accounts": {
@@ -2888,7 +2901,8 @@
         "summary": "Accounts of one environment, ordered by code",
         "tags": [
           "Ledger"
-        ]
+        ],
+        "x-required-permission": "ledger:read"
       }
     },
     "/admin/v1/accounts/{code}": {
@@ -3062,7 +3076,8 @@
         "summary": "One account with its posted balance per currency",
         "tags": [
           "Ledger"
-        ]
+        ],
+        "x-required-permission": "ledger:read"
       }
     },
     "/admin/v1/accounts/{code}/statement": {
@@ -3323,7 +3338,8 @@
         "summary": "Account statement with a running balance, oldest first",
         "tags": [
           "Ledger"
-        ]
+        ],
+        "x-required-permission": "ledger:read"
       }
     },
     "/admin/v1/journal-entries": {
@@ -3538,7 +3554,8 @@
         "summary": "Journal entries, newest first, within a date window (default 90 days)",
         "tags": [
           "Ledger"
-        ]
+        ],
+        "x-required-permission": "ledger:read"
       }
     },
     "/admin/v1/journal-entries/{ref}": {
@@ -3689,7 +3706,8 @@
         "summary": "One journal entry with its lines",
         "tags": [
           "Ledger"
-        ]
+        ],
+        "x-required-permission": "ledger:read"
       }
     },
     "/admin/v1/trial-balance": {
@@ -3832,7 +3850,8 @@
         "summary": "Trial balance of one currency",
         "tags": [
           "Ledger"
-        ]
+        ],
+        "x-required-permission": "ledger:read"
       }
     },
     "/admin/v1/ledger/integrity": {
@@ -4101,7 +4120,8 @@
         "summary": "Ledger integrity report",
         "tags": [
           "Ledger"
-        ]
+        ],
+        "x-required-permission": "ledger:read"
       }
     },
     "/admin/v1/balances": {
@@ -4213,7 +4233,8 @@
         "summary": "Posted, held, pending, reserved and available balance per currency",
         "tags": [
           "Balances"
-        ]
+        ],
+        "x-required-permission": "balances:read"
       }
     },
     "/admin/v1/holds": {
@@ -4347,7 +4368,8 @@
         "summary": "Active holds of a merchant, newest first (up to 100)",
         "tags": [
           "Balances"
-        ]
+        ],
+        "x-required-permission": "holds:read"
       }
     }
   },

@@ -36,6 +36,13 @@
       "when": 1794739928249,
       "tag": "0004_holds",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794750305234,
+      "tag": "0005_developer_platform",
+      "breakpoints": true
     }
   ]
 }

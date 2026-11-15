@@ -7,6 +7,7 @@ import { scopeOfApiKey } from '../../common/auth/merchant-scope';
 import type { ApiKeyPrincipal } from '../../common/auth/principal';
 import { Audited } from '../../common/audit/audited.decorator';
 import { RequirePermission } from '../../common/authz/policy.decorators';
+import { ApiErrors } from '../../common/openapi/api-docs.decorators';
 import { ApiEnvelopedResponses } from '../../common/http/response-schema.decorator';
 import { IdempotencyKey, Idempotent } from '../../common/idempotency/idempotent.decorator';
 import type { IdempotencyContext } from '../../common/idempotency/idempotency.types';
@@ -31,6 +32,7 @@ export class PaymentLinksController {
 
   @Post()
   @RequirePermission('payments:write')
+  @ApiErrors('PAYMENT_REQUEST_INVALID')
   @Idempotent('payment_links.create')
   @Audited('payment_link.created', 'payment_link')
   @ApiOperation({ summary: 'Create a payment link. Omit the amount for an open-amount link' })

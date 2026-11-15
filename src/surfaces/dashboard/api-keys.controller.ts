@@ -21,6 +21,8 @@ class CreateApiKeyDto extends createZodDto(
     scopes: z.array(z.enum(API_KEY_SCOPES)).min(1).max(API_KEY_SCOPES.length),
     ipAllowlist: z.array(cidrSchema).max(50).optional(),
     expiresAt: z.iso.datetime({ offset: true }).optional(),
+    rateLimitRpm: z.number().int().min(1).max(100_000).optional(),
+    signingRequired: z.boolean().optional(),
   })
 ) {}
 

@@ -2,24 +2,34 @@
  * API key management from the dashboard (spec 6.11 and 7.2 `/api-keys`).
  *
  * Invariants:
- * - The full key is returned once, by create and roll, and never stored or logged.
+ * - The full key and the signing secret are returned once, by create and roll, and never
+ *   stored or logged in clear: only SHA-256 of the key secret is stored, and the signing
+ *   secret is stored AES-256-GCM encrypted because the server must recompute the HMAC.
  * - Live keys need an active merchant (KYC level 0 is test-only, spec 6.13).
- * - Rolling creates a successor with the same name, environment, scopes and allowlist,
- *   and schedules the old key to stop working after a grace period of 0 to 7 days. A key
- *   can be rolled once; its successor is what gets rolled next.
- * - Revocation is immediate: there is no key cache yet (Phase 5 adds one, with pub/sub
- *   eviction), so the next request with the key is refused.
+ * - A live key that holds `payouts:write` always requires signed requests (spec 6.11).
+ * - Rolling creates a successor with the same name, environment, scopes, allowlist and
+ *   limits, and schedules the old key to stop working after a grace period of 0 to 7 days.
+ *   A key can be rolled once; its successor is what gets rolled next.
+ * - Revocation is immediate: once the change commits, the key is evicted from the Redis
+ *   cache of every replica (`ApiKeyCache.evict`). If Redis is unreachable at that moment the
+ *   revocation is still committed, and cached copies lapse within the 60 s cache TTL; the
+ *   failure is logged at error level.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import type { Logger } from 'pino';
+import { ApiKeyCache } from '../../common/auth/api-key-cache';
+import { generateSigningSecret, signingSecretContext } from '../../common/auth/signing-secret';
 import type { Environment, MerchantStatus } from '../../common/auth/principal';
 import { AuditService } from '../../common/audit/audit.service';
 import type { ApiKeyScope } from '../../common/authz/permissions';
 import type { Clock } from '../../common/clock/clock';
+import { FieldEncryption } from '../../common/crypto/field-encryption';
 import type { Transaction } from '../../common/db/database.types';
 import { UnitOfWork } from '../../common/db/unit-of-work';
 import { AppError } from '../../common/errors/app-error';
 import { publicId, uuidv7 } from '../../common/ids/ids';
-import { CLOCK } from '../../common/tokens';
+import { toLoggableError } from '../../common/logging/redaction';
+import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { merchantAllowsLiveKeys } from '../merchants/domain/merchant-lifecycle';
 import { MerchantsRepository } from '../merchants/merchants.repository';
 import { generateApiKey } from './api-key-format';
@@ -34,6 +44,10 @@ export interface CreateApiKeyInput {
   readonly scopes: readonly ApiKeyScope[];
   readonly ipAllowlist?: readonly string[];
   readonly expiresAt?: Date;
+  /** Write requests per minute for this key (spec 8.5); the platform default when absent. */
+  readonly rateLimitRpm?: number;
+  /** Require a signature on every request. Forced on for live keys with `payouts:write`. */
+  readonly signingRequired?: boolean;
 }
 
 export function isKeyUsable(row: Pick<ApiKeyRow, 'revokedAt' | 'expiresAt'>, now: Date): boolean {
@@ -51,6 +65,8 @@ function auditSnapshot(row: ApiKeyRow) {
     ipAllowlist: row.ipAllowlist,
     expiresAt: row.expiresAt,
     revokedAt: row.revokedAt,
+    rateLimitRpm: row.rateLimitRpm,
+    signingRequired: row.signingRequired,
   };
 }
 
@@ -61,7 +77,10 @@ export class ApiKeysService {
     private readonly merchants: MerchantsRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly audit: AuditService,
-    @Inject(CLOCK) private readonly clock: Clock
+    private readonly cache: ApiKeyCache,
+    private readonly encryption: FieldEncryption,
+    @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
   async list(merchantId: string): Promise<ApiKeyView[]> {
@@ -92,7 +111,11 @@ export class ApiKeysService {
         merchantId,
         after: auditSnapshot(issued.row),
       });
-      return { ...toApiKeyView(issued.row, now), key: issued.key };
+      return {
+        ...toApiKeyView(issued.row, now),
+        key: issued.key,
+        signingSecret: issued.signingSecret,
+      };
     });
   }
 
@@ -102,7 +125,7 @@ export class ApiKeysService {
     graceHours: number,
     actor: { userId: string }
   ): Promise<CreatedApiKeyView> {
-    return this.unitOfWork.run(async (tx) => {
+    const { created, retiredKeyId } = await this.unitOfWork.run(async (tx) => {
       const now = this.clock.now();
       const old = await this.keys.lockByRef(tx, merchantId, ref);
       if (!old) throw new AppError('NOT_FOUND');
@@ -119,6 +142,8 @@ export class ApiKeysService {
           scopes: old.scopes as ApiKeyScope[],
           ipAllowlist: old.ipAllowlist ?? undefined,
           expiresAt: old.expiresAt ?? undefined,
+          rateLimitRpm: old.rateLimitRpm ?? undefined,
+          signingRequired: old.signingRequired,
         },
         actor.userId,
         old.id
@@ -144,12 +169,21 @@ export class ApiKeysService {
           graceHours,
         },
       });
-      return { ...toApiKeyView(issued.row, now), key: issued.key };
+      return {
+        created: {
+          ...toApiKeyView(issued.row, now),
+          key: issued.key,
+          signingSecret: issued.signingSecret,
+        },
+        retiredKeyId: old.keyId,
+      };
     });
+    await this.evict(retiredKeyId);
+    return created;
   }
 
   async revoke(merchantId: string, ref: string, actor: { userId: string }): Promise<void> {
-    await this.unitOfWork.run(async (tx) => {
+    const keyId = await this.unitOfWork.run(async (tx) => {
       const now = this.clock.now();
       const row = await this.keys.lockByRef(tx, merchantId, ref);
       if (!row) throw new AppError('NOT_FOUND');
@@ -163,7 +197,21 @@ export class ApiKeysService {
         before: auditSnapshot(row),
         after: revoked ? auditSnapshot(revoked) : null,
       });
+      return row.keyId;
     });
+    await this.evict(keyId);
+  }
+
+  /** After commit: the change is durable whether or not Redis answers (see class comment). */
+  private async evict(keyId: string): Promise<void> {
+    try {
+      await this.cache.evict(keyId);
+    } catch (error) {
+      this.logger.error(
+        { err: toLoggableError(error), keyId },
+        'api key cache eviction failed; cached copies expire within 60 seconds'
+      );
+    }
   }
 
   private async assertMayIssue(tx: Transaction, merchantId: string, environment: Environment) {
@@ -183,22 +231,36 @@ export class ApiKeysService {
   ) {
     const now = this.clock.now();
     const generated = generateApiKey(input.environment);
+    const ref = publicId('apiKey', now);
+    const scopes = [...new Set(input.scopes)];
+    const signingRequired =
+      input.signingRequired === true ||
+      (input.environment === 'live' && scopes.includes('payouts:write'));
+    // Without a data key (local development) a key is issued without a signing secret,
+    // unless signing is required, in which case issuing fails rather than weaken the key.
+    const signingSecret =
+      this.encryption.available || signingRequired ? generateSigningSecret() : null;
     const row = await this.keys.insert(tx, {
       id: uuidv7(now),
-      ref: publicId('apiKey', now),
+      ref,
       merchantId,
       environment: input.environment,
       keyId: generated.keyId,
       secretHash: generated.secretHash,
       name: input.name,
-      scopes: [...new Set(input.scopes)],
+      scopes,
       ipAllowlist:
         input.ipAllowlist && input.ipAllowlist.length > 0 ? [...input.ipAllowlist] : null,
+      rateLimitRpm: input.rateLimitRpm ?? null,
+      signingSecretEnc: signingSecret
+        ? this.encryption.encrypt(signingSecret, signingSecretContext(ref))
+        : null,
+      signingRequired,
       expiresAt: input.expiresAt ?? null,
       createdBy,
       rolledFromId,
     });
-    return { row, key: generated.key };
+    return { row, key: generated.key, signingSecret };
   }
 }
 

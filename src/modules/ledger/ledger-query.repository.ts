@@ -34,6 +34,19 @@ export interface StatementRow {
   /** Running balance on the account's normal side, after this line. */
   readonly balance_after: string;
 }
+export interface MovementRow {
+  readonly created_at: string;
+  readonly entry_ref: string;
+  readonly line_no: number;
+  readonly direction: string;
+  readonly amount_minor: string;
+  readonly currency: string;
+  readonly kind: string;
+  readonly source: string;
+  readonly source_id: string;
+  /** `{entry ref}:{line}`: unique and sortable, the keyset tiebreaker. */
+  readonly movement_key: string;
+}
 export interface EntryFilters {
   readonly environment?: LedgerEnvironment;
   readonly merchantId?: string;
@@ -106,6 +119,43 @@ export class LedgerQueryRepository {
       ) s
        where created_ts >= ${input.from.toISOString()}::timestamptz ${afterCondition}
        order by created_ts, entry_key
+       limit ${input.limit}`);
+    return result.rows;
+  }
+  /**
+   * Movements on one account of a merchant, newest first (spec 7.1 `balance-transactions`).
+   * Bounded by `created_at` (partition pruning) and the account. Not a hot path: the
+   * keyset is an expression, which is fine for a merchant's own bounded history.
+   */
+  async merchantMovements(input: {
+    readonly merchantId: string;
+    readonly accountId: string;
+    readonly currency?: string;
+    readonly from: Date;
+    readonly to: Date;
+    readonly after?: { readonly createdAt: string; readonly key: string };
+    readonly limit: number;
+  }): Promise<MovementRow[]> {
+    const conditions = [
+      sql`l.merchant_id = ${input.merchantId}`,
+      sql`l.account_id = ${input.accountId}`,
+      sql`l.created_at >= ${input.from.toISOString()}::timestamptz`,
+      sql`l.created_at <= ${input.to.toISOString()}::timestamptz`,
+    ];
+    if (input.currency) conditions.push(sql`l.currency = ${input.currency}`);
+    if (input.after) {
+      conditions.push(
+        sql`(l.created_at, e.ref || ':' || lpad(l.line_no::text, 3, '0')) < (${input.after.createdAt}::timestamptz, ${input.after.key})`
+      );
+    }
+    const result = await this.db.execute<MovementRow & Record<string, unknown>>(sql`
+      select l.created_at::text as created_at, e.ref as entry_ref, l.line_no, l.direction,
+             l.amount_minor::text as amount_minor, l.currency, e.kind, e.source, e.source_id,
+             e.ref || ':' || lpad(l.line_no::text, 3, '0') as movement_key
+        from core.journal_lines l
+        join core.journal_entries e on e.id = l.entry_id and e.created_at = l.created_at
+       where ${sql.join(conditions, sql` and `)}
+       order by l.created_at desc, movement_key desc
        limit ${input.limit}`);
     return result.rows;
   }

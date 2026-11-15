@@ -2,6 +2,8 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import type { Logger } from 'pino';
 import { CommonModule } from './common/common.module';
+import { AuditModule } from './common/audit/audit.module';
+import { AuthCoreModule } from './common/auth/auth-core.module';
 import { DatabaseModule } from './common/db/database.module';
 import { QueueModule } from './common/queue/queue.module';
 import { WorkerHost } from './common/queue/worker-host';
@@ -11,7 +13,12 @@ import { JobsModule } from './jobs/jobs.module';
 
 @Module({})
 export class WorkerModule {
-  static forRoot(config: AppConfig, logger: Logger): DynamicModule {
+  /** `schedules: false` boots the workers without the repeating jobs (tests only). */
+  static forRoot(
+    config: AppConfig,
+    logger: Logger,
+    options: { readonly schedules: boolean } = { schedules: true }
+  ): DynamicModule {
     return {
       module: WorkerModule,
       imports: [
@@ -19,7 +26,9 @@ export class WorkerModule {
         DatabaseModule,
         RedisModule,
         QueueModule,
-        JobsModule,
+        AuditModule,
+        AuthCoreModule,
+        JobsModule.register(options),
       ],
       providers: [WorkerHost],
     };

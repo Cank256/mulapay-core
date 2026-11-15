@@ -1,6 +1,6 @@
 /** SQL for `core.holds`. Rows change only through the guarded transitions (migration 0004). */
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, isNotNull, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, lte, sql } from 'drizzle-orm';
 import type { Executor } from '../../common/db/database.types';
 import { DB_RW } from '../../common/db/tokens';
 import { holds } from '../../db/schema';
@@ -88,5 +88,36 @@ export class HoldsRepository {
       )
       .orderBy(desc(holds.createdAt), desc(holds.ref))
       .limit(limit);
+  }
+
+  /**
+   * A merchant's holds newest first, optionally one state. The keyset compares `created_at`
+   * at millisecond precision (the precision of a cursor) on both sides, so a page boundary
+   * can neither skip nor repeat a row. Fetches `limit + 1` so the caller can tell whether
+   * another page exists.
+   */
+  async list(input: {
+    merchantId: string;
+    environment: LedgerEnvironment;
+    state?: string;
+    after?: { createdAt: Date; ref: string };
+    limit: number;
+  }): Promise<HoldRow[]> {
+    const ms = sql`date_trunc('milliseconds', ${holds.createdAt})`;
+    return this.db
+      .select()
+      .from(holds)
+      .where(
+        and(
+          eq(holds.merchantId, input.merchantId),
+          eq(holds.environment, input.environment),
+          input.state ? eq(holds.state, input.state) : undefined,
+          input.after
+            ? sql`(${ms}, ${holds.ref}) < (${input.after.createdAt}::timestamptz, ${input.after.ref})`
+            : undefined
+        )
+      )
+      .orderBy(sql`${ms} desc`, desc(holds.ref))
+      .limit(input.limit + 1);
   }
 }

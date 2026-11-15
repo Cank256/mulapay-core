@@ -56,3 +56,16 @@ Contract for the caller:
 - Not yet possible to express: the gateway's `cancelled` or `expired` for a payment in
   `requires_action`, and `cancelled` for one in `processing`. They are refused as
   `invalid_transition` until the state machine is confirmed (docs/ARCHITECTURE.md).
+
+## Test keys and the sandbox (Phase 5)
+
+Test-environment operations never reach the gateway (spec 6.11, decision D4). The gateway client
+must call `assertGatewayEligible(environment)` (`src/modules/developer/sandbox/domain/gateway-boundary.ts`)
+before any request, which throws for `test`. Test payments are resolved by the sandbox simulator,
+which drives `PaymentLifecycleService.apply` exactly as the event consumer will, with source `job`,
+event keys `sandbox:{step}`, failure codes beginning `sandbox_`, and the provider `mtn` unless the
+merchant pinned one. The simulator runs as `sandbox.step` jobs on the `gateway-chase` queue: when
+the Phase 4 chase job arrives it must route by job name in the same processor
+(`SandboxProcessor`), because each processor starts a worker on the whole queue.
+`src/modules/developer/sandbox/sandbox-boundary.spec.ts` fails if the sandbox or the payment code
+imports `integrations/gateway`.

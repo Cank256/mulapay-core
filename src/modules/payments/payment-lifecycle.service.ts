@@ -41,6 +41,9 @@ import { AppError } from '../../common/errors/app-error';
 import { uuidv7 } from '../../common/ids/ids';
 import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { ledgerIdempotencyKey } from '../ledger/domain/posting';
+import { BalancesService } from '../balances/balances.service';
+import { toMerchantBalanceView } from '../balances/balance.views';
+import { MerchantEventsService } from '../events/merchant-events.service';
 import { PostingService } from '../ledger/posting.service';
 import { MerchantsRepository } from '../merchants/merchants.repository';
 import {
@@ -63,6 +66,7 @@ import {
   type PaymentRejectionReason,
   type PaymentStatus,
 } from './domain/payment-state-machine';
+import { toPaymentView } from './payment.views';
 import { PaymentsRepository, type PaymentRow } from './payments.repository';
 
 interface ResultBase {
@@ -122,6 +126,8 @@ export class PaymentLifecycleService {
     private readonly sessions: CheckoutSessionsRepository,
     private readonly merchants: MerchantsRepository,
     private readonly posting: PostingService,
+    private readonly events: MerchantEventsService,
+    private readonly balances: BalancesService,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
@@ -200,7 +206,49 @@ export class PaymentLifecycleService {
         this.clock.now()
       );
     }
+    await this.announce(tx, payment, to, ledgerEntryRef !== null);
     return { ...base, result: 'applied', from, to, ledgerEntryRef };
+  }
+
+  /**
+   * Tells the merchant about the new status in the same transaction (spec 6.11, 8.8):
+   * `payment.{status}` for the statuses merchants subscribe to, and `balance.updated` after a
+   * success has moved the balance. `processing` has no event type.
+   */
+  private async announce(
+    tx: Transaction,
+    payment: PaymentRow,
+    to: PaymentStatus,
+    balanceMoved: boolean
+  ): Promise<void> {
+    if (to === 'processing' || to === 'created') return;
+    const detail = await this.payments.findDetailById(payment.id, tx);
+    if (!detail) throw invariantViolation(`payment ${payment.ref} vanished before its event`);
+    const environment = payment.environment as 'test' | 'live';
+    await this.events.emit(tx, {
+      merchantId: payment.merchantId,
+      environment,
+      type: `payment.${to}`,
+      resourceType: 'payment',
+      resourceId: payment.ref,
+      object: toPaymentView(detail),
+    });
+    if (balanceMoved) {
+      const balance = await this.balances.merchantBalance(
+        payment.merchantId,
+        environment,
+        payment.currency,
+        tx
+      );
+      await this.events.emit(tx, {
+        merchantId: payment.merchantId,
+        environment,
+        type: 'balance.updated',
+        resourceType: 'balance',
+        resourceId: payment.currency,
+        object: toMerchantBalanceView(environment, balance),
+      });
+    }
   }
 
   /**

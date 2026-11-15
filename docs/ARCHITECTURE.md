@@ -1,19 +1,18 @@
 # Architecture
 
-Status: Phase 2 ledger core, holds and available balance on top of Phases 0 and 1, plus the
-payment and transaction domain without the Provider Gateway. This document
-grows with each phase. The specification is [CORE_API_BUILD_PROMPT.md](CORE_API_BUILD_PROMPT.md).
+Status: Phase 5 developer platform on top of Phases 0 to 2 and the payment and transaction
+domain (without the Provider Gateway). This document grows with each phase. The specification is [CORE_API_BUILD_PROMPT.md](CORE_API_BUILD_PROMPT.md).
 Authentication, authorization and key handling are detailed in [SECURITY.md](SECURITY.md).
 
 ## Processes
 
 One codebase and one image; `APP_ROLE` picks the process (spec 4.1).
 
-| Role       | Entry point            | Root module      | Does                                                             |
-| ---------- | ---------------------- | ---------------- | ---------------------------------------------------------------- |
-| `api`      | `src/main.api.ts`      | `AppModule`      | HTTP only. No workers, no pollers. Scales horizontally.          |
-| `worker`   | `src/main.worker.ts`   | `WorkerModule`   | BullMQ workers for processors registered in `src/jobs`. No HTTP. |
-| `consumer` | `src/main.consumer.ts` | `ConsumerModule` | Gateway event consumer and schedules (Phase 3). Singleton.       |
+| Role       | Entry point            | Root module      | Does                                                                |
+| ---------- | ---------------------- | ---------------- | ------------------------------------------------------------------- |
+| `api`      | `src/main.api.ts`      | `AppModule`      | HTTP only. No workers, no pollers. Scales horizontally.             |
+| `worker`   | `src/main.worker.ts`   | `WorkerModule`   | BullMQ workers and schedules for processors in `src/jobs`. No HTTP. |
+| `consumer` | `src/main.consumer.ts` | `ConsumerModule` | Gateway event consumer and schedules (Phase 3). Singleton.          |
 
 `src/main.ts` dispatches on `APP_ROLE` for `npm run start`.
 
@@ -544,3 +543,134 @@ easy to change.
   extensions). Existing local volumes need the bootstrap re-run or `docker compose down -v`.
 - **Login rate limits** (spec 8.5) arrive with Phase 5; the progressive lockout of 8.3 is
   in place.
+
+## Developer platform (Phase 5)
+
+Spec 6.11, 8.3, 8.5, 8.8 and 11, built on the Phase 1 key issuance. Guide for merchants:
+[API_PUBLIC.md](API_PUBLIC.md). Security properties: [SECURITY.md](SECURITY.md). Runbooks:
+[OPERATIONS.md](OPERATIONS.md).
+
+**Request path for an API key request.** `AuthGuard`: failed-authentication limit (per client,
+before the credential is read), then key lookup (Redis, then Postgres; constant-time hash compare;
+environment, expiry, IP allowlist), then the per-key rate limits (one Lua script), then the CASL
+scope check. After it, `RequestSignatureGuard` (headers, tolerance, HMAC, replay), the
+idempotency interceptor and the handler. The `onResponse` hook buffers one request log row in
+Redis.
+
+**Outbox and events.** `MerchantEventsService.emit(tx, ...)` writes `merchant_events` and an
+`outbox` row in the caller's transaction. Emitted today by the payment creator and lifecycle
+(`payment.created`, `.requires_action`, `.succeeded`, `.failed`, `.expired`, `.cancelled`, and
+`balance.updated` after a success), the holds service (`hold.created`, `hold.released`, also for
+an expiry) and merchant suspend and activate (`merchant.suspended`, `merchant.activated`, live
+environment). `webhook_endpoint.auto_disabled` is new in this phase. In the worker the
+`OutboxDispatcher` claims rows with `FOR UPDATE SKIP LOCKED` (60 s claim, only for event types
+it has a handler for), runs the handler in a transaction, publishes its queue jobs, then marks
+the row published. Failures back off from 2 s to 5 min and stop after 10 attempts
+(`core_outbox_exhausted_total`). Handlers are idempotent and their jobs carry deterministic ids,
+so the at-least-once publish has an effect once.
+
+| Outbox event type          | Handler                      | Does                                                       |
+| -------------------------- | ---------------------------- | ---------------------------------------------------------- |
+| `merchant_event.created`   | `MerchantEventFanoutHandler` | one delivery per subscribed active endpoint, first attempt |
+| `webhook.delivery_created` | `DeliveryCreatedHandler`     | first attempt of a replay                                  |
+| `sandbox.payment_created`  | `SandboxPaymentHandler`      | first simulation step of a test payment                    |
+
+**Jobs** (`src/jobs`, worker only). `outbox-dispatch` runs three ticks (job schedulers, so any
+number of workers registers each once): `outbox.tick` every 1 s (dispatch, then re-queue webhook
+attempts overdue by a minute), `request-logs.flush` every 2 s, `api-keys.flush-last-used` every
+10 s. `webhook-delivery` runs one job per attempt. `gateway-chase` carries the sandbox steps; the
+Phase 4 chase job will route by job name in the same processor.
+
+**Webhook delivery** is detailed in [SECURITY.md](SECURITY.md). In short: a lease and a
+conditional update make an attempt effect-once; the retry schedule (0 s, 30 s, 2 m, 10 m, 1 h,
+6 h, 24 h, jittered by 20%) lives in the delivery service and Postgres; BullMQ's own 3 attempts
+cover only infrastructure faults; and the 50th consecutive failure disables the endpoint in the
+same transaction that announces it.
+
+**Sandbox.** `PaymentCreator` enqueues `sandbox.payment_created` for a payment made in the test
+environment. The worker resolves it by calling `PaymentLifecycleService.apply` (the same state
+machine, ledger posting and events as live) with deterministic event keys, so test keys exercise
+every path except the provider. See `modules/developer/sandbox`.
+
+## Phase 5 decisions to confirm
+
+**Scope against the build order**
+
+- **Phases 3 and 4 are not complete.** Spec 14 and 17.2 build the gateway integration and money
+  movement before this phase. Phase 3 is in the working tree, uncommitted
+  (`src/integrations/gateway`), and was not touched; Phase 4 is partly done (payments, links,
+  sessions, idempotency). This phase was built on request without them. Consequently these `/v1`
+  groups of spec 7.1 are **not built**: `payment-methods` (needs routing), `refunds`, `payouts`,
+  `payout-batches` (money movement, holds with approvals), `customers` (table, PII encryption and
+  HMAC search), `settlements` (Phase 6) and `disputes` (Phase 7). Building them here would have
+  meant building those phases' financial logic. Their scopes exist, and the signing, rate limit
+  and payout-window rules are enforced by guards that read the route's scope; they are proven on
+  a probe route (`test/support/developer.ts`). The sandbox therefore covers collections only.
+- **The outbox** (a Phase 4 item) is built here in the form this phase needs: the write side,
+  the dispatcher and three handlers. Notifications, reports and the other consumers of the
+  outbox are not.
+- **Events not yet emitted** because their modules do not exist: `refund.*`, `payout.*`,
+  `settlement.*`, `dispute.*`, `kyc.*`. They can be subscribed to. `balance.updated` is emitted
+  after a payment success only, not after hold changes or other postings.
+- **Dashboard** routes added: `webhook-endpoints` (full CRUD), `webhook-deliveries` (list, get,
+  retry, bulk replay) and `request-logs` (list, get). New merchant permissions `webhooks:read`,
+  `webhooks:manage` and `request_logs:read` (migration 0005; table in SECURITY.md).
+
+**Departures from the spec text and open choices**
+
+- **Signing key and path** (see SECURITY.md): a separate encrypted signing secret per key, and
+  the request target including the query string. The spec leaves both open.
+- **Signing scope.** A live key holding `payouts:write` must sign every request, not only the
+  payout routes.
+- **Per-endpoint ordering (spec 8.9)** needs BullMQ Pro groups, which are not a dependency. Not
+  built: deliveries may arrive out of order, which the guide tells merchants (events carry
+  `createdAt`, and `/v1/events` is ordered). Revisit with the Phase 9 load tests.
+- **Sandbox mapping.** The spec says "last two digits" without a table. Chosen: `01` fail, `02`
+  timeout, `03` expire, `04` pending_then_succeed, otherwise succeed. `timeout` resolves to
+  `expired` after `SANDBOX_TIMEOUT_RESOLVE_SECONDS` (120) and `pending_then_succeed` after
+  `SANDBOX_PENDING_SECONDS` (5). An unknown `metadata.simulate` is a 422 in test mode.
+- **Sandbox queue.** The simulation uses the `gateway-chase` queue, because spec 8.9 lists nine
+  queues and none is for a simulator.
+- **Endpoint verification** ("where specified"): the spec specifies none, so there is no
+  challenge call at registration.
+- **Auto-disable notification** is a merchant event plus an audit row. Email and in-app delivery
+  arrive with Phase 8 notifications.
+- **Rate limits.** `rate_limit_rpm` overrides the write limit, and the read limit never falls
+  below the write limit. Refused requests are not counted; requests refused for a missing scope
+  are. A client over `RATE_LIMIT_AUTH_FAILURE_PER_MIN` failed authentications gets 429 before its
+  credential is examined (also for a valid key from that address). With Redis down, writes get 503.
+- **Idempotency** is required where spec 7.1 requires it (payments, links and sessions already;
+  refunds and payouts later). Webhook endpoint registration is not idempotent.
+- **Replays** create a new delivery each time and are not deduplicated.
+- **Out-of-band changes.** Editing `api_keys` or `merchants.status` directly in SQL is not
+  evicted from the key cache: cached copies live up to 60 s (OPERATIONS.md). One test that
+  suspended a merchant with SQL now evicts explicitly.
+- **New configuration**: `RATE_LIMIT_BURST_CAPACITY`, `RATE_LIMIT_BURST_REFILL_PER_SECOND`,
+  `RATE_LIMIT_AUTH_FAILURE_PER_MIN`, `WEBHOOK_ALLOW_PRIVATE_NETWORKS` (refused in production),
+  `SANDBOX_PENDING_SECONDS`, `SANDBOX_TIMEOUT_RESOLVE_SECONDS` and `QUEUE_PREFIX`.
+- **A new dev dependency**, `@apidevtools/swagger-parser`, validates the OpenAPI documents in the
+  contract test.
+- **Behaviour changes in shared code.** `WorkerHost.onApplicationBootstrap` now waits until its
+  workers are ready (closing a worker before its connections are ready produced unhandled
+  rejections). `OutboxRepository.claim` takes the event types a dispatcher can handle.
+  `WorkerModule.forRoot` and `JobsModule.register` take `{ schedules }` so a test can boot a
+  worker without repeating jobs. `ledger.merchantMovements` fingerprints a cursor by the filters
+  asked, not the resolved window (a default window ends "now", which differs on every request;
+  the admin statement still does the latter).
+- **Existing tests changed**: the viewer permission list gained `webhooks:read`
+  (`admin.int-spec`); the query budget test counts the read only, because the API key now comes
+  from Redis (`transactions-queries.int-spec`); the public path list and a worker-boot test that
+  now runs without schedules (`docs-and-processes.int-spec`); `queue.int-spec` awaits the new
+  async bootstrap; one payment test evicts the key cache after a SQL suspension; and the test
+  database allows 400 connections, because the suites run in parallel.
+
+**Data**
+
+- Tables `merchant_events`, `outbox`, `webhook_endpoints`, `webhook_deliveries` (partitioned) and
+  `api_request_logs` (partitioned), and columns `api_keys.signing_secret_enc` and
+  `signing_required` (migration 0005, [DATABASE.md](DATABASE.md)). Webhook endpoints are
+  soft-deleted.
+- `webhook_deliveries` and `api_request_logs` carry a `ref` whose ULID time equals `created_at`,
+  so a lookup by ref reads one partition. A delivery created by fan-out takes its event's
+  `created_at`, so a repeated fan-out produces the same `(dedupe_key, created_at)`.
+- Query plans for the new hot queries are in [query-plans/phase5.txt](query-plans/phase5.txt).

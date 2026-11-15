@@ -5,7 +5,7 @@
  * secret are stored; the full key is returned once, at creation.
  */
 import { sql } from 'drizzle-orm';
-import { check, cidr, index, integer, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, cidr, index, integer, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { createdAt, timestamptz, updatedAt } from './columns';
 import { core } from './core';
 import { users } from './identity';
@@ -26,6 +26,13 @@ export const apiKeys = core.table(
     scopes: text('scopes').array().notNull(),
     ipAllowlist: cidr('ip_allowlist').array(),
     rateLimitRpm: integer('rate_limit_rpm'),
+    /**
+     * The secret that signs requests (spec 6.11), AES-256-GCM encrypted: unlike the API key
+     * secret it must be recoverable, because the server recomputes the HMAC. Shown once.
+     */
+    signingSecretEnc: text('signing_secret_enc'),
+    /** Every request with this key must be signed (always true for live `payouts:write`). */
+    signingRequired: boolean('signing_required').notNull().default(false),
     lastUsedAt: timestamptz('last_used_at'),
     expiresAt: timestamptz('expires_at'),
     revokedAt: timestamptz('revoked_at'),
@@ -44,6 +51,10 @@ export const apiKeys = core.table(
     check('api_keys_key_id_format_check', sql`${t.keyId} ~ '^[a-z0-9]{16}$'`),
     check('api_keys_secret_hash_format_check', sql`${t.secretHash} ~ '^[0-9a-f]{64}$'`),
     check('api_keys_scopes_nonempty_check', sql`cardinality(${t.scopes}) > 0`),
+    check(
+      'api_keys_signing_check',
+      sql`not ${t.signingRequired} or ${t.signingSecretEnc} is not null`
+    ),
     check(
       'api_keys_rate_limit_check',
       sql`${t.rateLimitRpm} is null or ${t.rateLimitRpm} between 1 and 100000`

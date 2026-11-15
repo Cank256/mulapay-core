@@ -29,8 +29,14 @@ export const DEFAULT_JOB_OPTIONS: DefaultJobOptions = {
 
 export const QUEUES = {
   outboxDispatch: { name: 'outbox-dispatch', concurrency: 4 },
-  // Per-endpoint ordering is a Phase 5 concern; see docs/ARCHITECTURE.md (BullMQ groups).
-  webhookDelivery: { name: 'webhook-delivery', concurrency: 32 },
+  // Retries of an unsuccessful delivery are scheduled by the delivery service (spec 6.11:
+  // 0 s to 24 h, 7 attempts); the BullMQ attempts here cover infrastructure failures only.
+  // Per-endpoint ordering needs BullMQ Pro groups: see docs/ARCHITECTURE.md (Phase 5).
+  webhookDelivery: {
+    name: 'webhook-delivery',
+    concurrency: 32,
+    jobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+  },
   notificationSend: { name: 'notification-send', concurrency: 16 },
   reportGenerate: { name: 'report-generate', concurrency: 2 },
   settlementRun: { name: 'settlement-run', concurrency: 1 },

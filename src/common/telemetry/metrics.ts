@@ -86,3 +86,37 @@ export const transactionEventRejections = new Counter({
   labelNames: ['type', 'reason', 'source'] as const,
   registers: [metricsRegistry],
 });
+/** Spec section 10. `scope` is one of `key_read`, `key_write`, `merchant_payouts`, `key_burst`, `auth_failures`. */
+export const rateLimitRejections = new Counter({
+  name: 'core_rate_limit_rejections_total',
+  help: 'Requests refused with 429',
+  labelNames: ['scope'] as const,
+  registers: [metricsRegistry],
+});
+/** Spec section 10. `outcome` is `success`, `http_error`, `timeout`, `network_error` or `blocked`. */
+export const webhookDeliveryDuration = new Histogram({
+  name: 'core_webhook_delivery_duration_seconds',
+  help: 'Webhook delivery attempt duration',
+  labelNames: ['outcome'] as const,
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+  registers: [metricsRegistry],
+});
+export const webhookEndpointsAutoDisabled = new Counter({
+  name: 'core_webhook_endpoints_auto_disabled_total',
+  help: 'Webhook endpoints disabled after 50 consecutive failures',
+  registers: [metricsRegistry],
+});
+/** Request log entries discarded because the Redis buffer was full. Not in the spec's list. */
+export const apiRequestLogsDropped = new Counter({
+  name: 'core_api_request_logs_dropped_total',
+  help: 'API request log entries dropped because the buffer was full or unavailable',
+  labelNames: ['reason'] as const,
+  registers: [metricsRegistry],
+});
+/** Outbox rows that used all their attempts. Each one needs an operator (spec 8.8). */
+export const outboxExhausted = new Counter({
+  name: 'core_outbox_exhausted_total',
+  help: 'Outbox rows that exhausted their attempts',
+  labelNames: ['event_type'] as const,
+  registers: [metricsRegistry],
+});

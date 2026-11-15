@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { IdempotencyModule } from '../../common/idempotency/idempotency.module';
+import { OutboxModule } from '../../common/outbox/outbox.module';
+import { BalancesModule } from '../balances/balances.module';
+import { EventsModule } from '../events/events.module';
 import { LedgerModule } from '../ledger/ledger.module';
 import { MerchantsModule } from '../merchants/merchants.module';
 import { TransactionsModule } from '../transactions/transactions.module';
@@ -19,7 +22,15 @@ import { PaymentsService } from './payments.service';
  * consumer and the chase job will call.
  */
 @Module({
-  imports: [IdempotencyModule, LedgerModule, MerchantsModule, TransactionsModule],
+  imports: [
+    BalancesModule,
+    EventsModule,
+    IdempotencyModule,
+    LedgerModule,
+    MerchantsModule,
+    OutboxModule,
+    TransactionsModule,
+  ],
   providers: [
     PaymentsRepository,
     PaymentLinksRepository,

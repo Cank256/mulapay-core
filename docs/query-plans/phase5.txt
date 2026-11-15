@@ -1,0 +1,286 @@
+Pager usage is off.
+SET
+BEGIN
+SET
+ create_monthly_partitions 
+---------------------------
+ 
+(1 row)
+
+ create_monthly_partitions 
+---------------------------
+ 
+(1 row)
+
+INSERT 0 2000
+SELECT 2000
+INSERT 0 40000
+INSERT 0 20000
+SELECT 100000
+INSERT 0 100000
+SELECT 2000
+INSERT 0 100000
+UPDATE 94978
+INSERT 0 200000
+INSERT 0 60000
+ANALYZE
+== API key authentication by key_id, with its merchant
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.69..16.74 rows=1 width=393) (actual time=0.064..0.064 rows=1 loops=1)
+   Buffers: shared hit=4 read=3
+   ->  Nested Loop  (cost=0.69..16.74 rows=1 width=393) (actual time=0.063..0.064 rows=1 loops=1)
+         Buffers: shared hit=4 read=3
+         ->  Index Scan using api_keys_key_id_key on api_keys k  (cost=0.41..8.43 rows=1 width=356) (actual time=0.053..0.053 rows=1 loops=1)
+               Index Cond: (key_id = '7ac25133d865bb33'::text)
+               Buffers: shared hit=1 read=3
+         ->  Index Scan using merchants_pkey on merchants m  (cost=0.28..8.29 rows=1 width=53) (actual time=0.008..0.008 rows=1 loops=1)
+               Index Cond: (id = k.merchant_id)
+               Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=130 read=8
+ Planning Time: 1.529 ms
+ Execution Time: 0.091 ms
+(14 rows)
+
+== Outbox claim: due, unpublished rows with a handler, SKIP LOCKED
+                                                                                                              QUERY PLAN                                                                                                              
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1026.82..1026.90 rows=6 width=30) (actual time=2.386..2.583 rows=50 loops=1)
+   Buffers: shared hit=651
+   ->  LockRows  (cost=1026.82..1026.90 rows=6 width=30) (actual time=2.385..2.579 rows=50 loops=1)
+         Buffers: shared hit=651
+         ->  Sort  (cost=1026.82..1026.84 rows=6 width=30) (actual time=2.379..2.389 rows=50 loops=1)
+               Sort Key: available_at
+               Sort Method: quicksort  Memory: 57kB
+               Buffers: shared hit=601
+               ->  Bitmap Heap Scan on outbox  (cost=12.76..1026.74 rows=6 width=30) (actual time=0.092..2.182 rows=600 loops=1)
+                     Recheck Cond: ((available_at <= now()) AND (published_at IS NULL))
+                     Filter: ((attempts < 10) AND (event_type = ANY ('{merchant_event.created,webhook.delivery_created,sandbox.payment_created}'::text[])) AND ((locked_at IS NULL) OR (locked_at < (now() - '00:01:00'::interval))))
+                     Heap Blocks: exact=600
+                     Buffers: shared hit=601
+                     ->  Bitmap Index Scan on outbox_available_idx  (cost=0.00..12.76 rows=614 width=0) (actual time=0.048..0.048 rows=600 loops=1)
+                           Index Cond: (available_at <= now())
+                           Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=47
+ Planning Time: 0.195 ms
+ Execution Time: 2.618 ms
+(20 rows)
+
+== Fan-out: active endpoints of a merchant and environment
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using webhook_endpoints_merchant_idx on webhook_endpoints  (cost=0.29..15.41 rows=5 width=268) (actual time=0.022..0.024 rows=10 loops=1)
+   Index Cond: ((merchant_id = '01a1e05a-f3a9-72d3-84fa-04e15537791a'::uuid) AND (environment = 'test'::text))
+   Filter: (status = 'active'::text)
+   Buffers: shared hit=1 read=2
+ Planning:
+   Buffers: shared hit=45
+ Planning Time: 0.141 ms
+ Execution Time: 0.031 ms
+(8 rows)
+
+== Event feed: first page for a merchant, 90-day window
+                                                                                           QUERY PLAN                                                                                            
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..51.14 rows=25 width=134) (actual time=0.073..0.094 rows=26 loops=1)
+   Buffers: shared hit=8 read=5
+   ->  Index Scan using merchant_events_merchant_created_idx on merchant_events  (cost=0.42..51.14 rows=25 width=134) (actual time=0.073..0.092 rows=26 loops=1)
+         Index Cond: ((merchant_id = '01a1e05a-f3a9-72d3-84fa-04e15537791a'::uuid) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+         Buffers: shared hit=8 read=5
+ Planning:
+   Buffers: shared hit=67 read=3
+ Planning Time: 0.285 ms
+ Execution Time: 0.104 ms
+(9 rows)
+
+== Event by ref
+                                                                   QUERY PLAN                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..8.44 rows=1 width=134) (actual time=0.038..0.038 rows=1 loops=1)
+   Buffers: shared hit=1 read=3
+   ->  Index Scan using merchant_events_ref_key on merchant_events  (cost=0.42..8.44 rows=1 width=134) (actual time=0.038..0.038 rows=1 loops=1)
+         Index Cond: (ref = 'evt_01M7G5P0NS5X1NR15MP3HCTNTK'::text)
+         Filter: ((merchant_id = '01a1e05a-f3a9-72d3-84fa-04e15537791a'::uuid) AND (environment = 'test'::text))
+         Buffers: shared hit=1 read=3
+ Planning Time: 0.077 ms
+ Execution Time: 0.046 ms
+(8 rows)
+
+== Pending deliveries overdue by a minute (recovery sweep)
+                                                                                                           QUERY PLAN                                                                                                           
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2312.77..2313.02 rows=99 width=353) (actual time=87.726..87.749 rows=200 loops=1)
+   Buffers: shared hit=55943 read=1725 written=1526
+   ->  Sort  (cost=2312.77..2313.02 rows=99 width=353) (actual time=87.724..87.736 rows=200 loops=1)
+         Sort Key: webhook_deliveries.next_attempt_at
+         Sort Method: top-N heapsort  Memory: 126kB
+         Buffers: shared hit=55943 read=1725 written=1526
+         ->  Append  (cost=0.28..2309.49 rows=99 width=353) (actual time=43.254..87.150 rows=1838 loops=1)
+               Buffers: shared hit=55943 read=1725 written=1526
+               Subplans Removed: 2
+               ->  Index Scan using webhook_deliveries_202610_status_next_attempt_at_idx on webhook_deliveries_202610 webhook_deliveries_1  (cost=0.28..945.53 rows=50 width=352) (actual time=43.244..60.142 rows=945 loops=1)
+                     Index Cond: (next_attempt_at <= (now() - '00:01:00'::interval))
+                     Filter: (created_at >= (now() - '30 days'::interval))
+                     Rows Removed by Filter: 1027
+                     Buffers: shared hit=37979 read=1101 written=903
+               ->  Index Scan using webhook_deliveries_202611_status_next_attempt_at_idx on webhook_deliveries_202611 webhook_deliveries_2  (cost=0.28..430.35 rows=43 width=352) (actual time=1.692..26.781 rows=893 loops=1)
+                     Index Cond: (next_attempt_at <= (now() - '00:01:00'::interval))
+                     Filter: (created_at >= (now() - '30 days'::interval))
+                     Buffers: shared hit=17964 read=624 written=623
+               ->  Seq Scan on webhook_deliveries_202612 webhook_deliveries_3  (cost=0.00..0.00 rows=1 width=368) (actual time=0.012..0.012 rows=0 loops=1)
+                     Filter: ((status = 'pending'::text) AND (created_at >= (now() - '30 days'::interval)) AND (next_attempt_at <= (now() - '00:01:00'::interval)))
+               ->  Seq Scan on webhook_deliveries_202701 webhook_deliveries_4  (cost=0.00..0.00 rows=1 width=368) (actual time=0.002..0.002 rows=0 loops=1)
+                     Filter: ((status = 'pending'::text) AND (created_at >= (now() - '30 days'::interval)) AND (next_attempt_at <= (now() - '00:01:00'::interval)))
+               ->  Seq Scan on webhook_deliveries_202702 webhook_deliveries_5  (cost=0.00..0.00 rows=1 width=368) (actual time=0.002..0.002 rows=0 loops=1)
+                     Filter: ((status = 'pending'::text) AND (created_at >= (now() - '30 days'::interval)) AND (next_attempt_at <= (now() - '00:01:00'::interval)))
+               ->  Seq Scan on webhook_deliveries_default webhook_deliveries_6  (cost=0.00..0.00 rows=1 width=368) (actual time=0.014..0.014 rows=0 loops=1)
+                     Filter: ((status = 'pending'::text) AND (created_at >= (now() - '30 days'::interval)) AND (next_attempt_at <= (now() - '00:01:00'::interval)))
+ Planning:
+   Buffers: shared hit=357 read=49
+ Planning Time: 3.261 ms
+ Execution Time: 88.054 ms
+(30 rows)
+
+== Delivery by ref: the ref carries its created_at, so one partition is read
+                                                                                            QUERY PLAN                                                                                             
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.41..8.43 rows=1 width=352) (actual time=0.025..0.025 rows=1 loops=1)
+   Buffers: shared hit=5
+   ->  Index Scan using webhook_deliveries_202610_ref_created_at_idx on webhook_deliveries_202610 webhook_deliveries  (cost=0.41..8.43 rows=1 width=352) (actual time=0.024..0.024 rows=1 loops=1)
+         Index Cond: ((ref = 'whd_01M7G5P3KZPASA7ST26YKV409F'::text) AND (created_at = '2026-10-28 12:46:40.304+00'::timestamp with time zone))
+         Buffers: shared hit=5
+ Planning Time: 0.139 ms
+ Execution Time: 0.039 ms
+(7 rows)
+
+== Delivery lease (the UPDATE of one pending delivery)
+                                                                                             QUERY PLAN                                                                                             
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Update on webhook_deliveries  (cost=0.41..8.45 rows=0 width=0) (actual time=0.009..0.009 rows=0 loops=1)
+   Update on webhook_deliveries_202610 webhook_deliveries_1
+   Buffers: shared hit=5
+   ->  Index Scan using webhook_deliveries_202610_ref_created_at_idx on webhook_deliveries_202610 webhook_deliveries_1  (cost=0.41..8.45 rows=1 width=18) (actual time=0.008..0.008 rows=0 loops=1)
+         Index Cond: ((ref = 'whd_01M7G5P3KZPASA7ST26YKV409F'::text) AND (created_at = '2026-10-28 12:46:40.304+00'::timestamp with time zone))
+         Filter: ((status = 'pending'::text) AND (next_attempt_at <= now()) AND ((locked_until IS NULL) OR (locked_until < now())))
+         Rows Removed by Filter: 1
+         Buffers: shared hit=5
+ Planning Time: 0.085 ms
+ Execution Time: 0.117 ms
+(10 rows)
+
+== Fan-out dedupe lookup
+                                                                                                QUERY PLAN                                                                                                 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.41..8.43 rows=1 width=352) (actual time=0.075..0.076 rows=1 loops=1)
+   Buffers: shared hit=2 read=3
+   ->  Index Scan using webhook_deliveries_202610_dedupe_key_created_at_idx on webhook_deliveries_202610 webhook_deliveries  (cost=0.41..8.43 rows=1 width=352) (actual time=0.074..0.074 rows=1 loops=1)
+         Index Cond: ((dedupe_key = '01a1e05b-0022-72a9-b7b4-76152fd9feae:01a1e05b-0321-78d3-92af-5577232a9a88:original'::text) AND (created_at = '2026-10-24 13:18:38.304+00'::timestamp with time zone))
+         Buffers: shared hit=2 read=3
+ Planning Time: 0.215 ms
+ Execution Time: 0.097 ms
+(7 rows)
+
+== Delivery log, first page, 90-day window
+                                                                                                              QUERY PLAN                                                                                                              
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=80.39..80.45 rows=26 width=354) (actual time=0.148..0.149 rows=0 loops=1)
+   Buffers: shared read=11
+   ->  Sort  (cost=80.39..80.46 rows=29 width=354) (actual time=0.148..0.148 rows=0 loops=1)
+         Sort Key: webhook_deliveries.created_at DESC NULLS LAST, webhook_deliveries.ref DESC NULLS LAST
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared read=11
+         ->  Append  (cost=0.29..79.68 rows=29 width=354) (actual time=0.139..0.140 rows=0 loops=1)
+               Buffers: shared read=11
+               Subplans Removed: 4
+               ->  Index Scan using webhook_deliveries_202608_merchant_id_environment_created_a_idx on webhook_deliveries_202608 webhook_deliveries_1  (cost=0.29..8.31 rows=1 width=352) (actual time=0.038..0.038 rows=0 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3b9-78e2-a28f-55feef2ea765'::uuid) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared read=2
+               ->  Index Scan using webhook_deliveries_202609_merchant_id_environment_created_a_idx on webhook_deliveries_202609 webhook_deliveries_2  (cost=0.42..25.93 rows=9 width=352) (actual time=0.040..0.040 rows=0 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3b9-78e2-a28f-55feef2ea765'::uuid) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared read=3
+               ->  Index Scan using webhook_deliveries_202610_merchant_id_environment_created_a_idx on webhook_deliveries_202610 webhook_deliveries_3  (cost=0.42..28.16 rows=10 width=352) (actual time=0.034..0.034 rows=0 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3b9-78e2-a28f-55feef2ea765'::uuid) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared read=3
+               ->  Index Scan using webhook_deliveries_202611_merchant_id_environment_created_a_idx on webhook_deliveries_202611 webhook_deliveries_4  (cost=0.42..17.13 rows=5 width=352) (actual time=0.027..0.027 rows=0 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3b9-78e2-a28f-55feef2ea765'::uuid) AND (environment = 'test'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared read=3
+ Planning:
+   Buffers: shared hit=24
+ Planning Time: 0.871 ms
+ Execution Time: 0.206 ms
+(25 rows)
+
+== Request logs, first page, 90-day window
+                                                                                                     QUERY PLAN                                                                                                     
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2.52..114.99 rows=26 width=303) (actual time=0.084..0.123 rows=26 loops=1)
+   Buffers: shared hit=76
+   ->  Nested Loop  (cost=2.52..244.77 rows=56 width=303) (actual time=0.083..0.121 rows=26 loops=1)
+         Buffers: shared hit=76
+         ->  Merge Append  (cost=2.22..152.91 rows=56 width=273) (actual time=0.063..0.072 rows=26 loops=1)
+               Sort Key: l.created_at DESC NULLS LAST, l.ref DESC NULLS LAST
+               Buffers: shared hit=16
+               Subplans Removed: 4
+               ->  Index Scan using api_request_logs_202608_merchant_id_environment_created_at__idx on api_request_logs_202608 l_1  (cost=0.29..15.43 rows=5 width=265) (actual time=0.012..0.012 rows=0 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3c5-7a47-963e-e8472d75577e'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=2
+               ->  Index Scan using api_request_logs_202609_merchant_id_environment_created_at__idx on api_request_logs_202609 l_2  (cost=0.42..38.69 rows=18 width=265) (actual time=0.018..0.018 rows=1 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3c5-7a47-963e-e8472d75577e'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=4
+               ->  Index Scan using api_request_logs_202610_merchant_id_environment_created_at__idx on api_request_logs_202610 l_3  (cost=0.42..40.46 rows=19 width=265) (actual time=0.014..0.016 rows=6 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3c5-7a47-963e-e8472d75577e'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=5
+               ->  Index Scan using api_request_logs_202611_merchant_id_environment_created_at__idx on api_request_logs_202611 l_4  (cost=0.42..24.45 rows=10 width=265) (actual time=0.017..0.021 rows=20 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3c5-7a47-963e-e8472d75577e'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Buffers: shared hit=5
+         ->  Memoize  (cost=0.30..7.67 rows=1 width=46) (actual time=0.002..0.002 rows=1 loops=26)
+               Cache Key: l.api_key_id
+               Cache Mode: logical
+               Hits: 6  Misses: 20  Evictions: 0  Overflows: 0  Memory Usage: 4kB
+               Buffers: shared hit=60
+               ->  Index Scan using api_keys_pkey on api_keys k  (cost=0.29..7.66 rows=1 width=46) (actual time=0.002..0.002 rows=1 loops=20)
+                     Index Cond: (id = l.api_key_id)
+                     Buffers: shared hit=60
+ Planning:
+   Buffers: shared hit=313 read=1
+ Planning Time: 1.111 ms
+ Execution Time: 0.171 ms
+(32 rows)
+
+== Request logs by request id
+                                                                                                          QUERY PLAN                                                                                                          
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=33.83..33.85 rows=8 width=322) (actual time=0.046..0.047 rows=1 loops=1)
+   Buffers: shared hit=12
+   ->  Sort  (cost=33.83..33.85 rows=8 width=322) (actual time=0.046..0.047 rows=1 loops=1)
+         Sort Key: api_request_logs.created_at DESC NULLS LAST, api_request_logs.ref DESC NULLS LAST
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=12
+         ->  Append  (cost=0.29..33.71 rows=8 width=322) (actual time=0.013..0.042 rows=1 loops=1)
+               Buffers: shared hit=12
+               Subplans Removed: 4
+               ->  Index Scan using api_request_logs_202608_merchant_id_request_id_created_at_idx on api_request_logs_202608 api_request_logs_1  (cost=0.29..8.32 rows=1 width=265) (actual time=0.004..0.004 rows=0 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3c5-7a47-963e-e8472d75577e'::uuid) AND (request_id = 'req-31165'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Filter: (environment = 'live'::text)
+                     Buffers: shared hit=2
+               ->  Index Scan using api_request_logs_202609_merchant_id_request_id_created_at_idx on api_request_logs_202609 api_request_logs_2  (cost=0.42..8.45 rows=1 width=265) (actual time=0.008..0.009 rows=1 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3c5-7a47-963e-e8472d75577e'::uuid) AND (request_id = 'req-31165'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Filter: (environment = 'live'::text)
+                     Buffers: shared hit=4
+               ->  Index Scan using api_request_logs_202610_merchant_id_request_id_created_at_idx on api_request_logs_202610 api_request_logs_3  (cost=0.42..8.45 rows=1 width=265) (actual time=0.014..0.014 rows=0 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3c5-7a47-963e-e8472d75577e'::uuid) AND (request_id = 'req-31165'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Filter: (environment = 'live'::text)
+                     Buffers: shared hit=3
+               ->  Index Scan using api_request_logs_202611_merchant_id_request_id_created_at_idx on api_request_logs_202611 api_request_logs_4  (cost=0.42..8.45 rows=1 width=265) (actual time=0.013..0.013 rows=0 loops=1)
+                     Index Cond: ((merchant_id = '01a1e05a-f3c5-7a47-963e-e8472d75577e'::uuid) AND (request_id = 'req-31165'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+                     Filter: (environment = 'live'::text)
+                     Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=19
+ Planning Time: 0.340 ms
+ Execution Time: 0.093 ms
+(29 rows)
+
+ROLLBACK

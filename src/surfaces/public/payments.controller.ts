@@ -11,6 +11,7 @@ import { scopeOfApiKey } from '../../common/auth/merchant-scope';
 import type { ApiKeyPrincipal } from '../../common/auth/principal';
 import { Audited } from '../../common/audit/audited.decorator';
 import { RequirePermission } from '../../common/authz/policy.decorators';
+import { ApiEmits, ApiErrors, ApiExample } from '../../common/openapi/api-docs.decorators';
 import { ApiEnvelopedResponses } from '../../common/http/response-schema.decorator';
 import { IdempotencyKey, Idempotent } from '../../common/idempotency/idempotent.decorator';
 import type { IdempotencyContext } from '../../common/idempotency/idempotency.types';
@@ -31,6 +32,39 @@ export class PaymentsController {
 
   @Post()
   @RequirePermission('payments:write')
+  @ApiErrors('PAYMENT_REQUEST_INVALID', 'MERCHANT_NOT_ACTIVE')
+  @ApiEmits('payment.created', 'payment.succeeded', 'payment.failed', 'payment.expired')
+  @ApiExample({
+    request: {
+      amountMinor: '10000',
+      currency: 'UGX',
+      channel: 'mobile_money',
+      paymentMethod: { msisdn: '+256700000001' },
+      description: 'Order 1042',
+      metadata: { orderId: '1042' },
+    },
+    response: {
+      id: 'pay_01JBX7Q2M4N8R5T6V9W0XYZABC',
+      transactionId: 'txn_01JBX7Q2M4N8R5T6V9W0XYZABD',
+      environment: 'test',
+      status: 'created',
+      amountMinor: '10000',
+      currency: 'UGX',
+      channel: 'mobile_money',
+      provider: null,
+      paymentMethod: { provider: null, msisdnLast4: '0001' },
+      description: 'Order 1042',
+      statementDescriptor: null,
+      returnUrl: null,
+      paymentLinkId: null,
+      checkoutSessionId: null,
+      failureCode: null,
+      expiresAt: '2025-01-01T00:15:00.000Z',
+      completedAt: null,
+      metadata: { orderId: '1042' },
+      createdAt: '2025-01-01T00:00:00.000Z',
+    },
+  })
   @Idempotent('payments.create')
   @Audited('payment.created', 'payment')
   @ApiOperation({
@@ -67,6 +101,8 @@ export class PaymentsController {
   @Post(':ref/cancel')
   @HttpCode(200)
   @RequirePermission('payments:write')
+  @ApiErrors('PAYMENT_INVALID_TRANSITION')
+  @ApiEmits('payment.cancelled')
   @Audited('payment.cancelled', 'payment')
   @ApiOperation({
     summary: 'Cancel a payment',

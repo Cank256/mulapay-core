@@ -1,6 +1,7 @@
 # Database
 
-Status: Phase 2 plus the payment and transaction tables (migration 0003). Identity,
+Status: Phase 2, the payment and transaction tables (migration 0003), holds (0004) and the
+developer platform tables (0005). Identity,
 merchants, roles, API keys, the audit log, the ledger core (currencies, chart of accounts,
 balances, journal), payments, transactions, payment links, checkout sessions and idempotency.
 
@@ -228,6 +229,50 @@ once, each end state carries its own timestamp and key (`holds_end_state_check`)
 release keys are unique per environment; rows are never deleted (DELETE and TRUNCATE revoked
 and refused by trigger). Hand-written part of the migration: the two guard functions, the
 triggers, the revoke and the staff permissions `ledger:read`, `balances:read`, `holds:read`.
+
+## Developer platform tables (migration 0005)
+
+| Table                | Holds                                              | Notes                                                                                                           |
+| -------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `merchant_events`    | the merchant-visible event log                     | append-only (revokes, triggers); `type` shape checked; index `(merchant, environment, created_at desc, ref)`    |
+| `outbox`             | announcements waiting for a worker (spec 8.8)      | unique `dedupe_key`; partial index on `available_at` where unpublished; published rows are deleted by retention |
+| `webhook_endpoints`  | a merchant's endpoints and their encrypted secrets | soft-deleted; `status` and `disabled_at` agree; previous secret and its expiry both or neither                  |
+| `webhook_deliveries` | one row per (endpoint, event) and its attempts     | partitioned by month on `created_at`; final once it leaves `pending`; partial index `(status, next_attempt_at)` |
+| `api_request_logs`   | one row per authenticated public API call, no body | partitioned by month; append-only; retention drops partitions                                                   |
+| `api_keys` (changed) | `signing_secret_enc`, `signing_required`           | `signing_required` needs a signing secret (CHECK)                                                               |
+
+### Invariants enforced by Postgres
+
+`test/integration/developer-schema.int-spec.ts` violates each with plain SQL.
+
+| Invariant                                                | Mechanism                                                                                                                                                                       |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A delivery starts `pending` with no attempts             | `core.guard_webhook_delivery` (BEFORE INSERT)                                                                                                                                   |
+| Endpoint, event, merchant and environment agree          | the same trigger looks the endpoint and event up                                                                                                                                |
+| A delivery leaves `pending` once, then never changes     | the same trigger (BEFORE UPDATE): identity columns fixed, attempts never decrease, a non-pending row refuses every update; a replay is a new row                                |
+| Pending exactly when a next attempt is set               | CHECK `webhook_deliveries_pending_check`                                                                                                                                        |
+| A repeated fan-out adds nothing                          | unique `(dedupe_key, created_at)`; the fan-out uses the event's `created_at`                                                                                                    |
+| Events and request logs are never changed or deleted     | `UPDATE, DELETE, TRUNCATE` revoked on the parent and every partition, plus `core.reject_mutation` triggers; `merchant_events` keeps `UPDATE (created_at)` for foreign key locks |
+| Deliveries and endpoints are never deleted               | `DELETE, TRUNCATE` revoked (endpoints are soft-deleted)                                                                                                                         |
+| Endpoint identity never changes                          | `core.guard_webhook_endpoint`                                                                                                                                                   |
+| A disabled endpoint has a disabled time, and the reverse | CHECK `webhook_endpoints_disabled_check`                                                                                                                                        |
+| An outbox row is published only after it was claimed     | CHECK `outbox_published_check`                                                                                                                                                  |
+| One outbox row per business fact                         | unique `outbox_dedupe_key_key`                                                                                                                                                  |
+| A key that must sign has a signing secret                | CHECK `api_keys_signing_check`                                                                                                                                                  |
+
+### Hand edits to the generated migration
+
+drizzle-kit generated 0005; these edits are marked in the file: `api_request_logs` and
+`webhook_deliveries` declared `PARTITION BY RANGE (created_at)` (the snapshot records them as
+plain tables), and everything after the "Hand-written" marker: `updated_at` triggers, the monthly
+partitions (the current month and three ahead, plus a default partition each, via
+`core.create_monthly_partitions`), the revokes, the append-only triggers, the delivery and
+endpoint guards and the three merchant permissions with their role grants. Phase 9 partition
+automation must create months ahead and call `core.revoke_on_partitions` for the new ones, as for
+the other partitioned tables.
+
+`webhook_deliveries` and `api_request_logs` refs embed their creation time: a lookup by ref reads
+one partition. Retention (spec 11): both 90 days, by dropping partitions.
 
 ## Open question: table ownership
 

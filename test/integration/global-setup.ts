@@ -55,6 +55,8 @@ export async function setup(project: TestProject): Promise<void> {
   [postgres, redis] = await Promise.all([
     new PostgreSqlContainer('postgres:16-alpine')
       .withDatabase(DB)
+      // The suites run in parallel, each with its own app and pools.
+      .withCommand(['postgres', '-c', 'max_connections=400'])
       .withUsername('postgres')
       .withPassword('postgres')
       .withCopyDirectoriesToContainer([

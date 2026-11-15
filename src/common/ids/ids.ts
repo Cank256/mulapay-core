@@ -22,6 +22,10 @@ export const ID_PREFIXES = {
   paymentLink: 'pl',
   checkoutSession: 'cs',
   hold: 'hold',
+  merchantEvent: 'evt',
+  webhookEndpoint: 'wh',
+  webhookDelivery: 'whd',
+  requestLog: 'rl',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
@@ -69,4 +73,17 @@ const PUBLIC_ID = /^[a-z]{2,4}_[0-9A-HJKMNP-TV-Z]{26}$/;
 /** True when `value` is a well-formed public id of the given kind. */
 export function isPublicId(kind: IdKind, value: string): boolean {
   return PUBLIC_ID.test(value) && value.startsWith(`${ID_PREFIXES[kind]}_`);
+}
+
+/**
+ * The creation time embedded in a ULID or a public id that ends in one. Partitioned tables
+ * whose rows are created at the id's own time (webhook deliveries, request logs) use it to
+ * turn a lookup by ref into a read of one partition. Null if `value` is not well formed.
+ */
+export function ulidTimestamp(value: string): number | null {
+  const body = value.slice(-26);
+  if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(body)) return null;
+  let ms = 0;
+  for (const char of body.slice(0, 10)) ms = ms * 32 + CROCKFORD.indexOf(char);
+  return ms;
 }

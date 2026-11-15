@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 /**
  * OpenAPI documents per surface, the Scalar docs routes and their CSP, and that the
  * worker and consumer process modules boot and shut down cleanly.
@@ -20,11 +21,16 @@ describe('API docs', () => {
       const docs = buildOpenApiDocuments(app);
       expect(Object.keys(docs).sort()).toEqual(['admin', 'dashboard', 'public']);
       expect(Object.keys(docs.public.paths).sort()).toEqual([
+        '/v1/balance-transactions',
+        '/v1/balances',
         '/v1/checkout-sessions',
         '/v1/checkout-sessions/{ref}',
         '/v1/checkout-sessions/{ref}/expire',
+        '/v1/events',
+        '/v1/events/{ref}',
         '/v1/health',
         '/v1/health/ready',
+        '/v1/holds',
         '/v1/payment-links',
         '/v1/payment-links/{ref}',
         '/v1/payment-links/{ref}/deactivate',
@@ -35,6 +41,9 @@ describe('API docs', () => {
         '/v1/ping',
         '/v1/transactions',
         '/v1/transactions/{ref}',
+        '/v1/webhook-endpoints',
+        '/v1/webhook-endpoints/{ref}',
+        '/v1/webhook-endpoints/{ref}/rotate-secret',
       ]);
       const dashboardPaths = Object.keys(docs.dashboard.paths);
       const adminPaths = Object.keys(docs.admin.paths);
@@ -83,11 +92,19 @@ describe('API docs', () => {
 
 describe('process modules', () => {
   it('boots and closes the worker process module', async () => {
-    const config = testConfig({ APP_ROLE: 'worker' });
-    const app = await NestFactory.createApplicationContext(WorkerModule.forRoot(config, logger), {
-      logger: false,
-      abortOnError: false,
+    // The worker shares a database with the other suites, so it runs without the repeating
+    // jobs and under its own queue prefix: it must not act on rows or jobs that are not its.
+    const config = testConfig({
+      APP_ROLE: 'worker',
+      QUEUE_PREFIX: `boot-test-${randomUUID().slice(0, 8)}`,
     });
+    const app = await NestFactory.createApplicationContext(
+      WorkerModule.forRoot(config, logger, { schedules: false }),
+      {
+        logger: false,
+        abortOnError: false,
+      }
+    );
     await app.close();
   });
 

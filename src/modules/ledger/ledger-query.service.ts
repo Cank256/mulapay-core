@@ -18,7 +18,7 @@ import type { LedgerEnvironment, NormalBalance } from '../accounts/domain/chart-
 import { BalancesService } from '../balances/balances.service';
 import { MerchantsRepository } from '../merchants/merchants.repository';
 import type { JournalEntry } from './journal-entry';
-import { LedgerQueryRepository } from './ledger-query.repository';
+import { LedgerQueryRepository, type MovementRow } from './ledger-query.repository';
 import { LedgerRepository } from './ledger.repository';
 import { PostingService } from './posting.service';
 export const LEDGER_PAGE_MAX = 200;
@@ -182,6 +182,46 @@ export class LedgerQueryService {
     return {
       items,
       nextCursor: rows.length > limit && last ? encode([last.created_at, last.id], f) : null,
+    };
+  }
+  /**
+   * A merchant's movements on its payable account in one environment, newest first: what
+   * `GET /v1/balance-transactions` shows. Never another merchant's, never the reserve or
+   * provider accounts.
+   */
+  async merchantMovements(
+    scope: { merchantId: string; environment: LedgerEnvironment },
+    query: { currency?: string; from?: Date; to?: Date; limit: number; cursor?: string }
+  ) {
+    const window = resolveWindow({ from: query.from, to: query.to }, this.clock.now());
+    // The filters as asked, not the resolved window: a default window ends "now", which is
+    // different on every request, and a cursor must survive that.
+    const f = fingerprint({
+      environment: scope.environment,
+      currency: query.currency,
+      from: query.from?.toISOString(),
+      to: query.to?.toISOString(),
+    });
+    const after = query.cursor ? decode(query.cursor, f) : undefined;
+    const payable = (await this.accounts.listForMerchant(scope.merchantId)).find(
+      (account) =>
+        account.purpose === 'merchant_payable' && account.environment === scope.environment
+    );
+    if (!payable) return { items: [] as MovementRow[], nextCursor: null };
+    const rows = await this.query.merchantMovements({
+      merchantId: scope.merchantId,
+      accountId: payable.id,
+      currency: query.currency,
+      ...window,
+      after: after ? { createdAt: after[0], key: after[1] } : undefined,
+      limit: query.limit + 1,
+    });
+    const items = rows.slice(0, query.limit);
+    const last = items.at(-1);
+    return {
+      items,
+      nextCursor:
+        rows.length > query.limit && last ? encode([last.created_at, last.movement_key], f) : null,
     };
   }
   /** `undefined`: no filter. `null`: a ref that matches no merchant, so nothing can match. */

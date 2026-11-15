@@ -6,6 +6,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { MerchantStatus } from '../../common/auth/principal';
 import { AuditService } from '../../common/audit/audit.service';
+import { ApiKeyCache } from '../../common/auth/api-key-cache';
 import type { Clock } from '../../common/clock/clock';
 import type { Transaction } from '../../common/db/database.types';
 import { UnitOfWork } from '../../common/db/unit-of-work';
@@ -18,8 +19,11 @@ import {
   toPage,
   type Page,
 } from '../../common/pagination/cursor';
-import { CLOCK } from '../../common/tokens';
+import { toLoggableError } from '../../common/logging/redaction';
+import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
+import type { Logger } from 'pino';
 import { AccountsService } from '../accounts/accounts.service';
+import { MerchantEventsService } from '../events/merchant-events.service';
 import { nextMerchantStatus, type MerchantEvent } from './domain/merchant-lifecycle';
 import { InvitationsService } from './invitations.service';
 import { MERCHANT_BALANCE_CHECK, type MerchantBalanceCheck } from './merchant-balance.check';
@@ -57,8 +61,11 @@ export class MerchantsService {
     private readonly unitOfWork: UnitOfWork,
     private readonly audit: AuditService,
     private readonly accounts: AccountsService,
+    private readonly events: MerchantEventsService,
+    private readonly keyCache: ApiKeyCache,
     @Inject(MERCHANT_BALANCE_CHECK) private readonly balances: MerchantBalanceCheck,
-    @Inject(CLOCK) private readonly clock: Clock
+    @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
   /** Admin creates a merchant in `draft`, optionally inviting its owner. */
@@ -156,7 +163,7 @@ export class MerchantsService {
     event: MerchantEvent,
     reason: string | undefined
   ): Promise<MerchantView> {
-    return this.unitOfWork.run(async (tx) => {
+    const result = await this.unitOfWork.run(async (tx) => {
       const current = await this.lock(tx, { ref });
       const to = nextMerchantStatus(current.status as MerchantStatus, event, 'admin');
       if (event === 'close' && (await this.balances.hasNonZeroBalance(current.id, tx))) {
@@ -171,8 +178,28 @@ export class MerchantsService {
         before: { status: current.status },
         after: { status: updated.status, ...(reason ? { reason } : {}) },
       });
-      return toMerchantView(updated);
+      // Merchants see suspension and reactivation of their live account (spec 6.11).
+      if (event === 'suspend' || event === 'activate') {
+        await this.events.emit(tx, {
+          merchantId: updated.id,
+          environment: 'live',
+          type: event === 'suspend' ? 'merchant.suspended' : 'merchant.activated',
+          resourceType: 'merchant',
+          resourceId: updated.ref,
+          object: { id: updated.ref, status: updated.status },
+        });
+      }
+      return { view: toMerchantView(updated), merchantId: updated.id };
     });
+    // After commit: cached API keys carry the merchant's status, so drop them (spec 8.3). If
+    // Redis is down the change is still committed and cached copies lapse within 60 s.
+    await this.keyCache.evictMerchant(result.merchantId).catch((error: unknown) => {
+      this.logger.error(
+        { err: toLoggableError(error), merchantId: result.merchantId },
+        'api key cache eviction failed; cached keys expire within 60 seconds'
+      );
+    });
+    return result.view;
   }
 
   private async lock(

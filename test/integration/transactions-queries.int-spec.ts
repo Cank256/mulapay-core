@@ -293,8 +293,9 @@ describe('the query budget of a read (spec 9.2 rule 11)', () => {
         status = (await owner.test.get(url)).statusCode;
       });
       expect(status, label).toBe(200);
-      // At least the key lookup and the read: proves the counter sees the queries.
-      expect(count, label).toBeGreaterThanOrEqual(2);
+      // The API key is served from the Redis cache (spec 8.3), so the read itself is what is
+      // counted. At least one statement proves the counter sees the queries.
+      expect(count, label).toBeGreaterThanOrEqual(1);
       expect(count, label).toBeLessThanOrEqual(4);
     }
   });

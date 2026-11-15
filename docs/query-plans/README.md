@@ -74,3 +74,25 @@ Two findings from the first run changed the code:
   The condition is now `created_at <= cursor AND (created_at < cursor OR ref < cursor_ref)`.
 - `transactions_merchant_status_created_idx` gained `ref desc` so a status-filtered list can
   be served in order.
+
+## Developer platform ([phase5.sql](phase5.sql), [phase5.txt](phase5.txt))
+
+| Query                                         | Index used                                                                                                                                       |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| API key authentication by `key_id`            | `api_keys_key_id_key`, then `merchants_pkey` (0.09 ms; the Redis cache sits in front of it)                                                      |
+| Outbox claim (`FOR UPDATE SKIP LOCKED`)       | partial `outbox_available_idx`, bitmap scan of the unpublished rows, top-50 sort (2.6 ms with 600 due rows)                                      |
+| Fan-out: active endpoints of a merchant       | partial `webhook_endpoints_merchant_idx`                                                                                                         |
+| Event feed, first page; event by ref          | `merchant_events_merchant_created_idx` (26 rows); `merchant_events_ref_key`                                                                      |
+| Overdue pending deliveries (recovery sweep)   | per-partition partial `(status, next_attempt_at)` indexes; see the note below                                                                    |
+| Delivery by ref, lease, fan-out dedupe lookup | one partition only, through `(ref, created_at)` and `(dedupe_key, created_at)`: the others are pruned                                            |
+| Delivery log, first page, 90-day window       | per-partition `(merchant_id, environment, created_at desc, ref desc)` indexes; partitions outside the window pruned                              |
+| Request log, first page; by request id        | Merge Append over the per-partition merchant indexes (26 rows) and one probe of `api_keys_pkey` per row; `(merchant_id, request_id, created_at)` |
+
+Seed sizes: 2k merchants, 40k API keys, 20k endpoints, 100k events, about 100k deliveries over
+four monthly partitions, 200k request logs, 60k outbox rows.
+
+Note on the recovery sweep: the seed leaves 5% of deliveries pending and overdue (about 5,000
+rows), so the top-N sort over them takes 88 ms. In production the sweep runs every second and
+re-queues what it finds, so the overdue set stays near zero; the query is bounded by `LIMIT 200`
+and a 30-day lookback. Re-check it with the Phase 9 load tests if a worker outage can leave
+thousands overdue.

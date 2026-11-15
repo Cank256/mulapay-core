@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AccountsModule } from '../accounts/accounts.module';
 import { BalancesModule } from '../balances/balances.module';
+import { EventsModule } from '../events/events.module';
 import { LedgerMerchantBalanceCheck } from '../balances/ledger-merchant-balance.check';
 import { IdentityModule } from '../identity/identity.module';
 import { InvitationsRepository } from './invitations.repository';
@@ -14,7 +15,7 @@ import { TeamService } from './team.service';
 
 /** Merchants, team membership, invitations and onboarding (spec 6.10). */
 @Module({
-  imports: [IdentityModule, AccountsModule, BalancesModule],
+  imports: [IdentityModule, AccountsModule, BalancesModule, EventsModule],
   providers: [
     MerchantsRepository,
     MembersRepository,

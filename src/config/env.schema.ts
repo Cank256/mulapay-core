@@ -131,6 +131,11 @@ export const envSchema = z
     DB_IDLE_TX_TIMEOUT_MS: integer(10000, 100, 600000),
 
     // Redis
+    /** Namespaces BullMQ keys, so environments or test runs sharing a Redis never share jobs. */
+    QUEUE_PREFIX: withDefault(
+      z.string().regex(/^[a-z0-9][a-z0-9:_-]{0,63}$/, 'must be 1 to 64 of a-z, 0-9, : _ -'),
+      'mulapay-core'
+    ),
     REDIS_URL: required(redisUrl),
     REDIS_TLS: flag(false),
 
@@ -173,6 +178,17 @@ export const envSchema = z
     RATE_LIMIT_WRITE_PER_MIN: integer(100, 1, 1_000_000),
     RATE_LIMIT_READ_PER_MIN: integer(600, 1, 1_000_000),
     RATE_LIMIT_PAYOUT_PER_MIN: integer(60, 1, 1_000_000),
+    // Spec 8.5: global per-key burst, a token bucket (20 capacity, 10/s refill).
+    RATE_LIMIT_BURST_CAPACITY: integer(20, 1, 100_000),
+    RATE_LIMIT_BURST_REFILL_PER_SECOND: integer(10, 1, 100_000),
+    // Failed API key authentications per client IP per minute, before answering 429.
+    RATE_LIMIT_AUTH_FAILURE_PER_MIN: integer(30, 1, 100_000),
+    // Developer platform (Phase 5)
+    /** Webhook delivery may reach private and loopback addresses. Never in production. */
+    WEBHOOK_ALLOW_PRIVATE_NETWORKS: flag(false),
+    /** Sandbox: delay before `pending_then_succeed` resolves, and before `timeout` expires. */
+    SANDBOX_PENDING_SECONDS: integer(5, 0, 3600),
+    SANDBOX_TIMEOUT_RESOLVE_SECONDS: integer(120, 0, 86400),
 
     // Business policy (values only; the rules that use them arrive with their modules)
     DEFAULT_CURRENCY: withDefault(
@@ -261,6 +277,12 @@ export const envSchema = z
     validateJwtKeys(env, issue);
 
     if (isProduction) {
+      if (env.WEBHOOK_ALLOW_PRIVATE_NETWORKS) {
+        issue(
+          'WEBHOOK_ALLOW_PRIVATE_NETWORKS',
+          'must be false in production (webhook delivery would reach internal networks)'
+        );
+      }
       if (env.TRUST_PROXY.length === 0) {
         issue('TRUST_PROXY', 'is required in production (comma-separated proxy CIDRs)');
       }

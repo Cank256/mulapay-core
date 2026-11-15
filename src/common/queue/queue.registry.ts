@@ -18,7 +18,6 @@ import { APP_CONFIG, ROOT_LOGGER } from '../tokens';
 import {
   DEAD_LETTER_QUEUE,
   QUEUE_DEFINITIONS,
-  QUEUE_PREFIX,
   jobOptionsFor,
   type QueueDefinition,
 } from './queue.definitions';
@@ -52,7 +51,7 @@ export class QueueRegistry implements OnApplicationShutdown {
     this.connection ??= createRedisClient(this.config, 'queue-producer', this.logger);
     const queue = new Queue(definition.name, {
       connection: this.connection,
-      prefix: QUEUE_PREFIX,
+      prefix: this.config.QUEUE_PREFIX,
       defaultJobOptions: jobOptionsFor(definition),
       telemetry: new BullMQOtel(SERVICE_NAME),
     });

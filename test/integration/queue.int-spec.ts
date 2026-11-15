@@ -54,7 +54,7 @@ describe('worker host', () => {
 
   async function start(processors: QueueProcessor[]) {
     const host = new WorkerHost(testConfig(), logger, clock, processors, registry);
-    host.onApplicationBootstrap();
+    await host.onApplicationBootstrap();
     hosts.push(host);
     return host;
   }

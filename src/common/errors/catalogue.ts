@@ -294,6 +294,69 @@ export const ERROR_CATALOGUE = {
     retryable: false,
     exposeDetails: true,
   },
+  // Phase 5: developer platform (spec 6.11, 8.5). Signature failures are 401 because the
+  // request is not authenticated as coming from the key holder; none reveals which part of
+  // the signing string differed.
+  RATE_LIMITED: {
+    httpStatus: 429,
+    message: 'Too many requests. Retry after the number of seconds in Retry-After.',
+    retryable: true,
+    exposeDetails: false,
+  },
+  SIGNATURE_REQUIRED: {
+    httpStatus: 401,
+    message: 'This request must be signed: send X-MulaPay-Timestamp and X-MulaPay-Signature',
+    retryable: false,
+    exposeDetails: false,
+  },
+  SIGNATURE_INVALID: {
+    httpStatus: 401,
+    message: 'The request signature is invalid',
+    retryable: false,
+    exposeDetails: false,
+  },
+  SIGNATURE_TIMESTAMP_INVALID: {
+    httpStatus: 401,
+    message: 'The signature timestamp is missing, malformed or outside the allowed clock skew',
+    retryable: false,
+    exposeDetails: false,
+  },
+  SIGNATURE_REPLAYED: {
+    httpStatus: 401,
+    message: 'This signature was already used. Sign every request again with a fresh timestamp.',
+    retryable: false,
+    exposeDetails: false,
+  },
+  SIGNING_SECRET_MISSING: {
+    httpStatus: 403,
+    message: 'This API key has no signing secret. Roll the key to create one.',
+    retryable: false,
+    exposeDetails: false,
+  },
+  WEBHOOK_URL_REJECTED: {
+    httpStatus: 422,
+    message: 'The webhook URL is not acceptable: {reason}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  WEBHOOK_ENDPOINT_LIMIT_REACHED: {
+    httpStatus: 409,
+    message: 'The maximum number of webhook endpoints for this environment is reached',
+    retryable: false,
+    exposeDetails: false,
+  },
+  WEBHOOK_ENDPOINT_NOT_ACTIVE: {
+    httpStatus: 409,
+    message: 'The webhook endpoint is not active. Enable it before replaying deliveries.',
+    retryable: false,
+    exposeDetails: false,
+  },
+  WEBHOOK_DELIVERY_NOT_REPLAYABLE: {
+    httpStatus: 409,
+    message: 'The webhook delivery is still pending and cannot be replayed yet',
+    retryable: false,
+    exposeDetails: false,
+  },
   PAYLOAD_TOO_LARGE: {
     httpStatus: 413,
     message: 'The request body exceeds the size limit',
