@@ -48,12 +48,10 @@ const job = (name: string) => ({ name, data: {} }) as unknown as Job;
 
 describe('job schedules', () => {
   it('registers the outbox tick, the log flush and the last-used flush, once however often it runs', async () => {
-    const registry = new QueueRegistry(
-      testConfig({ QUEUE_PREFIX: `sched-test-${randomUUID().slice(0, 8)}` }),
-      pino({ level: 'silent' })
-    );
+    const config = testConfig({ QUEUE_PREFIX: `sched-test-${randomUUID().slice(0, 8)}` });
+    const registry = new QueueRegistry(config, pino({ level: 'silent' }));
     try {
-      const schedulers = new JobSchedulers(registry);
+      const schedulers = new JobSchedulers(registry, config);
       await schedulers.onApplicationBootstrap();
       await schedulers.onApplicationBootstrap();
       const queue = registry.get(QUEUES.outboxDispatch.name);
@@ -67,7 +65,21 @@ describe('job schedules', () => {
         { key: 'outbox-tick', every: 1_000, name: TICK_JOBS.outbox },
         { key: 'request-logs-flush', every: 2_000, name: TICK_JOBS.requestLogs },
       ]);
+      // Phase 6: settlement tick, and the three scheduled reconciliation runs (spec 6.8, 6.9).
+      const settlement = await registry.get(QUEUES.settlementRun.name).getJobSchedulers();
+      expect(settlement.map((x) => x.key)).toEqual(['settlement-tick']);
+      const recon = await registry.get(QUEUES.reconciliationRun.name).getJobSchedulers();
+      expect(recon.map((x) => x.key).sort()).toEqual([
+        'reconciliation-gap',
+        'reconciliation-integrity',
+        'reconciliation-proof',
+      ]);
+      expect(recon.find((x) => x.key === 'reconciliation-gap')?.every).toBe(
+        config.RECON_GAP_INTERVAL_SECONDS * 1000
+      );
       await queue.obliterate({ force: true });
+      await registry.get(QUEUES.settlementRun.name).obliterate({ force: true });
+      await registry.get(QUEUES.reconciliationRun.name).obliterate({ force: true });
     } finally {
       await registry.onApplicationShutdown();
     }

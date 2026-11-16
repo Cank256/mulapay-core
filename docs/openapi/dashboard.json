@@ -5116,6 +5116,938 @@
         ],
         "x-required-permission": "request_logs:read"
       }
+    },
+    "/dashboard/v1/settlements": {
+      "get": {
+        "operationId": "DashboardSettlementsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "pending_approval",
+                                  "approved",
+                                  "releasing",
+                                  "paid",
+                                  "failed",
+                                  "cancelled"
+                                ]
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "periodStart": {
+                                "type": "string"
+                              },
+                              "periodEnd": {
+                                "type": "string"
+                              },
+                              "grossMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "refundMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "feeMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "reserveWithheldMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "reserveReleasedMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "disputeHoldMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "amlHoldMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "shortfallMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "netMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "payoutTransaction": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "releasedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "paidAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "status",
+                              "currency",
+                              "periodStart",
+                              "periodEnd",
+                              "grossMinor",
+                              "refundMinor",
+                              "feeMinor",
+                              "reserveWithheldMinor",
+                              "reserveReleasedMinor",
+                              "disputeHoldMinor",
+                              "amlHoldMinor",
+                              "shortfallMinor",
+                              "netMinor",
+                              "payoutTransaction",
+                              "releasedAt",
+                              "paidAt",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the merchant’s settlements, newest first",
+        "tags": [
+          "Settlements"
+        ],
+        "x-required-permission": "settlements:read"
+      }
+    },
+    "/dashboard/v1/settlements/{ref}": {
+      "get": {
+        "operationId": "DashboardSettlementsController_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "pending_approval",
+                            "approved",
+                            "releasing",
+                            "paid",
+                            "failed",
+                            "cancelled"
+                          ]
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "periodStart": {
+                          "type": "string"
+                        },
+                        "periodEnd": {
+                          "type": "string"
+                        },
+                        "grossMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "refundMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "feeMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "reserveWithheldMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "reserveReleasedMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "disputeHoldMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "amlHoldMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "shortfallMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "netMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "payoutTransaction": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "releasedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "paidAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "currency",
+                        "periodStart",
+                        "periodEnd",
+                        "grossMinor",
+                        "refundMinor",
+                        "feeMinor",
+                        "reserveWithheldMinor",
+                        "reserveReleasedMinor",
+                        "disputeHoldMinor",
+                        "amlHoldMinor",
+                        "shortfallMinor",
+                        "netMinor",
+                        "payoutTransaction",
+                        "releasedAt",
+                        "paidAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "One settlement",
+        "tags": [
+          "Settlements"
+        ],
+        "x-required-permission": "settlements:read"
+      }
+    },
+    "/dashboard/v1/settlements/{ref}/items": {
+      "get": {
+        "operationId": "DashboardSettlementsController_items",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "payment",
+                                  "refund",
+                                  "reserve_withheld",
+                                  "reserve_released",
+                                  "dispute_hold",
+                                  "aml_hold"
+                                ]
+                              },
+                              "transaction": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "amountMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "feeMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "netMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "occurredAt": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "transaction",
+                              "amountMinor",
+                              "feeMinor",
+                              "netMinor",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The payments, refunds and reserve lines behind a settlement",
+        "tags": [
+          "Settlements"
+        ],
+        "x-required-permission": "settlements:read"
+      }
+    },
+    "/dashboard/v1/settlements/{ref}/statement": {
+      "get": {
+        "description": "Amounts, items, payout reference, masked destination and reconciliation references.",
+        "operationId": "DashboardSettlementsController_statement",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "settlement": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "pending_approval",
+                                "approved",
+                                "releasing",
+                                "paid",
+                                "failed",
+                                "cancelled"
+                              ]
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "periodStart": {
+                              "type": "string"
+                            },
+                            "periodEnd": {
+                              "type": "string"
+                            },
+                            "grossMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "refundMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "feeMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "reserveWithheldMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "reserveReleasedMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "disputeHoldMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "amlHoldMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "shortfallMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "netMinor": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "payoutTransaction": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "releasedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "paidAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "status",
+                            "currency",
+                            "periodStart",
+                            "periodEnd",
+                            "grossMinor",
+                            "refundMinor",
+                            "feeMinor",
+                            "reserveWithheldMinor",
+                            "reserveReleasedMinor",
+                            "disputeHoldMinor",
+                            "amlHoldMinor",
+                            "shortfallMinor",
+                            "netMinor",
+                            "payoutTransaction",
+                            "releasedAt",
+                            "paidAt",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "merchant": {
+                          "type": "string"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string"
+                              },
+                              "transaction": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "amountMinor": {
+                                "type": "string"
+                              },
+                              "feeMinor": {
+                                "type": "string"
+                              },
+                              "netMinor": {
+                                "type": "string"
+                              },
+                              "occurredAt": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "transaction",
+                              "amountMinor",
+                              "feeMinor",
+                              "netMinor",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "payout": {
+                          "type": "object",
+                          "properties": {
+                            "transaction": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "status": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "provider": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "destination": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "providerTransactionId": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "transaction",
+                            "status",
+                            "provider",
+                            "destination",
+                            "providerTransactionId"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "reconciliation": {
+                          "type": "object",
+                          "properties": {
+                            "statementMatches": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "statement": {
+                                    "type": "string"
+                                  },
+                                  "row": {
+                                    "type": "number"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "statement",
+                                  "row",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "openExceptions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "ref": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "ref",
+                                  "kind",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "ledgerEntries": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "ref": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "ref"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "statementMatches",
+                            "openExceptions",
+                            "ledgerEntries"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "statusHistory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "to": {
+                                "type": "string"
+                              },
+                              "at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to",
+                              "at"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "settlement",
+                        "merchant",
+                        "totals",
+                        "items",
+                        "payout",
+                        "reconciliation",
+                        "statusHistory"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The itemised statement of a settlement",
+        "tags": [
+          "Settlements"
+        ],
+        "x-required-permission": "settlements:read"
+      }
+    },
+    "/dashboard/v1/settlements/{ref}/statement/csv": {
+      "get": {
+        "operationId": "DashboardSettlementsController_csv",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "filename": {
+                          "type": "string"
+                        },
+                        "contentType": {
+                          "type": "string",
+                          "enum": [
+                            "text/csv"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "filename",
+                        "contentType",
+                        "content"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The statement as CSV, ready to save as a file",
+        "tags": [
+          "Settlements"
+        ],
+        "x-required-permission": "settlements:read"
+      }
     }
   },
   "info": {

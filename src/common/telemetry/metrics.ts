@@ -120,3 +120,42 @@ export const outboxExhausted = new Counter({
   labelNames: ['event_type'] as const,
   registers: [metricsRegistry],
 });
+
+/** Phase 6: reconciliation and settlement (spec 10). Label values come from fixed sets. */
+export const reconciliationExceptionsOpen = new Gauge({
+  name: 'core_reconciliation_exceptions_open',
+  help: 'Open and investigating reconciliation exceptions',
+  labelNames: ['kind', 'severity'] as const,
+  registers: [metricsRegistry],
+});
+export const ledgerIntegrityFailures = new Gauge({
+  name: 'core_ledger_integrity_failures',
+  help: 'Findings of the latest ledger integrity run, by kind',
+  labelNames: ['kind'] as const,
+  registers: [metricsRegistry],
+});
+export const suspenseBalanceMinor = new Gauge({
+  name: 'core_suspense_balance_minor',
+  help: 'Non-zero suspense balance found by the latest ledger integrity run',
+  labelNames: ['currency'] as const,
+  registers: [metricsRegistry],
+});
+export const reconciliationRunsTotal = new Counter({
+  name: 'core_reconciliation_runs_total',
+  help: 'Reconciliation runs finished, by kind and status',
+  labelNames: ['kind', 'status'] as const,
+  registers: [metricsRegistry],
+});
+export const settlementTransitionsTotal = new Counter({
+  name: 'core_settlement_batch_transitions_total',
+  help: 'Settlement batch status changes',
+  labelNames: ['to'] as const,
+  registers: [metricsRegistry],
+});
+
+/**
+ * Functions that bring a gauge up to date from shared state. `MetricsService` runs them on
+ * every scrape, as it does for pool and queue gauges, so the api process reports what the
+ * worker's runs found. Keyed by name: registering twice replaces, never duplicates.
+ */
+export const metricRefreshers = new Map<string, () => Promise<void>>();

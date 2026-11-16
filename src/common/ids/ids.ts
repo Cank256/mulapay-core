@@ -26,6 +26,16 @@ export const ID_PREFIXES = {
   webhookEndpoint: 'wh',
   webhookDelivery: 'whd',
   requestLog: 'rl',
+  settlementCycle: 'scy',
+  settlementRun: 'srun',
+  settlementBatch: 'stl',
+  settlementDestination: 'sd',
+  payout: 'po',
+  reconRun: 'rcr',
+  reconException: 'rce',
+  reconResolution: 'rca',
+  providerStatement: 'pst',
+  incident: 'inc',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

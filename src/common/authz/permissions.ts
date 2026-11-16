@@ -19,8 +19,14 @@ export const MERCHANT_PERMISSIONS = [
   'webhooks:read',
   'webhooks:manage',
   'request_logs:read',
+  'settlements:read',
 ] as const;
 
+/**
+ * Never name an action `manage`: in CASL it means every action on the subject, so a role that
+ * could `settlement:manage` would also approve and release. Settlement and reconciliation use
+ * `prepare` and `work` for the maker side so that `approve` stays a separate grant.
+ */
 export const STAFF_PERMISSIONS = [
   'merchants:read',
   'merchants:create',
@@ -33,6 +39,13 @@ export const STAFF_PERMISSIONS = [
   'ledger:read',
   'balances:read',
   'holds:read',
+  'settlement:read',
+  'settlement:prepare',
+  'settlement:approve',
+  'settlement:release',
+  'reconciliation:read',
+  'reconciliation:work',
+  'reconciliation:approve',
 ] as const;
 
 export type MerchantPermission = (typeof MERCHANT_PERMISSIONS)[number];

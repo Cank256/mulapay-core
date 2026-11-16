@@ -205,6 +205,13 @@ export const envSchema = z
     RECON_STALE_MINUTES: integer(10, 1, 1440),
     RECON_GAP_INTERVAL_SECONDS: integer(300, 30, 86400),
     SUSPENSE_ALERT_HOURS: integer(1, 1, 168),
+    // Phase 6: settlement and reconciliation
+    ROLLING_RESERVE_HOLD_DAYS: integer(30, 0, 365),
+    SETTLEMENT_RELEASE_RETRY_SECONDS: integer(60, 10, 3600),
+    RECON_STATEMENT_DATE_WINDOW_HOURS: integer(48, 1, 720),
+    RECON_BALANCE_TOLERANCE_MINOR: minorAmount('0'),
+    RECON_RUN_LEASE_SECONDS: integer(900, 30, 86400),
+    RECON_GATEWAY_LOOKUPS_PER_RUN: integer(200, 1, 5000),
 
     // Storage
     S3_ENDPOINT: optional(httpUrl),
@@ -215,7 +222,6 @@ export const envSchema = z
     S3_SECRET_ACCESS_KEY: optional(z.string().min(1)),
     PRESIGN_UPLOAD_TTL_SECONDS: integer(900, 60, 3600),
     PRESIGN_DOWNLOAD_TTL_SECONDS: integer(900, 60, 3600),
-
     // Notifications
     EMAIL_PROVIDER: optional(z.enum(['ses', 'postmark', 'resend'])),
     EMAIL_API_KEY: optional(z.string().min(1)),

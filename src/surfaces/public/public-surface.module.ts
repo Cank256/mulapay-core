@@ -12,8 +12,10 @@ import { EventsModule } from '../../modules/events/events.module';
 import { HoldsModule } from '../../modules/holds/holds.module';
 import { LedgerModule } from '../../modules/ledger/ledger.module';
 import { PaymentsModule } from '../../modules/payments/payments.module';
+import { SettlementModule } from '../../modules/settlement/settlement.module';
 import { TransactionsModule } from '../../modules/transactions/transactions.module';
 import { WebhooksModule } from '../../modules/webhooks/webhooks.module';
+import { SettlementsController } from './settlements.controller';
 import {
   BalanceTransactionsController,
   BalancesController,
@@ -34,6 +36,7 @@ import { WebhookEndpointsController } from './webhook-endpoints.controller';
     HoldsModule,
     LedgerModule,
     PaymentsModule,
+    SettlementModule,
     TransactionsModule,
     WebhooksModule,
   ],
@@ -47,6 +50,7 @@ import { WebhookEndpointsController } from './webhook-endpoints.controller';
     BalanceTransactionsController,
     HoldsController,
     EventsController,
+    SettlementsController,
     WebhookEndpointsController,
   ],
 })

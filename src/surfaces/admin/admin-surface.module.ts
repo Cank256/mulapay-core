@@ -13,6 +13,10 @@ import { AuditLogsModule } from '../../modules/audit/audit-logs.module';
 import { AuthModule } from '../../modules/auth/auth.module';
 import { IdentityModule } from '../../modules/identity/identity.module';
 import { MerchantsModule } from '../../modules/merchants/merchants.module';
+import { ReconciliationModule } from '../../modules/reconciliation/reconciliation.module';
+import { SettlementModule } from '../../modules/settlement/settlement.module';
+import { AdminReconciliationController } from './admin-reconciliation.controller';
+import { AdminSettlementController } from './admin-settlement.controller';
 import { AdminBalancesController } from './admin-balances.controller';
 import { AdminLedgerController } from './admin-ledger.controller';
 import { AdminAuditController } from './admin-audit.controller';
@@ -29,6 +33,8 @@ import { AdminRolesController } from './admin-roles.controller';
     LedgerModule,
     BalancesModule,
     HoldsModule,
+    ReconciliationModule,
+    SettlementModule,
   ],
   controllers: [
     AdminAuthController,
@@ -37,6 +43,8 @@ import { AdminRolesController } from './admin-roles.controller';
     AdminAuditController,
     AdminLedgerController,
     AdminBalancesController,
+    AdminSettlementController,
+    AdminReconciliationController,
   ],
 })
 export class AdminSurfaceModule {}

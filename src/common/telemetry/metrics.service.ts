@@ -10,7 +10,13 @@ import { DB_POOLS } from '../db/tokens';
 import { toLoggableError } from '../logging/redaction';
 import { QueueRegistry } from '../queue/queue.registry';
 import { CLOCK, ROOT_LOGGER } from '../tokens';
-import { dbPoolConnections, metricsRegistry, queueDepth, queueOldestJobSeconds } from './metrics';
+import {
+  dbPoolConnections,
+  metricRefreshers,
+  metricsRegistry,
+  queueDepth,
+  queueOldestJobSeconds,
+} from './metrics';
 
 /** A slow or unavailable Redis must not stall the scrape. */
 const QUEUE_SNAPSHOT_TIMEOUT_MS = 2000;
@@ -31,9 +37,19 @@ export class MetricsService {
   async render(): Promise<string> {
     this.collectPoolStats();
     await this.collectQueueStats();
+    await this.runRefreshers();
     return metricsRegistry.metrics();
   }
 
+  private async runRefreshers(): Promise<void> {
+    for (const [name, refresh] of metricRefreshers) {
+      try {
+        await refresh();
+      } catch (error) {
+        this.logger.warn({ err: toLoggableError(error), metric: name }, 'metric refresh failed');
+      }
+    }
+  }
   private collectPoolStats(): void {
     dbPoolConnections.reset();
     for (const s of poolStats(this.pools)) {

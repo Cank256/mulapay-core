@@ -49,7 +49,7 @@ export async function startContext(overrides: Record<string, string> = {}): Prom
   return { app, clock, config, close: () => app.close() };
 }
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 /** An HTTP client with a fixed client IP and an optional bearer token. */
 export class Client {
@@ -92,6 +92,9 @@ export class Client {
   }
   patch(url: string, body: unknown) {
     return this.request('PATCH', url, body);
+  }
+  put(url: string, body: unknown) {
+    return this.request('PUT', url, body);
   }
   delete(url: string) {
     return this.request('DELETE', url);

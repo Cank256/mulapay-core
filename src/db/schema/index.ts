@@ -14,3 +14,6 @@ export * from './payments';
 export * from './idempotency';
 export * from './holds';
 export * from './developer';
+export * from './settlement';
+export * from './reconciliation';
+export * from './incidents';

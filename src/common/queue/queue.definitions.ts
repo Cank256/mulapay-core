@@ -39,11 +39,23 @@ export const QUEUES = {
   },
   notificationSend: { name: 'notification-send', concurrency: 16 },
   reportGenerate: { name: 'report-generate', concurrency: 2 },
-  settlementRun: { name: 'settlement-run', concurrency: 1 },
+  settlementRun: {
+    name: 'settlement-run',
+    concurrency: 1,
+    // A payout submission retries with the same externalId, so retrying cannot pay twice.
+    jobOptions: { attempts: 8, backoff: { type: 'exponential', delay: 5000 } },
+  },
   amlScreen: { name: 'aml-screen', concurrency: 8 },
   statementMatch: { name: 'statement-match', concurrency: 2 },
   rollupAggregate: { name: 'rollup-aggregate', concurrency: 2 },
   gatewayChase: { name: 'gateway-chase', concurrency: 8 },
+  // Phase 6: the scheduled reconciliation runs (spec 6.8). Spec 8.9 lists no queue for them;
+  // one run of a kind and scope at a time is enforced in the database, not by concurrency.
+  reconciliationRun: {
+    name: 'reconciliation-run',
+    concurrency: 2,
+    jobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 30_000 } },
+  },
 } as const satisfies Record<string, QueueDefinition>;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES]['name'];

@@ -11,6 +11,7 @@ import { AuthModule } from '../../modules/auth/auth.module';
 import { DeveloperModule } from '../../modules/developer/developer.module';
 import { MerchantsModule } from '../../modules/merchants/merchants.module';
 import { PaymentsModule } from '../../modules/payments/payments.module';
+import { SettlementModule } from '../../modules/settlement/settlement.module';
 import { TransactionsModule } from '../../modules/transactions/transactions.module';
 import { WebhooksModule } from '../../modules/webhooks/webhooks.module';
 import { DashboardApiKeysController } from './api-keys.controller';
@@ -21,6 +22,7 @@ import {
   DashboardTransactionsController,
 } from './payments.controller';
 import { DashboardRequestLogsController } from './request-logs.controller';
+import { DashboardSettlementsController } from './settlements.controller';
 import { DashboardTeamController } from './team.controller';
 import {
   DashboardWebhookDeliveriesController,
@@ -34,6 +36,7 @@ import {
     ApiKeysModule,
     DeveloperModule,
     PaymentsModule,
+    SettlementModule,
     TransactionsModule,
     WebhooksModule,
   ],
@@ -47,6 +50,7 @@ import {
     DashboardWebhookEndpointsController,
     DashboardWebhookDeliveriesController,
     DashboardRequestLogsController,
+    DashboardSettlementsController,
   ],
 })
 export class DashboardSurfaceModule {}

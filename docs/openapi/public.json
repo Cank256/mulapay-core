@@ -10303,6 +10303,1441 @@
         "description": "Requires scope `events:read`."
       }
     },
+    "/v1/settlements": {
+      "get": {
+        "operationId": "SettlementsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "type": "integer"
+            },
+            "example": 1
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            },
+            "example": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "draft",
+                                  "pending_approval",
+                                  "approved",
+                                  "releasing",
+                                  "paid",
+                                  "failed",
+                                  "cancelled"
+                                ]
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "periodStart": {
+                                "type": "string"
+                              },
+                              "periodEnd": {
+                                "type": "string"
+                              },
+                              "grossMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "refundMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "feeMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "reserveWithheldMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "reserveReleasedMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "disputeHoldMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "amlHoldMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "shortfallMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "netMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "payoutTransaction": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "releasedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "paidAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "status",
+                              "currency",
+                              "periodStart",
+                              "periodEnd",
+                              "grossMinor",
+                              "refundMinor",
+                              "feeMinor",
+                              "reserveWithheldMinor",
+                              "reserveReleasedMinor",
+                              "disputeHoldMinor",
+                              "amlHoldMinor",
+                              "shortfallMinor",
+                              "netMinor",
+                              "payoutTransaction",
+                              "releasedAt",
+                              "paidAt",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "items": [
+                      {
+                        "id": "string",
+                        "status": "draft",
+                        "currency": "string",
+                        "periodStart": "string",
+                        "periodEnd": "string",
+                        "grossMinor": "10000",
+                        "refundMinor": "10000",
+                        "feeMinor": "10000",
+                        "reserveWithheldMinor": "10000",
+                        "reserveReleasedMinor": "10000",
+                        "disputeHoldMinor": "10000",
+                        "amlHoldMinor": "10000",
+                        "shortfallMinor": "10000",
+                        "netMinor": "10000",
+                        "payoutTransaction": "string",
+                        "releasedAt": "string",
+                        "paidAt": "string",
+                        "createdAt": "string"
+                      }
+                    ],
+                    "nextCursor": "string"
+                  },
+                  "meta": {
+                    "requestId": "string"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Requests allowed in the current window for the limit that applies.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests left in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Unix time (seconds) at which the window next has room.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "description": "The request id. Quote it when contacting support.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error: VALIDATION_FAILED, INVALID_CURSOR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "The request failed validation",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/validation_failed"
+                      }
+                    }
+                  },
+                  "INVALID_CURSOR": {
+                    "summary": "INVALID_CURSOR",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "INVALID_CURSOR",
+                        "message": "The pagination cursor is invalid or does not match the filters",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/invalid_cursor"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "VALIDATION_FAILED",
+              "INVALID_CURSOR"
+            ]
+          },
+          "401": {
+            "description": "Error: UNAUTHORIZED, SIGNATURE_REQUIRED, SIGNATURE_INVALID, SIGNATURE_TIMESTAMP_INVALID, SIGNATURE_REPLAYED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "UNAUTHORIZED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Authentication is required",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/unauthorized"
+                      }
+                    }
+                  },
+                  "SIGNATURE_REQUIRED": {
+                    "summary": "SIGNATURE_REQUIRED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_REQUIRED",
+                        "message": "This request must be signed: send X-MulaPay-Timestamp and X-MulaPay-Signature",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_required"
+                      }
+                    }
+                  },
+                  "SIGNATURE_INVALID": {
+                    "summary": "SIGNATURE_INVALID",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_INVALID",
+                        "message": "The request signature is invalid",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_invalid"
+                      }
+                    }
+                  },
+                  "SIGNATURE_TIMESTAMP_INVALID": {
+                    "summary": "SIGNATURE_TIMESTAMP_INVALID",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_TIMESTAMP_INVALID",
+                        "message": "The signature timestamp is missing, malformed or outside the allowed clock skew",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_timestamp_invalid"
+                      }
+                    }
+                  },
+                  "SIGNATURE_REPLAYED": {
+                    "summary": "SIGNATURE_REPLAYED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_REPLAYED",
+                        "message": "This signature was already used. Sign every request again with a fresh timestamp.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_replayed"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "UNAUTHORIZED",
+              "SIGNATURE_REQUIRED",
+              "SIGNATURE_INVALID",
+              "SIGNATURE_TIMESTAMP_INVALID",
+              "SIGNATURE_REPLAYED"
+            ]
+          },
+          "403": {
+            "description": "Error: SIGNING_SECRET_MISSING, FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "SIGNING_SECRET_MISSING": {
+                    "summary": "SIGNING_SECRET_MISSING",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNING_SECRET_MISSING",
+                        "message": "This API key has no signing secret. Roll the key to create one.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signing_secret_missing"
+                      }
+                    }
+                  },
+                  "FORBIDDEN": {
+                    "summary": "FORBIDDEN",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "message": "You do not have access to this resource",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/forbidden"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "SIGNING_SECRET_MISSING",
+              "FORBIDDEN"
+            ]
+          },
+          "429": {
+            "description": "Error: RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "RATE_LIMITED",
+                        "message": "Too many requests. Retry after the number of seconds in Retry-After.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/rate_limited"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED"
+            ]
+          },
+          "500": {
+            "description": "Error: INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "An unexpected error occurred. Please try again later.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/internal_error"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "503": {
+            "description": "Error: SERVICE_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "SERVICE_UNAVAILABLE": {
+                    "summary": "SERVICE_UNAVAILABLE",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SERVICE_UNAVAILABLE",
+                        "message": "The service is temporarily unavailable. Please try again later.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/service_unavailable"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "SERVICE_UNAVAILABLE"
+            ]
+          }
+        },
+        "summary": "List settlements, newest first. A test key sees none",
+        "tags": [
+          "Settlements"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "x-required-scopes": [
+          "settlements:read"
+        ],
+        "x-idempotent": false,
+        "description": "Requires scope `settlements:read`."
+      }
+    },
+    "/v1/settlements/{ref}": {
+      "get": {
+        "operationId": "SettlementsController_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            },
+            "example": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "pending_approval",
+                            "approved",
+                            "releasing",
+                            "paid",
+                            "failed",
+                            "cancelled"
+                          ]
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "periodStart": {
+                          "type": "string"
+                        },
+                        "periodEnd": {
+                          "type": "string"
+                        },
+                        "grossMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "refundMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "feeMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "reserveWithheldMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "reserveReleasedMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "disputeHoldMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "amlHoldMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "shortfallMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "netMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "payoutTransaction": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "releasedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "paidAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "currency",
+                        "periodStart",
+                        "periodEnd",
+                        "grossMinor",
+                        "refundMinor",
+                        "feeMinor",
+                        "reserveWithheldMinor",
+                        "reserveReleasedMinor",
+                        "disputeHoldMinor",
+                        "amlHoldMinor",
+                        "shortfallMinor",
+                        "netMinor",
+                        "payoutTransaction",
+                        "releasedAt",
+                        "paidAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "string",
+                    "status": "draft",
+                    "currency": "string",
+                    "periodStart": "string",
+                    "periodEnd": "string",
+                    "grossMinor": "10000",
+                    "refundMinor": "10000",
+                    "feeMinor": "10000",
+                    "reserveWithheldMinor": "10000",
+                    "reserveReleasedMinor": "10000",
+                    "disputeHoldMinor": "10000",
+                    "amlHoldMinor": "10000",
+                    "shortfallMinor": "10000",
+                    "netMinor": "10000",
+                    "payoutTransaction": "string",
+                    "releasedAt": "string",
+                    "paidAt": "string",
+                    "createdAt": "string"
+                  },
+                  "meta": {
+                    "requestId": "string"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Requests allowed in the current window for the limit that applies.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests left in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Unix time (seconds) at which the window next has room.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "description": "The request id. Quote it when contacting support.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error: UNAUTHORIZED, SIGNATURE_REQUIRED, SIGNATURE_INVALID, SIGNATURE_TIMESTAMP_INVALID, SIGNATURE_REPLAYED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "UNAUTHORIZED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Authentication is required",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/unauthorized"
+                      }
+                    }
+                  },
+                  "SIGNATURE_REQUIRED": {
+                    "summary": "SIGNATURE_REQUIRED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_REQUIRED",
+                        "message": "This request must be signed: send X-MulaPay-Timestamp and X-MulaPay-Signature",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_required"
+                      }
+                    }
+                  },
+                  "SIGNATURE_INVALID": {
+                    "summary": "SIGNATURE_INVALID",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_INVALID",
+                        "message": "The request signature is invalid",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_invalid"
+                      }
+                    }
+                  },
+                  "SIGNATURE_TIMESTAMP_INVALID": {
+                    "summary": "SIGNATURE_TIMESTAMP_INVALID",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_TIMESTAMP_INVALID",
+                        "message": "The signature timestamp is missing, malformed or outside the allowed clock skew",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_timestamp_invalid"
+                      }
+                    }
+                  },
+                  "SIGNATURE_REPLAYED": {
+                    "summary": "SIGNATURE_REPLAYED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_REPLAYED",
+                        "message": "This signature was already used. Sign every request again with a fresh timestamp.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_replayed"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "UNAUTHORIZED",
+              "SIGNATURE_REQUIRED",
+              "SIGNATURE_INVALID",
+              "SIGNATURE_TIMESTAMP_INVALID",
+              "SIGNATURE_REPLAYED"
+            ]
+          },
+          "403": {
+            "description": "Error: SIGNING_SECRET_MISSING, FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "SIGNING_SECRET_MISSING": {
+                    "summary": "SIGNING_SECRET_MISSING",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNING_SECRET_MISSING",
+                        "message": "This API key has no signing secret. Roll the key to create one.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signing_secret_missing"
+                      }
+                    }
+                  },
+                  "FORBIDDEN": {
+                    "summary": "FORBIDDEN",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "message": "You do not have access to this resource",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/forbidden"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "SIGNING_SECRET_MISSING",
+              "FORBIDDEN"
+            ]
+          },
+          "404": {
+            "description": "Error: NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "NOT_FOUND",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "NOT_FOUND",
+                        "message": "The requested resource was not found",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/not_found"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "NOT_FOUND"
+            ]
+          },
+          "429": {
+            "description": "Error: RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "RATE_LIMITED",
+                        "message": "Too many requests. Retry after the number of seconds in Retry-After.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/rate_limited"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED"
+            ]
+          },
+          "500": {
+            "description": "Error: INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "An unexpected error occurred. Please try again later.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/internal_error"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "503": {
+            "description": "Error: SERVICE_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "SERVICE_UNAVAILABLE": {
+                    "summary": "SERVICE_UNAVAILABLE",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SERVICE_UNAVAILABLE",
+                        "message": "The service is temporarily unavailable. Please try again later.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/service_unavailable"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "SERVICE_UNAVAILABLE"
+            ]
+          }
+        },
+        "summary": "Retrieve a settlement",
+        "tags": [
+          "Settlements"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "x-required-scopes": [
+          "settlements:read"
+        ],
+        "x-idempotent": false,
+        "description": "Requires scope `settlements:read`."
+      }
+    },
+    "/v1/settlements/{ref}/items": {
+      "get": {
+        "operationId": "SettlementsController_items",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            },
+            "example": "string"
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "type": "integer"
+            },
+            "example": 1
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            },
+            "example": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "payment",
+                                  "refund",
+                                  "reserve_withheld",
+                                  "reserve_released",
+                                  "dispute_hold",
+                                  "aml_hold"
+                                ]
+                              },
+                              "transaction": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "amountMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "feeMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "netMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "occurredAt": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "transaction",
+                              "amountMinor",
+                              "feeMinor",
+                              "netMinor",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "items": [
+                      {
+                        "kind": "payment",
+                        "transaction": "string",
+                        "amountMinor": "10000",
+                        "feeMinor": "10000",
+                        "netMinor": "10000",
+                        "occurredAt": "string"
+                      }
+                    ],
+                    "nextCursor": "string"
+                  },
+                  "meta": {
+                    "requestId": "string"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-RateLimit-Limit": {
+                "description": "Requests allowed in the current window for the limit that applies.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Requests left in the current window.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Unix time (seconds) at which the window next has room.",
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "X-Request-Id": {
+                "description": "The request id. Quote it when contacting support.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error: VALIDATION_FAILED, INVALID_CURSOR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "VALIDATION_FAILED",
+                        "message": "The request failed validation",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/validation_failed"
+                      }
+                    }
+                  },
+                  "INVALID_CURSOR": {
+                    "summary": "INVALID_CURSOR",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "INVALID_CURSOR",
+                        "message": "The pagination cursor is invalid or does not match the filters",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/invalid_cursor"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "VALIDATION_FAILED",
+              "INVALID_CURSOR"
+            ]
+          },
+          "401": {
+            "description": "Error: UNAUTHORIZED, SIGNATURE_REQUIRED, SIGNATURE_INVALID, SIGNATURE_TIMESTAMP_INVALID, SIGNATURE_REPLAYED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "UNAUTHORIZED": {
+                    "summary": "UNAUTHORIZED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "UNAUTHORIZED",
+                        "message": "Authentication is required",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/unauthorized"
+                      }
+                    }
+                  },
+                  "SIGNATURE_REQUIRED": {
+                    "summary": "SIGNATURE_REQUIRED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_REQUIRED",
+                        "message": "This request must be signed: send X-MulaPay-Timestamp and X-MulaPay-Signature",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_required"
+                      }
+                    }
+                  },
+                  "SIGNATURE_INVALID": {
+                    "summary": "SIGNATURE_INVALID",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_INVALID",
+                        "message": "The request signature is invalid",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_invalid"
+                      }
+                    }
+                  },
+                  "SIGNATURE_TIMESTAMP_INVALID": {
+                    "summary": "SIGNATURE_TIMESTAMP_INVALID",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_TIMESTAMP_INVALID",
+                        "message": "The signature timestamp is missing, malformed or outside the allowed clock skew",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_timestamp_invalid"
+                      }
+                    }
+                  },
+                  "SIGNATURE_REPLAYED": {
+                    "summary": "SIGNATURE_REPLAYED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNATURE_REPLAYED",
+                        "message": "This signature was already used. Sign every request again with a fresh timestamp.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signature_replayed"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "UNAUTHORIZED",
+              "SIGNATURE_REQUIRED",
+              "SIGNATURE_INVALID",
+              "SIGNATURE_TIMESTAMP_INVALID",
+              "SIGNATURE_REPLAYED"
+            ]
+          },
+          "403": {
+            "description": "Error: SIGNING_SECRET_MISSING, FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "SIGNING_SECRET_MISSING": {
+                    "summary": "SIGNING_SECRET_MISSING",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SIGNING_SECRET_MISSING",
+                        "message": "This API key has no signing secret. Roll the key to create one.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/signing_secret_missing"
+                      }
+                    }
+                  },
+                  "FORBIDDEN": {
+                    "summary": "FORBIDDEN",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "FORBIDDEN",
+                        "message": "You do not have access to this resource",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/forbidden"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "SIGNING_SECRET_MISSING",
+              "FORBIDDEN"
+            ]
+          },
+          "404": {
+            "description": "Error: NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "NOT_FOUND": {
+                    "summary": "NOT_FOUND",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "NOT_FOUND",
+                        "message": "The requested resource was not found",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/not_found"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "NOT_FOUND"
+            ]
+          },
+          "429": {
+            "description": "Error: RATE_LIMITED",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "RATE_LIMITED",
+                        "message": "Too many requests. Retry after the number of seconds in Retry-After.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/rate_limited"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED"
+            ]
+          },
+          "500": {
+            "description": "Error: INTERNAL_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "An unexpected error occurred. Please try again later.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/internal_error"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "503": {
+            "description": "Error: SERVICE_UNAVAILABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                },
+                "examples": {
+                  "SERVICE_UNAVAILABLE": {
+                    "summary": "SERVICE_UNAVAILABLE",
+                    "value": {
+                      "success": false,
+                      "error": {
+                        "code": "SERVICE_UNAVAILABLE",
+                        "message": "The service is temporarily unavailable. Please try again later.",
+                        "requestId": "0b3a5c0e-7f55-4c3e-9d8e-2f6d1c1a9a10",
+                        "docUrl": "https://docs.mulapay.com/errors/service_unavailable"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "x-error-codes": [
+              "SERVICE_UNAVAILABLE"
+            ]
+          }
+        },
+        "summary": "The payments, refunds and reserve lines behind a settlement",
+        "tags": [
+          "Settlements"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "x-required-scopes": [
+          "settlements:read"
+        ],
+        "x-idempotent": false,
+        "description": "Requires scope `settlements:read`."
+      }
+    },
     "/v1/webhook-endpoints": {
       "post": {
         "description": "The URL must be https and public. `enabledEvents` lists event types, or `*` for all. The response carries the signing `secret` once; store it. Deliveries are signed as `MulaPay-Signature: t=<unix>,v1=<hmac-sha256 of \"t.payload\">`.\n\nRequires scope `webhooks:write`.",

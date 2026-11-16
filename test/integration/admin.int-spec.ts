@@ -359,6 +359,7 @@ describe('roles', () => {
     expect(viewer.permissions).toEqual([
       'merchant:read',
       'payments:read',
+      'settlements:read',
       'team:read',
       'transactions:read',
       'webhooks:read',
@@ -379,6 +380,7 @@ describe('roles', () => {
         permissions: [
           'merchant:read',
           'payments:read',
+          'settlements:read',
           'team:read',
           'transactions:read',
           'webhooks:read',

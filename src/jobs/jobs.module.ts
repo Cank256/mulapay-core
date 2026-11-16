@@ -12,6 +12,10 @@ import { DeveloperModule } from '../modules/developer/developer.module';
 import { SandboxModule } from '../modules/developer/sandbox/sandbox.module';
 import { SandboxPaymentHandler } from '../modules/developer/sandbox/sandbox.handler';
 import { SandboxProcessor } from '../modules/developer/sandbox/sandbox.processor';
+import { ReconciliationModule } from '../modules/reconciliation/reconciliation.module';
+import { StatementUploadedHandler } from '../modules/reconciliation/statement-uploaded.handler';
+import { SettlementModule } from '../modules/settlement/settlement.module';
+import { SettlementSubmitHandler } from '../modules/settlement/settlement-submit.handler';
 import { WebhookDeliveryProcessor } from '../modules/webhooks/webhook-delivery.processor';
 import {
   DeliveryCreatedHandler,
@@ -20,20 +24,48 @@ import {
 import { WebhooksModule } from '../modules/webhooks/webhooks.module';
 import { JobSchedulers } from './job-schedulers';
 import { OutboxDispatchProcessor } from './outbox-dispatch.processor';
+import {
+  ReconciliationRunProcessor,
+  StatementMatchProcessor,
+} from './reconciliation-run.processor';
+import { SettlementRunProcessor } from './settlement-run.processor';
 
 @Module({
-  imports: [DeveloperModule, OutboxModule, SandboxModule, WebhooksModule],
+  imports: [
+    DeveloperModule,
+    OutboxModule,
+    ReconciliationModule,
+    SandboxModule,
+    SettlementModule,
+    WebhooksModule,
+  ],
   providers: [
     OutboxDispatcher,
     OutboxDispatchProcessor,
+    ReconciliationRunProcessor,
+    SettlementRunProcessor,
+    StatementMatchProcessor,
     {
       provide: OUTBOX_HANDLERS,
-      inject: [MerchantEventFanoutHandler, DeliveryCreatedHandler, SandboxPaymentHandler],
+      inject: [
+        MerchantEventFanoutHandler,
+        DeliveryCreatedHandler,
+        SandboxPaymentHandler,
+        SettlementSubmitHandler,
+        StatementUploadedHandler,
+      ],
       useFactory: (...handlers: OutboxHandler[]) => handlers,
     },
     {
       provide: QUEUE_PROCESSORS,
-      inject: [OutboxDispatchProcessor, WebhookDeliveryProcessor, SandboxProcessor],
+      inject: [
+        OutboxDispatchProcessor,
+        WebhookDeliveryProcessor,
+        SandboxProcessor,
+        SettlementRunProcessor,
+        ReconciliationRunProcessor,
+        StatementMatchProcessor,
+      ],
       useFactory: (...processors: QueueProcessor[]) => processors,
     },
   ],

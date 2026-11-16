@@ -14,6 +14,8 @@ describe('queue definitions', () => {
       'statement-match': 2,
       'rollup-aggregate': 2,
       'gateway-chase': 8,
+      // Phase 6 addition: spec 8.9 lists no queue for the scheduled reconciliation runs.
+      'reconciliation-run': 2,
     });
   });
 
@@ -25,7 +27,9 @@ describe('queue definitions', () => {
   });
 
   it('let a queue override the defaults', () => {
-    expect(jobOptionsFor(QUEUES.settlementRun)).toEqual(DEFAULT_JOB_OPTIONS);
+    expect(jobOptionsFor(QUEUES.notificationSend)).toEqual(DEFAULT_JOB_OPTIONS);
+    // Payout submission retries more often, with the same externalId each time.
+    expect(jobOptionsFor(QUEUES.settlementRun).attempts).toBe(8);
     expect(jobOptionsFor({ name: 'x', concurrency: 1, jobOptions: { attempts: 7 } }).attempts).toBe(
       7
     );

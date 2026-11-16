@@ -67,8 +67,11 @@ sessions, queries) is built without the Provider Gateway, ahead of Phases 3 and 
 cache, scopes, IP allowlists, request signing, rate limits, events and the outbox, webhooks,
 request logs, the sandbox, the public OpenAPI document) is built, also ahead of Phases 3 and 4;
 the `/v1` groups that need the unbuilt money domains are listed in `docs/API_PUBLIC.md` ("What
-is built"). Open questions are listed in `docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions to
-confirm", "Phase 5 decisions to confirm") and `docs/DATABASE.md` (table ownership).
+is built"). Phase 6 (settlement and reconciliation: cycles, payables, batches with approval and
+release, rolling reserve, the four reconciliation runs, the exception queue, statements) is built
+on the Phase 2 ledger, also ahead of Phases 3 and 4; see `docs/RECONCILIATION.md`. Open questions
+are listed in `docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions to confirm", "Phase 5 decisions to
+confirm", "Phase 6 decisions to confirm") and `docs/DATABASE.md` (table ownership).
 
 ## Commands
 
