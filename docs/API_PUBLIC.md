@@ -191,11 +191,18 @@ string), route, status, error code, idempotency key, latency, client address, us
 within a few seconds. Calls that failed authentication have no merchant to attach to and are
 counted, not logged.
 
+## Status
+
+`GET /v1/status` needs no API key. It lists open incidents and those resolved in the last 14 days, each with a headline, an
+impact (`minor` or `major`), the affected components, a start and (if resolved) an end time, and its public updates. The
+overall `status` is `operational`, `degraded` or `major_outage`. The answer is cached for 30 seconds. Internal detail is
+never in it. Poll it no more than once a minute, or use your webhook alerts.
+
 ## What is built
 
 | Route group                                                      | State                                                               |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `ping`                                                           | built                                                               |
+| `ping`, `status`                                                 | built (`status` needs no key)                                       |
 | `payments`, `payment-links`, `checkout-sessions`, `transactions` | built (Phase 4 domain, without the gateway)                         |
 | `balances`, `balance-transactions`, `holds`                      | built, read only                                                    |
 | `events`, `webhook-endpoints`                                    | built                                                               |

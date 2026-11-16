@@ -27,7 +27,13 @@ import {
   type StorageBucket,
   type StoredObject,
 } from './object-storage.port';
-import { EMPTY_PAYLOAD_SHA256, presignQuery, signHeaders, type S3Credentials } from './s3-sigv4';
+import {
+  EMPTY_PAYLOAD_SHA256,
+  canonicalQuery,
+  presignQuery,
+  signHeaders,
+  type S3Credentials,
+} from './s3-sigv4';
 import { AppError } from '../../common/errors/app-error';
 import { CLOCK } from '../../common/tokens';
 import type { Clock } from '../../common/clock/clock';
@@ -158,6 +164,87 @@ export class S3ObjectStorage implements ObjectStorage {
     if (res.status !== 200) throw new StorageUnavailableError('put', `status ${res.status}`);
   }
 
+  async putStream(
+    bucket: StorageBucket,
+    key: string,
+    body: AsyncIterable<Buffer>,
+    contentType: string,
+    options: { readonly partBytes: number }
+  ): Promise<{ sizeBytes: number; sha256Hex: string }> {
+    const whole = createHash('sha256');
+    const headers: Record<string, string> = { 'content-type': contentType };
+    if (this.config.S3_SERVER_SIDE_ENCRYPTION) {
+      headers['x-amz-server-side-encryption'] = this.config.S3_SERVER_SIDE_ENCRYPTION;
+    }
+    let uploadId: string | undefined;
+    const etags: string[] = [];
+    let buffered: Buffer[] = [];
+    let bufferedBytes = 0;
+    let total = 0;
+    const uploadPart = async (part: Buffer) => {
+      if (!uploadId) {
+        const started = await this.send('POST', bucket, key, headers, undefined, { uploads: '' });
+        if (started.status !== 200) {
+          throw new StorageUnavailableError('multipart start', `status ${started.status}`);
+        }
+        uploadId = /<UploadId>([^<]+)<\/UploadId>/.exec(started.body.toString('utf8'))?.[1];
+        if (!uploadId) throw new StorageUnavailableError('multipart start', 'no upload id');
+      }
+      const number = etags.length + 1;
+      const res = await this.send('PUT', bucket, key, {}, part, {
+        partNumber: String(number),
+        uploadId,
+      });
+      const etag = header(res.headers.etag);
+      if (res.status !== 200 || !etag) {
+        throw new StorageUnavailableError('multipart part', `status ${res.status}`);
+      }
+      etags.push(etag);
+    };
+    try {
+      for await (const chunk of body) {
+        whole.update(chunk);
+        total += chunk.length;
+        buffered.push(chunk);
+        bufferedBytes += chunk.length;
+        if (bufferedBytes >= options.partBytes) {
+          await uploadPart(Buffer.concat(buffered, bufferedBytes));
+          buffered = [];
+          bufferedBytes = 0;
+        }
+      }
+      const rest = Buffer.concat(buffered, bufferedBytes);
+      if (!uploadId) {
+        await this.put(bucket, key, rest, contentType);
+      } else {
+        if (rest.length > 0) await uploadPart(rest);
+        const xml = `<CompleteMultipartUpload>${etags
+          .map((etag, i) => `<Part><PartNumber>${i + 1}</PartNumber><ETag>${etag}</ETag></Part>`)
+          .join('')}</CompleteMultipartUpload>`;
+        const done = await this.send(
+          'POST',
+          bucket,
+          key,
+          { 'content-type': 'application/xml' },
+          Buffer.from(xml),
+          {
+            uploadId,
+          }
+        );
+        // S3 can answer 200 with an error document in the body.
+        if (done.status !== 200 || /<Error>/.test(done.body.toString('utf8'))) {
+          throw new StorageUnavailableError('multipart complete', `status ${done.status}`);
+        }
+      }
+      return { sizeBytes: total, sha256Hex: whole.digest('hex') };
+    } catch (error) {
+      if (uploadId) {
+        await this.send('DELETE', bucket, key, {}, undefined, { uploadId }).catch(() => undefined);
+      }
+      throw error;
+    }
+  }
+
   async remove(bucket: StorageBucket, key: string): Promise<void> {
     const res = await this.send('DELETE', bucket, key);
     if (res.status !== 204 && res.status !== 200 && res.status !== 404) {
@@ -197,11 +284,12 @@ export class S3ObjectStorage implements ObjectStorage {
   }
 
   private async send(
-    method: 'GET' | 'HEAD' | 'PUT' | 'DELETE',
+    method: 'GET' | 'HEAD' | 'PUT' | 'POST' | 'DELETE',
     bucket: StorageBucket,
     key: string,
     extraHeaders: Record<string, string> = {},
-    body?: Buffer
+    body?: Buffer,
+    query: Record<string, string> = {}
   ): Promise<{
     status: number;
     headers: Record<string, string | string[] | undefined>;
@@ -216,15 +304,20 @@ export class S3ObjectStorage implements ObjectStorage {
       now: this.clock.now(),
       payloadSha256: body ? createHash('sha256').update(body).digest('hex') : EMPTY_PAYLOAD_SHA256,
       headers: extraHeaders,
+      query,
     });
+    const queryString = canonicalQuery(query);
     try {
-      const res = await request(`${target.origin}${encodePath(target.path)}`, {
-        method,
-        headers,
-        ...(body ? { body } : {}),
-        headersTimeout: REQUEST_TIMEOUT_MS,
-        bodyTimeout: REQUEST_TIMEOUT_MS,
-      });
+      const res = await request(
+        `${target.origin}${encodePath(target.path)}${queryString ? `?${queryString}` : ''}`,
+        {
+          method,
+          headers,
+          ...(body ? { body } : {}),
+          headersTimeout: REQUEST_TIMEOUT_MS,
+          bodyTimeout: REQUEST_TIMEOUT_MS,
+        }
+      );
       const bytes = Buffer.from(await res.body.arrayBuffer());
       if (res.statusCode >= 500) {
         throw new StorageUnavailableError(method.toLowerCase(), `status ${res.statusCode}`);

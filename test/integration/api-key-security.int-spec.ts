@@ -362,7 +362,7 @@ describe('scopes', () => {
     ['POST', '/v1/__probe/refunds', 'refunds:write', {}],
   ];
 
-  it('every route of the public surface needs a defined scope, except ping', () => {
+  it('every route of the public surface needs a defined scope, except ping and the status feed', () => {
     const module = [...ctx.app.get(ModulesContainer).values()].find(
       (m) => m.metatype === PublicSurfaceModule
     );
@@ -383,6 +383,11 @@ describe('scopes', () => {
         const policy = Reflect.getMetadata(POLICY, handler) as Policy | undefined;
         const id = `${controller.name}.${name}`;
         if (controller.name === 'PingController') continue;
+        // The status feed is public on purpose (spec 6.12): it must say so, and nothing else may.
+        if (id === 'StatusController.status') {
+          expect(policy).toEqual({ kind: 'public' });
+          continue;
+        }
         if (
           policy?.kind !== 'permission' ||
           !(API_KEY_SCOPES as readonly string[]).includes(policy.permission)

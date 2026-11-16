@@ -303,3 +303,37 @@ otpauth URI once, to stdout. Writes a `staff.bootstrapped` audit row with actor 
   `docs/ARCHITECTURE.md` ("Phase 7 decisions to confirm") for what a merchant is told.
 - **Audit.** Every KYC, screening, rule, alert, case, STR, blocklist, block and dispute change writes
   an audit row in the transaction of the change.
+
+## Support and operations (Phase 8)
+
+- **Permissions.** Staff: `support:read|work|resolve`, `incidents:read|manage`, `ops:read|manage|approve`,
+  `reports:platform`, `notification_templates:manage`. Merchant: `complaints:read|write`, `reports:read|create`,
+  `analytics:read`. `super_admin` holds all staff ones. `operations` holds `support:read|work`, `incidents:*`,
+  `ops:*` and `reports:platform`; `support_agent` the three `support:*` and `incidents:read`; `compliance` reads support
+  and incidents and holds `reports:platform`; `auditor` reads support, incidents and ops and holds `reports:platform`. Merchant
+  owner, admin and finance get all five; developer gets `reports:read` and `analytics:read`; support gets the complaint pair;
+  viewer gets the three reads. Every role with `reports:platform` also holds `audit_logs:read`, `ledger:read` and
+  `reconciliation:read`, because a platform report can contain what those permissions protect.
+- **Approvals (maker-checker).** Rewinding the consumer cursor, disabling a provider that carries traffic, deleting a routing
+  rule and (in production) changing a feature flag need a second person. The requester can never decide their own request: the
+  service refuses (`APPROVAL_SELF_DECISION`) and a database trigger refuses a decision by the requester. Approving needs
+  `ops:approve` and a recent step-up. A request expires after `APPROVAL_TTL_HOURS`; a decided request is final.
+- **Step-up.** Required on: maintenance mode, feature flags, provider and routing-rule changes, queue retry, pause and
+  resume, cursor rewind, approving and rejecting, and resolving a complaint or a dispute. Not required on incidents,
+  broadcasts, template edits and report requests; those are audited.
+- **Maintenance mode** refuses every write on every surface with `503 MAINTENANCE_MODE` and `Retry-After`, ahead of
+  authentication; the switch and sign-in, refresh, MFA and step-up are the only writes that stay open, so staff can always
+  turn it off. It is not a security control (reads continue).
+- **Public status feed.** `GET /v1/status` is the one unauthenticated route besides health. It serves a fixed projection
+  (headline, coarse impact, whitelisted component names, public updates), never internal updates, postmortems, causes,
+  merchants or people. `api-key-security.int-spec.ts` fails if any other `/v1` route lacks a scope.
+- **Customers' personal data.** A customer's contact on a complaint is AES-GCM encrypted, hidden from merchants, and read only
+  through `GET /admin/v1/complaints/{ref}/contact`, which audits who looked. Notification addresses (SMS, push) are
+  encrypted too.
+- **Reports.** A merchant sees only its own reports; platform report types are refused to merchants. A download is a
+  presigned GET valid 15 minutes and writes an audit row each time. The file is deleted
+  after 7 days. A scheduled report goes only to members of the merchant (or staff), never to an arbitrary address.
+- **Notifications.** Vendor credentials (`EMAIL_API_KEY`, `SMS_API_KEY`, `FCM_CREDENTIALS_JSON`) come from the environment. A
+  delivery stores a short error code, never a vendor response.
+- **Audit.** Every operational write (maintenance, flags, providers, routing rules, queues, cursor, approvals, incidents,
+  complaints, disputes, notification and report actions) writes an audit row. `core_ops_actions_total` counts the operational ones.

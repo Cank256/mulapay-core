@@ -7,8 +7,10 @@ The service that owns money, merchants and compliance for MulaPay. Provider comm
 The master specification is [docs/CORE_API_BUILD_PROMPT.md](docs/CORE_API_BUILD_PROMPT.md).
 Engineering rules are in [AGENTS.md](AGENTS.md).
 
-**Status: Phase 1 (identity and merchants).** Users, sessions, MFA, roles and
-permissions, merchants and their teams, API keys and the hash-chained audit log. See
+**Status: Phase 8 (support and operations).** Identity and merchants, the ledger, payments and transactions,
+the developer platform, settlement and reconciliation, compliance, and now complaints, incidents with a public status feed,
+notifications, async reports, rollups and analytics, and the operations surface. The Provider Gateway client and the
+event consumer (Phases 3 and 4) are not built. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for what is in place, what comes next and
 the decisions awaiting confirmation, and [docs/SECURITY.md](docs/SECURITY.md) for the
 auth model.
@@ -81,6 +83,7 @@ curl -H "Authorization: Bearer $METRICS_TOKEN" localhost:4000/metrics
 | `npm run dev` / `dev:worker` / `dev:consumer` | Run a process with watch                                       |
 | `npm run build`                               | Compile to `dist/` (includes migrations and bootstrap SQL)     |
 | `npm run start`                               | Run `dist/main.js`; `APP_ROLE` selects api, worker or consumer |
+| `npm run test:load`                           | Load against the spec 9.1 targets; needs a quiet machine       |
 | `npm run typecheck`                           | TypeScript, strict                                             |
 | `npm run lint` / `lint:fix`                   | ESLint, zero warnings allowed                                  |
 | `npm run format` / `format:check`             | Prettier                                                       |
@@ -131,6 +134,8 @@ containers.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): processes, layering, request lifecycle, Phase 0 decisions
 - [docs/DATABASE.md](docs/DATABASE.md): schema, roles, grants, migration workflow
+- [docs/OPERATIONS.md](docs/OPERATIONS.md): runbooks, executed by `test/integration/runbooks.int-spec.ts`
+- [docs/LOAD_RESULTS.md](docs/LOAD_RESULTS.md): the spec 9.1 targets and what was measured (`npm run test:load`)
 - [docs/SECURITY.md](docs/SECURITY.md): authentication, sessions, MFA, authorization, API keys
 - [docs/query-plans/](docs/query-plans/README.md): committed plans for the hot queries
 - [docs/GATEWAY_INTEGRATION.md](docs/GATEWAY_INTEGRATION.md): differences between the spec and the gateway code

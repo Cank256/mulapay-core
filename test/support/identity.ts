@@ -96,8 +96,8 @@ export class Client {
   put(url: string, body: unknown) {
     return this.request('PUT', url, body);
   }
-  delete(url: string) {
-    return this.request('DELETE', url);
+  delete(url: string, body?: unknown) {
+    return this.request('DELETE', url, body);
   }
 }
 

@@ -8,6 +8,10 @@ import { QueueRegistry } from '../common/queue/queue.registry';
 import { APP_CONFIG } from '../common/tokens';
 import type { AppConfig } from '../config/configuration';
 import { AML_JOBS } from './aml-screen.processor';
+import { NOTIFICATION_JOBS } from './notification-send.processor';
+import { REPORT_JOBS } from './report-generate.processor';
+import { ROLLUP_JOBS } from './rollup.processor';
+import { SUPPORT_JOBS } from './support-ops.processor';
 import { TICK_JOBS } from './outbox-dispatch.processor';
 import { RECONCILIATION_JOBS } from './reconciliation-run.processor';
 import { SETTLEMENT_TICK_JOB } from './settlement-run.processor';
@@ -39,6 +43,7 @@ export class JobSchedulers implements OnApplicationBootstrap {
     }
     await this.registerSettlementAndReconciliation();
     await this.registerCompliance();
+    await this.registerSupportAndOperations();
   }
 
   /**
@@ -92,6 +97,52 @@ export class JobSchedulers implements OnApplicationBootstrap {
       'kyc-lifecycle',
       { every: 3_600_000 },
       { name: AML_JOBS.kycLifecycle, opts: TICK_OPTIONS }
+    );
+  }
+
+  /**
+   * Phase 8: the notification sweep, report schedules and expiry, the dashboard rollups, and the
+   * support and operations sweeps. Each tick is idempotent.
+   */
+  private async registerSupportAndOperations(): Promise<void> {
+    const upsert = (
+      queue: string,
+      id: string,
+      every: number | { pattern: string; tz: string },
+      name: string
+    ) =>
+      this.queues.get(queue).upsertJobScheduler(id, typeof every === 'number' ? { every } : every, {
+        name,
+        opts: TICK_OPTIONS,
+      });
+    await upsert(
+      QUEUES.notificationSend.name,
+      'notifications-sweep',
+      60_000,
+      NOTIFICATION_JOBS.sweep
+    );
+    await upsert(QUEUES.reportGenerate.name, 'reports-tick', 60_000, REPORT_JOBS.tick);
+    await upsert(QUEUES.reportGenerate.name, 'reports-expire', 3_600_000, REPORT_JOBS.expire);
+    await upsert(QUEUES.rollupAggregate.name, 'rollups-recent', 900_000, ROLLUP_JOBS.recent);
+    await upsert(
+      QUEUES.rollupAggregate.name,
+      'rollups-nightly',
+      { pattern: '30 1 * * *', tz: 'UTC' },
+      ROLLUP_JOBS.nightly
+    );
+    await upsert(QUEUES.supportOps.name, 'complaints-sla', 60_000, SUPPORT_JOBS.complaintSla);
+    await upsert(
+      QUEUES.supportOps.name,
+      'disputes-deadlines',
+      300_000,
+      SUPPORT_JOBS.disputeDeadlines
+    );
+    await upsert(QUEUES.supportOps.name, 'approvals-expire', 300_000, SUPPORT_JOBS.approvalsExpire);
+    await upsert(
+      QUEUES.supportOps.name,
+      'ops-monitor',
+      this.config.OPS_MONITOR_INTERVAL_SECONDS * 1000,
+      SUPPORT_JOBS.monitor
     );
   }
 }

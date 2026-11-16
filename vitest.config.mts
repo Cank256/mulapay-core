@@ -1,7 +1,8 @@
 /**
- * Vitest (decision D7). Two projects, one command (`npm test`):
+ * Vitest (decision D7). Two projects, one command (`npm test`), and a third for load (`npm run test:load`):
  *
  *   unit         src/**\/*.spec.ts         no I/O
+ *   load         test/load/**\/*.load-spec.ts (only with LOAD=1): the spec 9.1 targets
  *   integration  test/integration/**\/*.int-spec.ts
  *                real Postgres 16 and Redis 7 via Testcontainers, started once by the
  *                global setup. No hand-prepared database is needed.
@@ -11,6 +12,18 @@
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
+/** The load project (`npm run test:load`) is left out of `npm test`: it takes minutes and wants a quiet machine. */
+const loadProject = {
+  extends: true,
+  test: {
+    name: 'load',
+    include: ['test/load/**/*.load-spec.ts'],
+    globalSetup: ['test/integration/global-setup.ts'],
+    testTimeout: 30 * 60_000,
+    hookTimeout: 10 * 60_000,
+    fileParallelism: false,
+  },
+};
 const ONE_HUNDRED = { lines: 100, functions: 100, branches: 100, statements: 100 };
 
 export default defineConfig({
@@ -35,6 +48,7 @@ export default defineConfig({
           hookTimeout: 120_000,
         },
       },
+      ...(process.env.LOAD === '1' ? [loadProject] : []),
     ],
     coverage: {
       provider: 'v8',

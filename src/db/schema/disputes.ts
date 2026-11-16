@@ -62,6 +62,11 @@ export const disputes = core.table(
     resolutionEntryRef: text('resolution_entry_ref'),
     resolutionNote: text('resolution_note'),
     internalNote: text('internal_note'),
+    /** Phase 8: the investigator, and whether staff were told the evidence deadline is near or gone. */
+    assignedTo: uuid('assigned_to').references(() => users.id),
+    assignedAt: timestamptz('assigned_at'),
+    dueSoonNotifiedAt: timestamptz('due_soon_notified_at'),
+    overdueNotifiedAt: timestamptz('overdue_notified_at'),
     createdBy: text('created_by').notNull(),
     resolvedBy: uuid('resolved_by').references(() => users.id),
     resolvedAt: timestamptz('resolved_at'),
@@ -83,6 +88,12 @@ export const disputes = core.table(
     index('disputes_due_idx')
       .on(t.evidenceDueAt)
       .where(sql`${t.status} = 'open' and ${t.evidenceDueAt} is not null`),
+    index('disputes_deadline_idx')
+      .on(t.evidenceDueAt)
+      .where(sql`${t.status} <> 'resolved' and ${t.evidenceDueAt} is not null`),
+    index('disputes_assignee_idx')
+      .on(t.assignedTo, t.status)
+      .where(sql`${t.assignedTo} is not null`),
     check('disputes_ref_check', sql`${t.ref} ~ '^dsp_[0-9A-HJKMNP-TV-Z]{26}$'`),
     check('disputes_environment_check', sql`${t.environment} = 'live'`),
     check('disputes_kind_check', sql`${t.kind} in (${list(DISPUTE_KINDS)})`),

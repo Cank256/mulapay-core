@@ -61,6 +61,20 @@ export interface ObjectStorage {
   /** Stores a file core generated. Safe to repeat: the same key and bytes give the same object. */
   put(bucket: StorageBucket, key: string, body: Buffer, contentType: string): Promise<void>;
   remove(bucket: StorageBucket, key: string): Promise<void>;
+  /**
+   * Stores a file core generates as it is generated, without holding it in memory: the chunks are
+   * gathered into parts of at most `partBytes` and uploaded as an S3 multipart upload (or one
+   * request when the whole file is smaller than a part). Returns the size and SHA-256 of what was
+   * written. A failure aborts the upload, so no partial object is left behind. Safe to repeat: the
+   * same key and bytes give the same object.
+   */
+  putStream(
+    bucket: StorageBucket,
+    key: string,
+    body: AsyncIterable<Buffer>,
+    contentType: string,
+    options: { readonly partBytes: number }
+  ): Promise<{ readonly sizeBytes: number; readonly sha256Hex: string }>;
 }
 
 /** The store did not answer, or answered with something unexpected. Retrying may help. */

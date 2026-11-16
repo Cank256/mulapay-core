@@ -249,6 +249,9 @@ function webhookSection(): Json {
 }
 
 /** Adds the shared parts and completes every `/v1` operation. Mutates and returns `doc`. */
+/** Public routes without an API key: documented as is, without bearer security or scopes. */
+export const UNAUTHENTICATED_PATHS = ['/v1/health', '/v1/status'] as const;
+
 export function enrichPublicDocument(doc: OpenAPIObject, merchantEventSchema: Json): OpenAPIObject {
   doc.info.description = DESCRIPTION;
   const components = (doc.components ??= {}) as Json;
@@ -285,7 +288,7 @@ export function enrichPublicDocument(doc: OpenAPIObject, merchantEventSchema: Js
   doc['x-webhooks' as keyof OpenAPIObject] = webhookSection() as never;
 
   for (const [path, item] of Object.entries(doc.paths)) {
-    if (path.startsWith('/v1/health')) continue;
+    if (UNAUTHENTICATED_PATHS.some((prefix) => path.startsWith(prefix))) continue;
     for (const method of METHODS) {
       const operation = (item as Json)[method] as Json | undefined;
       if (operation) enrichOperation(doc, path, method, operation);

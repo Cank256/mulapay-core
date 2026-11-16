@@ -72,9 +72,12 @@ release, rolling reserve, the four reconciliation runs, the exception queue, sta
 on the Phase 2 ledger, also ahead of Phases 3 and 4; see `docs/RECONCILIATION.md`. Phase 7
 (compliance: KYC levels, requirements, documents, review and atomic activation, re-verification,
 AML screening, the pre-transaction check, post-transaction monitoring, alerts, cases and STR,
-the merchant block, disputes) is built; see `docs/ARCHITECTURE.md` ("Compliance (Phase 7)"). Open questions
+the merchant block, disputes) is built; see `docs/ARCHITECTURE.md` ("Compliance (Phase 7)"). Phase 8 (support and
+operations: complaints, dispute operations, incidents and the public status feed, notifications, async reports, rollups and
+analytics, the operations surface with approvals and maintenance mode) is built; see `docs/ARCHITECTURE.md` ("Support and
+operations (Phase 8)"), `docs/OPERATIONS.md` (runbooks, executed by a test) and `docs/LOAD_RESULTS.md`. Open questions
 are listed in `docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions to confirm", "Phase 5 decisions to
-confirm", "Phase 6 decisions to confirm", "Phase 7 decisions to confirm") and `docs/DATABASE.md` (table ownership).
+confirm", "Phase 6 decisions to confirm", "Phase 7 decisions to confirm", "Phase 8 decisions to confirm") and `docs/DATABASE.md` (table ownership).
 
 ## Commands
 
@@ -86,6 +89,7 @@ confirm", "Phase 6 decisions to confirm", "Phase 7 decisions to confirm") and `d
   `src/common/money`.
 - Ledger: post only through `PostingService.postEntry`; correct only through
   `ReversalService.reverseEntry`. Amounts are `bigint` minor units.
+- `npm run test:load` measures the spec 9.1 targets (`LOAD=1`, project `load`; not part of `npm test`).
 - `npm run db:generate` then `npm run db:migrate`. Never `drizzle-kit migrate` or `push`.
 - `npm run openapi:export` writes `docs/openapi/*.json`; `test/integration/api-contract.int-spec.ts`
   fails if they differ from the code (`OPENAPI_UPDATE=1` regenerates them).

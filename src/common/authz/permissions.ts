@@ -24,6 +24,11 @@ export const MERCHANT_PERMISSIONS = [
   'kyc:submit',
   'disputes:read',
   'disputes:write',
+  'complaints:read',
+  'complaints:write',
+  'reports:read',
+  'reports:create',
+  'analytics:read',
 ] as const;
 
 /**
@@ -64,6 +69,16 @@ export const STAFF_PERMISSIONS = [
   'chargebacks:read',
   'chargebacks:work',
   'chargebacks:resolve',
+  'support:read',
+  'support:work',
+  'support:resolve',
+  'incidents:read',
+  'incidents:manage',
+  'ops:read',
+  'ops:manage',
+  'ops:approve',
+  'reports:platform',
+  'notification_templates:manage',
 ] as const;
 
 export type MerchantPermission = (typeof MERCHANT_PERMISSIONS)[number];

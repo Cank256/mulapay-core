@@ -16,6 +16,8 @@ describe('queue definitions', () => {
       'gateway-chase': 8,
       // Phase 6 addition: spec 8.9 lists no queue for the scheduled reconciliation runs.
       'reconciliation-run': 2,
+      // Phase 8 addition: spec 8.9 lists no queue for the minute sweeps of support and operations.
+      'support-ops': 1,
     });
   });
 
@@ -27,7 +29,10 @@ describe('queue definitions', () => {
   });
 
   it('let a queue override the defaults', () => {
-    expect(jobOptionsFor(QUEUES.notificationSend)).toEqual(DEFAULT_JOB_OPTIONS);
+    expect(jobOptionsFor(QUEUES.outboxDispatch)).toEqual(DEFAULT_JOB_OPTIONS);
+    // Notification and report retries are spaced 30 s apart (Phase 8).
+    expect(jobOptionsFor(QUEUES.notificationSend).attempts).toBe(6);
+    expect(jobOptionsFor(QUEUES.reportGenerate).attempts).toBe(3);
     // Screening outlasts a provider outage: more attempts, longer backoff.
     expect(jobOptionsFor(QUEUES.amlScreen).attempts).toBe(8);
     // Payout submission retries more often, with the same externalId each time.

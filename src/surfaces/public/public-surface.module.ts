@@ -10,12 +10,14 @@ import { Module } from '@nestjs/common';
 import { BalancesModule } from '../../modules/balances/balances.module';
 import { EventsModule } from '../../modules/events/events.module';
 import { HoldsModule } from '../../modules/holds/holds.module';
+import { IncidentsModule } from '../../modules/incidents/incidents.module';
 import { LedgerModule } from '../../modules/ledger/ledger.module';
 import { PaymentsModule } from '../../modules/payments/payments.module';
 import { SettlementModule } from '../../modules/settlement/settlement.module';
 import { TransactionsModule } from '../../modules/transactions/transactions.module';
 import { WebhooksModule } from '../../modules/webhooks/webhooks.module';
 import { SettlementsController } from './settlements.controller';
+import { StatusController } from './status.controller';
 import {
   BalanceTransactionsController,
   BalancesController,
@@ -34,6 +36,7 @@ import { WebhookEndpointsController } from './webhook-endpoints.controller';
     BalancesModule,
     EventsModule,
     HoldsModule,
+    IncidentsModule,
     LedgerModule,
     PaymentsModule,
     SettlementModule,
@@ -52,6 +55,7 @@ import { WebhookEndpointsController } from './webhook-endpoints.controller';
     EventsController,
     SettlementsController,
     WebhookEndpointsController,
+    StatusController,
   ],
 })
 export class PublicSurfaceModule {}

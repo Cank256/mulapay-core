@@ -56,7 +56,7 @@ function signingKey(credentials: S3Credentials, dateStamp: string): Buffer {
   return hmac(service, 'aws4_request');
 }
 
-function canonicalQuery(query: Readonly<Record<string, string>>): string {
+export function canonicalQuery(query: Readonly<Record<string, string>>): string {
   return Object.entries(query)
     .map(([k, v]) => [awsEncode(k), awsEncode(v)] as const)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -137,7 +137,7 @@ export function presignQuery(input: PresignInput): string {
 }
 
 export interface SignHeadersInput {
-  readonly method: 'GET' | 'HEAD' | 'PUT' | 'DELETE';
+  readonly method: 'GET' | 'HEAD' | 'PUT' | 'POST' | 'DELETE';
   readonly host: string;
   readonly path: string;
   readonly credentials: S3Credentials;
@@ -145,6 +145,8 @@ export interface SignHeadersInput {
   /** sha256 hex of the body; `EMPTY_PAYLOAD_SHA256` for no body. */
   readonly payloadSha256: string;
   readonly headers?: Readonly<Record<string, string>>;
+  /** Query parameters of the request (a multipart upload id, a part number). */
+  readonly query?: Readonly<Record<string, string>>;
 }
 
 /** The headers to send, including `Authorization`, `x-amz-date` and `x-amz-content-sha256`. */
@@ -160,7 +162,7 @@ export function signHeaders(input: SignHeadersInput): Record<string, string> {
   const canonicalRequest = [
     input.method,
     awsEncode(input.path, true),
-    '',
+    canonicalQuery(input.query ?? {}),
     block,
     signed,
     input.payloadSha256,

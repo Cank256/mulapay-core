@@ -7,9 +7,19 @@
  * seeing the same failure updates one open incident instead of paging every hour.
  */
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  text,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { createdAt, timestamptz, updatedAt } from './columns';
 import { core } from './core';
+import { users } from './identity';
 
 export const incidents = core.table(
   'incidents',
@@ -57,6 +67,74 @@ export const incidents = core.table(
       'incidents_resolved_check',
       sql`(${t.status} = 'resolved') = (${t.resolvedAt} is not null)`
     ),
-    check('incidents_source_check', sql`${t.source} in ('manual', 'reconciliation', 'consumer')`),
+    check(
+      'incidents_source_check',
+      sql`${t.source} in ('manual', 'reconciliation', 'consumer', 'monitor')`
+    ),
+    index('incidents_public_idx')
+      .on(t.detectedAt.desc())
+      .where(sql`${t.public}`),
+    // Anything on the public status page has a public headline.
+    check('incidents_public_message_check', sql`not ${t.public} or ${t.publicMessage} is not null`),
+  ]
+);
+
+/**
+ * The incident timeline (spec 5.2). Every row is internal unless `public`; only public rows
+ * reach the status feed. Append-only: a correction is a new update.
+ */
+export const incidentUpdates = core.table(
+  'incident_updates',
+  {
+    id: uuid('id').primaryKey(),
+    incidentId: uuid('incident_id')
+      .notNull()
+      .references(() => incidents.id),
+    /** The incident's status when the update was written. */
+    status: text('status').notNull(),
+    body: text('body').notNull(),
+    public: boolean('public').notNull().default(false),
+    /** Null for an update the platform wrote itself (a monitor). */
+    authorId: uuid('author_id').references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('incident_updates_incident_idx').on(t.incidentId, t.createdAt, t.id),
+    index('incident_updates_public_idx')
+      .on(t.incidentId, t.createdAt)
+      .where(sql`${t.public}`),
+    check(
+      'incident_updates_status_check',
+      sql`${t.status} in ('investigating', 'identified', 'monitoring', 'resolved')`
+    ),
+    check('incident_updates_body_check', sql`char_length(${t.body}) between 1 and 4000`),
+  ]
+);
+
+/** One postmortem per incident. Editable until published, then final. Never public. */
+export const incidentPostmortems = core.table(
+  'incident_postmortems',
+  {
+    id: uuid('id').primaryKey(),
+    incidentId: uuid('incident_id')
+      .notNull()
+      .references(() => incidents.id),
+    summary: text('summary').notNull(),
+    rootCause: text('root_cause').notNull(),
+    timeline: jsonb('timeline').$type<Array<{ at: string; event: string }>>().notNull().default([]),
+    actionItems: jsonb('action_items')
+      .$type<Array<{ title: string; owner: string | null; due: string | null }>>()
+      .notNull()
+      .default([]),
+    publishedAt: timestamptz('published_at'),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex('incident_postmortems_incident_key').on(t.incidentId),
+    check('incident_postmortems_summary_check', sql`char_length(${t.summary}) between 1 and 8000`),
   ]
 );

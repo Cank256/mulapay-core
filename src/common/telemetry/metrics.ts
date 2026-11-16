@@ -197,6 +197,102 @@ export const amlScreeningsTotal = new Counter({
   registers: [metricsRegistry],
 });
 
+/** Phase 8: support and operations (spec 10). Label values come from fixed sets. */
+export const complaintsOpen = new Gauge({
+  name: 'core_complaints_open',
+  help: 'Complaints that are not resolved or closed',
+  labelNames: ['priority', 'breached'] as const,
+  registers: [metricsRegistry],
+});
+export const complaintSlaBreaches = new Counter({
+  name: 'core_complaint_sla_breaches_total',
+  help: 'Complaints that passed their SLA deadline unresolved',
+  labelNames: ['priority'] as const,
+  registers: [metricsRegistry],
+});
+export const notificationsCreated = new Counter({
+  name: 'core_notifications_created_total',
+  help: 'Notifications created, by channel',
+  labelNames: ['channel'] as const,
+  registers: [metricsRegistry],
+});
+export const notificationsSuppressed = new Counter({
+  name: 'core_notifications_suppressed_total',
+  help: 'Notifications not created: deduplicated, no template, or a template that failed to render',
+  labelNames: ['reason'] as const,
+  registers: [metricsRegistry],
+});
+export const notificationDeliveries = new Counter({
+  name: 'core_notification_deliveries_total',
+  help: 'Notification delivery attempts by outcome (sent, rejected, retry, failed)',
+  labelNames: ['channel', 'outcome', 'reason'] as const,
+  registers: [metricsRegistry],
+});
+export const notificationDeliveriesBacklog = new Gauge({
+  name: 'core_notification_deliveries_backlog',
+  help: 'Deliveries from the last day that are pending or failed',
+  labelNames: ['channel', 'status'] as const,
+  registers: [metricsRegistry],
+});
+export const reportsFinished = new Counter({
+  name: 'core_reports_total',
+  help: 'Reports by type and outcome (ready, failed, expired)',
+  labelNames: ['type', 'outcome'] as const,
+  registers: [metricsRegistry],
+});
+export const reportDuration = new Histogram({
+  name: 'core_report_generation_duration_seconds',
+  help: 'Time to stream a report from the database into object storage',
+  labelNames: ['type'] as const,
+  buckets: [0.1, 0.5, 1, 5, 15, 60, 300, 900],
+  registers: [metricsRegistry],
+});
+export const incidentsOpened = new Counter({
+  name: 'core_incidents_opened_total',
+  help: 'Incidents opened, by severity and source',
+  labelNames: ['severity', 'source'] as const,
+  registers: [metricsRegistry],
+});
+export const opsSignalsActive = new Gauge({
+  name: 'core_ops_signals_active',
+  help: '1 while an automatic incident monitor sees its condition',
+  labelNames: ['signal'] as const,
+  registers: [metricsRegistry],
+});
+export const transactionsStuck = new Gauge({
+  name: 'core_transactions_stuck',
+  help: 'Transactions in processing past the stuck threshold, by age bucket',
+  labelNames: ['type', 'age_bucket'] as const,
+  registers: [metricsRegistry],
+});
+export const approvalsPending = new Gauge({
+  name: 'core_approvals_pending',
+  help: 'Operational approvals waiting for a second person',
+  registers: [metricsRegistry],
+});
+export const maintenanceModeGauge = new Gauge({
+  name: 'core_maintenance_mode',
+  help: '1 while maintenance mode is on',
+  registers: [metricsRegistry],
+});
+export const maintenanceRejections = new Counter({
+  name: 'core_maintenance_rejections_total',
+  help: 'Writes refused with 503 because maintenance mode is on',
+  registers: [metricsRegistry],
+});
+export const rollupRuns = new Counter({
+  name: 'core_rollup_runs_total',
+  help: 'Dashboard rollup runs by outcome',
+  labelNames: ['outcome'] as const,
+  registers: [metricsRegistry],
+});
+export const opsActions = new Counter({
+  name: 'core_ops_actions_total',
+  help: 'Operational actions taken by staff',
+  labelNames: ['action'] as const,
+  registers: [metricsRegistry],
+});
+
 /**
  * Functions that bring a gauge up to date from shared state. `MetricsService` runs them on
  * every scrape, as it does for pool and queue gauges, so the api process reports what the

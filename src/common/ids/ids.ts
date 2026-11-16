@@ -45,6 +45,13 @@ export const ID_PREFIXES = {
   blocklistEntry: 'bl',
   amlBlock: 'blk',
   dispute: 'dsp',
+  complaint: 'cmp',
+  notification: 'ntf',
+  notificationDelivery: 'ntd',
+  report: 'rpt',
+  reportSchedule: 'rsc',
+  approval: 'apr',
+  routingRule: 'rrl',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

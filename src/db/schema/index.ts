@@ -20,3 +20,7 @@ export * from './incidents';
 export * from './kyc';
 export * from './aml';
 export * from './disputes';
+export * from './support';
+export * from './notifications';
+export * from './reports';
+export * from './operations';

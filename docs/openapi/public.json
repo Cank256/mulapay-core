@@ -14461,6 +14461,160 @@
         ],
         "x-idempotent": false
       }
+    },
+    "/v1/status": {
+      "get": {
+        "description": "Unauthenticated. Open public incidents, and those resolved in the last 14 days.",
+        "operationId": "StatusController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "operational",
+                            "degraded",
+                            "major_outage"
+                          ]
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "incidents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "headline": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "investigating",
+                                  "identified",
+                                  "monitoring",
+                                  "resolved"
+                                ]
+                              },
+                              "impact": {
+                                "type": "string",
+                                "enum": [
+                                  "minor",
+                                  "major"
+                                ]
+                              },
+                              "components": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "startedAt": {
+                                "type": "string"
+                              },
+                              "resolvedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "updates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "investigating",
+                                        "identified",
+                                        "monitoring",
+                                        "resolved"
+                                      ]
+                                    },
+                                    "body": {
+                                      "type": "string"
+                                    },
+                                    "at": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "status",
+                                    "body",
+                                    "at"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "headline",
+                              "status",
+                              "impact",
+                              "components",
+                              "startedAt",
+                              "resolvedAt",
+                              "updates"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "updatedAt",
+                        "incidents"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Platform status and public incident updates",
+        "tags": [
+          "Status"
+        ]
+      }
     }
   },
   "info": {

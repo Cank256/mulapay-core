@@ -147,7 +147,7 @@ SQL. No outbound HTTP, S3 or queue call happens inside a transaction (spec 4.3, 
 
 ## Queues
 
-`src/common/queue/queue.definitions.ts` lists the nine queues and concurrencies from
+`src/common/queue/queue.definitions.ts` lists the queues and concurrencies from
 spec 8.9 under the Redis prefix `mulapay-core`. Default job options: 5 attempts,
 exponential backoff from 1 s, completed jobs kept for 24 h (max 1000), failed jobs kept
 for 7 days (max 10000). Queues with a specified schedule override these in their phase.
@@ -842,3 +842,162 @@ Choices made where the spec is silent, ambiguous or differs from the request.
   the TIN as their last four characters. The file is encrypted at rest by the bucket.
 - **The KYC review queue is newest first**, because the pagination helper (spec 8.6) is
   descending-only.
+
+## Support and operations (Phase 8)
+
+Built on the Phase 5 outbox and the Phase 6 and 7 services; no Phase 3 or 4 code is needed. Migration
+`0008_support_operations.sql`.
+
+### Complaints
+
+Merchants and staff file complaints (`/dashboard/v1/complaints`, `/admin/v1/complaints`); customers'
+complaints arrive only through staff. A category carries the hours it is answered within
+(`complaint_categories.sla_hours`); the deadline `sla_due_at` is fixed at filing and never changes (database
+guard). The minute sweep (`support-ops`, `ComplaintsService.sweepSla`) records a breach once, at the deadline, and
+tells staff through a mandatory notification. A breached complaint stays in the queue
+(`GET /admin/v1/complaints/sla-breaches`) until it is resolved. Customer-sourced complaints are hidden from
+merchants; the customer's contact is encrypted and read only through an audited route.
+
+### Disputes (operations)
+
+Phase 7 opened, held and resolved disputes. Phase 8 adds an assigned investigator, append-only notes, an evidence
+deadline with a warning (`DISPUTE_DEADLINE_WARNING_HOURS`) and the deadline sweep. Resolution still goes through
+the Phase 7 financial service; nothing here posts to the ledger.
+
+### Incidents and the public status feed
+
+Incidents have a status (`investigating`, `identified`, `monitoring`, `resolved`), a timeline, a postmortem and a
+`dedupe_key`. `IncidentsService.openAutomatic` is the one way a machine opens an incident: one open incident per key,
+with a detection counter and a severity that can only rise. A machine moves a cleared incident to `monitoring`; only a
+person resolves one. `GET /v1/status` (no authentication, cached 30 s, also `GET /dashboard/v1/status`) exposes the
+public headline, a coarse impact, a whitelist of component names (`PUBLIC_COMPONENTS`) and updates marked public.
+Resolved public incidents stay 14 days. Internal updates, the postmortem, the cause and the commander are never public.
+
+### Automatic incidents
+
+`OpsMonitorService.evaluate` runs every `OPS_MONITOR_INTERVAL_SECONDS` on `support-ops`. Signal state is in
+`ops_signals` (`active_since`), so the duration of a condition survives restarts.
+
+| Signal                                                                          | Opens                              | Severity                                                                                            |
+| ------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Ledger integrity                                                                | the Phase 6 hourly run (unchanged) | sev1                                                                                                |
+| Suspense non-zero                                                               | after `SUSPENSE_ALERT_HOURS`       | sev2, sev1 after `OPS_SUSPENSE_SEV1_HOURS`; not while a `ledger_integrity:{env}:*` incident is open |
+| Processing transactions older than `OPS_STUCK_TXN_MINUTES`                      | at once                            | sev3, sev2 from `OPS_STUCK_TXN_SEV2_MINUTES`                                                        |
+| A queue above `OPS_QUEUE_DEPTH_THRESHOLD` for `OPS_QUEUE_DEPTH_SUSTAIN_SECONDS` | after the sustain time             | sev3, sev2 at five times the threshold                                                              |
+
+### Notifications
+
+`NotificationsService.notify` writes one `notifications` row per recipient user (merchant and staff audiences are
+expanded first), keyed by recipient, template and resource, and suppresses a duplicate inside 5 minutes. Templates are
+unique on (code, channel, locale). Preferences apply except for mandatory templates (security, disputes, SLA breach,
+incidents). The in-app channel is the row itself (unread count, list, mark read, bulk read). Email, SMS and push are
+`notification_deliveries` rows (monthly partitions) sent by the `notification-send` queue through ports in
+`src/integrations/messaging`: Resend and Postmark, Africa's Talking, and FCM HTTP v1. A delivery retries with
+exponential backoff up to `NOTIFICATION_MAX_ATTEMPTS`, then is `failed` with a short error code; a refusal retrying
+cannot change fails at once. SES and Twilio fail closed (`channel_not_configured`). Events that merchants are told
+about reach the service through a second outbox row, `notification.merchant_event`.
+
+### Reports
+
+`POST .../reports` answers `202` with a reference. The outbox row `report.requested` queues `report-generate`. The worker
+claims the report under a lease, reads the data through a server-side cursor (`DECLARE ... CURSOR` in a `REPEATABLE READ
+READ ONLY` transaction on the replica pool, `REPORT_CURSOR_BATCH_SIZE` rows at a time), writes CSV or JSON and uploads it
+as an S3 multipart upload (`ObjectStorage.putStream`, parts of `REPORT_MULTIPART_PART_BYTES`), so the file is never held
+in memory. A download is a presigned link valid 15 minutes (audited); the file is deleted after 7 days. Thirteen types,
+each with a default window and a bound on every partitioned table. Schedules (`report_schedules`) create one report per
+due time, idempotently, and turn themselves off after `REPORT_SCHEDULE_MAX_FAILURES` consecutive failures.
+
+### Rollups and analytics
+
+`daily_merchant_rollups` is recomputed per UTC day: today every 15 minutes (and yesterday in the first hour of a day), and
+the previous days each night at 01:30 UTC. A recompute is a whole-day replace, so it is idempotent and a late run corrects
+itself. Dashboard analytics and the operations overview read only the rollups.
+
+### Operations surface
+
+`/admin/v1/ops/*`: overview, queues (depth, pause, resume, retry failed), the consumer cursor and its lag, stuck
+transactions, suspense, feature flags, maintenance mode, the approvals inbox; `/admin/v1/providers` and
+`/admin/v1/routing-rules`. Every write is audited and counted in `core_ops_actions_total`.
+
+**Approvals.** `core.approvals` plus an executor registry. Four kinds: `consumer_cursor.rewind`, `feature_flag.change`,
+`provider.disable`, `routing_rule.remove`. A request answers `202`; a different staff member with `ops:approve` and a recent
+step-up approves, and the change is applied in the same transaction as the decision. The requester cannot approve (service
+and database check). A pending request expires after `APPROVAL_TTL_HOURS`. `OpsChangeApplier` is the one place a change is
+applied, for the direct and the approved path alike.
+
+**Providers and routing.** Disabling a provider, or setting its health to `down`, applies at once only if every currency
+routed to it has another enabled provider with an enabled rule. Otherwise it needs a reason and an approval. Deleting a
+routing rule, and disabling the last enabled rule of a currency, always need an approval.
+
+**Maintenance mode.** `MaintenanceGuard` is a global guard ahead of authentication. While on, every write on every surface
+answers `503 MAINTENANCE_MODE` with `Retry-After`; reads, the switch itself and sign-in, refresh, MFA and step-up stay open.
+State is one row in Postgres, cached in process for 2 seconds. If the row cannot be read the guard lets the request through
+and logs it (the database being down already fails the write).
+
+**Feature flags.** `OPS_FLAG_CHANGE_APPROVAL` (`production`, `always`, `never`) decides when a flag change needs approval;
+`never` is refused in production.
+
+### Processes and queues
+
+`support-ops` (concurrency 1, one attempt, every tick is idempotent and runs again a minute later): complaint SLA sweep,
+dispute deadlines, approval expiry, the incident monitors. `notification-send` has 6 attempts with a 30 s exponential
+backoff, `report-generate` 3 attempts with a 30 s backoff, `rollup-aggregate` runs the two rollup jobs.
+
+### Runbooks and load
+
+`docs/OPERATIONS.md` is executable: `test/integration/runbooks.int-spec.ts` runs its tagged SQL and HTTP blocks against
+scenarios. `npm run test:load` measures the spec 9.1 targets (`docs/LOAD_RESULTS.md`).
+
+## Phase 8 decisions to confirm
+
+**Differences from the spec text**
+
+- **Notification templates are unique on (code, channel, locale)**, not on `code` (spec 5.2): one code has one template
+  per channel and language.
+- **`daily_merchant_rollups` has `environment` in its primary key.** Test and live volume must not mix.
+- **Notification rows are always per user** (`recipient_type = 'user'`). A merchant or staff-group audience is expanded
+  to its members before insert.
+- **`notification_deliveries` is partitioned monthly; `notifications` is not.** Deliveries are the high-volume,
+  short-lived table.
+- **`consumer_cursors` is created in migration 0008**, because the consumer (Phase 3) is not built. The gateway lag is read
+  with the read-only pool from `public.operation_events`. When Phase 3 lands it adopts this table.
+- **An extra queue, `support-ops`**, beyond the nine of spec 8.9, for the minute sweeps.
+- **Reports are CSV and JSON.** `xlsx` and `pdf` answer `REPORT_INVALID` (`format_not_supported`). The payouts and refunds
+  reports read `transactions` filtered by type, because there are no payout or refund tables yet.
+- **Staff can file a complaint on behalf of a customer or merchant**, and customer contact reveal is its own audited
+  route. The spec lists neither.
+- **Added routes:** notification destinations (`PUT`/`DELETE /dashboard/v1/notification-destinations` and the admin
+  equivalent) so SMS and push have an address; `GET /v1/status`.
+
+**Policy values that need a decision**
+
+- Complaint category SLA hours (`complaint_categories.sla_hours`; for example 96 hours for `other`), and that the SLA is calendar
+  time, not business hours.
+- The incident monitor thresholds and severities (table above), and that a cleared signal only moves an incident to
+  `monitoring`.
+- `OPS_FLAG_CHANGE_APPROVAL` (default `production`), `APPROVAL_TTL_HOURS` (24), the 1,000-recipient broadcast cap.
+- Public status: the component whitelist, the 14-day window for resolved incidents, the 30-second cache.
+- Report limits: `REPORT_MAX_ROWS`, `REPORT_MAX_ACTIVE_PER_MERCHANT`, the 15-minute link and the 7-day file life (constants,
+  not configuration), and that a scheduled report may go only to members of the merchant (or staff), never to an arbitrary
+  address.
+- Which notification templates are mandatory (they ignore preferences): security, disputes, SLA breach, incidents.
+- The rollup lookback of the recompute jobs.
+
+**Behaviour choices**
+
+- **Suspense is reported twice.** The Phase 6 hourly integrity run (spec 6.8 lists a non-zero suspense) opens a sev1
+  incident immediately; the Phase 8 drift monitor (spec 6.14: after an hour) opens sev2 and sev1 later. The drift monitor
+  stays quiet while a `ledger_integrity` incident is open, so there is one incident, not two. Phase 6 was not changed.
+- **A machine never resolves an incident.** A person does, with the cause in the final update.
+- **Maintenance mode fails open** when its row cannot be read, and the request would fail anyway if the database is down.
+- **Provider disable is conditional.** It applies at once only when another enabled provider covers every currency routed
+  to it (otherwise an approval), so one person cannot stop payments in a currency.
+- **A notification can be sent twice, never zero times**: a worker that dies after the vendor accepted a message and before
+  the row is marked sent leaves it pending, and the sweep sends it again. The delivery reference is sent as the vendor's
+  idempotency key for email.
+- **Report generation is not resumable.** A failed attempt starts the report again; a failed upload is aborted, so no partial object is left.
+- **Skipped (not built, see the report to the requester):** `GET /admin/v1/ops/gateway-health`, `POST /admin/v1/ops/gateway/replay-events`
+  (they need the Provider Gateway client), report schedules for staff, Redis pub/sub invalidation of the flag cache across
+  processes (the 2-second in-process cache is the bound today), per-endpoint webhook ordering.
+- **Load targets.** `docs/LOAD_RESULTS.md` records what was measured and on what. The event consumer target (500 events/s)
+  is not measured, because the consumer is not built. The soak test belongs to Phase 9.

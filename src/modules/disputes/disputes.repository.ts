@@ -1,11 +1,24 @@
 /** SQL for `core.disputes`. Merchant-facing reads take a merchant scope (spec 8.4). */
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, lt, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  max,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import type { MerchantScope } from '../../common/auth/merchant-scope';
 import type { Executor } from '../../common/db/database.types';
 import { DB_RW } from '../../common/db/tokens';
 import type { CursorKey } from '../../common/pagination/cursor';
-import { disputes, merchants, transactionKeys } from '../../db/schema';
+import { disputeNotes, disputes, merchants, transactionKeys, users } from '../../db/schema';
 import type { DisputedTransaction } from './domain/dispute-state';
 
 export type DisputeRow = typeof disputes.$inferSelect;
@@ -22,13 +35,20 @@ export type DisputePatch = Partial<
     | 'resolutionNote'
     | 'resolvedBy'
     | 'resolvedAt'
+    | 'assignedTo'
+    | 'assignedAt'
+    | 'dueSoonNotifiedAt'
+    | 'overdueNotifiedAt'
   >
 >;
+export type DisputeNoteRow = typeof disputeNotes.$inferSelect;
 
 export interface DisputeWithRefs {
   readonly row: DisputeRow;
   readonly merchantRef: string;
   readonly transactionRef: string;
+  /** The investigator's staff ref, when one is assigned. */
+  readonly assigneeRef: string | null;
 }
 
 export interface TransactionLookup extends DisputedTransaction {
@@ -69,10 +89,16 @@ export class DisputesRepository {
 
   async findByRef(ref: string, tx: Executor = this.db): Promise<DisputeWithRefs | undefined> {
     const [found] = await tx
-      .select({ row: disputes, merchantRef: merchants.ref, transactionRef: transactionKeys.ref })
+      .select({
+        row: disputes,
+        merchantRef: merchants.ref,
+        transactionRef: transactionKeys.ref,
+        assigneeRef: users.ref,
+      })
       .from(disputes)
       .innerJoin(merchants, eq(merchants.id, disputes.merchantId))
       .innerJoin(transactionKeys, eq(transactionKeys.id, disputes.transactionId))
+      .leftJoin(users, eq(users.id, disputes.assignedTo))
       .where(eq(disputes.ref, ref))
       .limit(1);
     return found;
@@ -85,10 +111,16 @@ export class DisputesRepository {
     tx: Executor = this.db
   ): Promise<DisputeWithRefs | undefined> {
     const [found] = await tx
-      .select({ row: disputes, merchantRef: merchants.ref, transactionRef: transactionKeys.ref })
+      .select({
+        row: disputes,
+        merchantRef: merchants.ref,
+        transactionRef: transactionKeys.ref,
+        assigneeRef: users.ref,
+      })
       .from(disputes)
       .innerJoin(merchants, eq(merchants.id, disputes.merchantId))
       .innerJoin(transactionKeys, eq(transactionKeys.id, disputes.transactionId))
+      .leftJoin(users, eq(users.id, disputes.assignedTo))
       .where(
         and(
           eq(disputes.ref, ref),
@@ -104,6 +136,10 @@ export class DisputesRepository {
     scope?: MerchantScope;
     merchantId?: string;
     status?: string;
+    assignedTo?: string;
+    unassigned?: boolean;
+    /** Unresolved disputes whose evidence deadline has passed, or falls before `until`. */
+    deadline?: { kind: 'overdue'; now: Date } | { kind: 'due_soon'; now: Date; until: Date };
     after?: CursorKey;
     limit: number;
   }): Promise<DisputeWithRefs[]> {
@@ -114,6 +150,19 @@ export class DisputesRepository {
     }
     if (filter.merchantId) conditions.push(eq(disputes.merchantId, filter.merchantId));
     if (filter.status) conditions.push(eq(disputes.status, filter.status));
+    if (filter.assignedTo) conditions.push(eq(disputes.assignedTo, filter.assignedTo));
+    if (filter.unassigned) conditions.push(isNull(disputes.assignedTo));
+    if (filter.deadline) {
+      conditions.push(sql`${disputes.status} <> 'resolved'`, isNotNull(disputes.evidenceDueAt));
+      if (filter.deadline.kind === 'overdue') {
+        conditions.push(lt(disputes.evidenceDueAt, filter.deadline.now));
+      } else {
+        conditions.push(
+          sql`${disputes.evidenceDueAt} >= ${filter.deadline.now}`,
+          lte(disputes.evidenceDueAt, filter.deadline.until)
+        );
+      }
+    }
     if (filter.after) {
       const keyset = or(
         lt(disputes.createdAt, filter.after.createdAt),
@@ -122,10 +171,16 @@ export class DisputesRepository {
       if (keyset) conditions.push(keyset);
     }
     return this.db
-      .select({ row: disputes, merchantRef: merchants.ref, transactionRef: transactionKeys.ref })
+      .select({
+        row: disputes,
+        merchantRef: merchants.ref,
+        transactionRef: transactionKeys.ref,
+        assigneeRef: users.ref,
+      })
       .from(disputes)
       .innerJoin(merchants, eq(merchants.id, disputes.merchantId))
       .innerJoin(transactionKeys, eq(transactionKeys.id, disputes.transactionId))
+      .leftJoin(users, eq(users.id, disputes.assignedTo))
       .where(and(...conditions))
       .orderBy(desc(disputes.createdAt), desc(disputes.ref))
       .limit(filter.limit + 1);
@@ -195,5 +250,55 @@ export class DisputesRepository {
          and not exists (select 1 from core.journal_entry_keys r where r.reverses_entry_id = e.id)
        order by e.created_at limit 1`);
     return result.rows[0]?.ref;
+  }
+
+  async insertNote(
+    tx: Executor,
+    values: typeof disputeNotes.$inferInsert
+  ): Promise<DisputeNoteRow> {
+    // Notes are read by time: a note written in the same millisecond as the one before it still comes after it.
+    const [latest] = await tx
+      .select({ at: max(disputeNotes.createdAt) })
+      .from(disputeNotes)
+      .where(eq(disputeNotes.disputeId, values.disputeId));
+    const createdAt =
+      values.createdAt instanceof Date && latest?.at && latest.at >= values.createdAt
+        ? new Date(latest.at.getTime() + 1)
+        : values.createdAt;
+    const [row] = await tx
+      .insert(disputeNotes)
+      .values({ ...values, createdAt })
+      .returning();
+    if (!row) throw new Error('dispute note insert returned no row');
+    return row;
+  }
+
+  notes(disputeId: string): Promise<Array<{ row: DisputeNoteRow; authorRef: string }>> {
+    return this.db
+      .select({ row: disputeNotes, authorRef: users.ref })
+      .from(disputeNotes)
+      .innerJoin(users, eq(users.id, disputeNotes.authorId))
+      .where(eq(disputeNotes.disputeId, disputeId))
+      .orderBy(asc(disputeNotes.createdAt), asc(disputeNotes.id));
+  }
+
+  /** Unresolved disputes whose deadline warning or lapse nobody has been told about yet. */
+  async deadlineCandidates(now: Date, soonUntil: Date, limit: number): Promise<string[]> {
+    const rows = await this.db
+      .select({ ref: disputes.ref })
+      .from(disputes)
+      .where(
+        and(
+          sql`${disputes.status} <> 'resolved'`,
+          isNotNull(disputes.evidenceDueAt),
+          or(
+            and(isNull(disputes.dueSoonNotifiedAt), lte(disputes.evidenceDueAt, soonUntil)),
+            and(isNull(disputes.overdueNotifiedAt), lt(disputes.evidenceDueAt, now))
+          )
+        )
+      )
+      .orderBy(asc(disputes.evidenceDueAt))
+      .limit(limit);
+    return rows.map((r) => r.ref);
   }
 }

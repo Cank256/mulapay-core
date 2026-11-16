@@ -4,7 +4,7 @@
  * see the hold, the shortfall, the ledger entry and the internal note.
  */
 import { z } from 'zod';
-import type { DisputeRow, DisputeWithRefs } from './disputes.repository';
+import type { DisputeNoteRow, DisputeRow, DisputeWithRefs } from './disputes.repository';
 
 const iso = z.string();
 const minor = z.string().regex(/^\d+$/);
@@ -32,6 +32,8 @@ export const adminDisputeSchema = merchantDisputeSchema.extend({
   resolutionEntry: z.string().nullable(),
   resolutionNote: z.string().nullable(),
   internalNote: z.string().nullable(),
+  assignee: z.string().nullable(),
+  assignedAt: iso.nullable(),
 });
 export type AdminDisputeView = z.infer<typeof adminDisputeSchema>;
 
@@ -72,6 +74,24 @@ export function toAdminDispute(found: DisputeWithRefs): AdminDisputeView {
     resolutionEntry: row.resolutionEntryRef,
     resolutionNote: row.resolutionNote,
     internalNote: row.internalNote,
+    assignee: found.assigneeRef,
+    assignedAt: row.assignedAt?.toISOString() ?? null,
+  };
+}
+
+export const disputeNoteSchema = z.object({
+  id: z.string(),
+  author: z.string(),
+  body: z.string(),
+  createdAt: iso,
+});
+export const disputeNotesSchema = z.object({ items: z.array(disputeNoteSchema) });
+export function toDisputeNote(found: { row: DisputeNoteRow; authorRef: string }) {
+  return {
+    id: found.row.id,
+    author: found.authorRef,
+    body: found.row.body,
+    createdAt: found.row.createdAt.toISOString(),
   };
 }
 

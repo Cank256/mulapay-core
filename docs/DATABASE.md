@@ -1,7 +1,7 @@
 # Database
 
-Status: Phase 2, the payment and transaction tables (migration 0003), holds (0004) and the
-developer platform tables (0005). Identity,
+Status: Phase 8. The ledger (0002), payment and transaction tables (0003), holds (0004), developer platform tables (0005),
+settlement and reconciliation (0006), compliance (0007) and support and operations (0008). Identity,
 merchants, roles, API keys, the audit log, the ledger core (currencies, chart of accounts,
 balances, journal), payments, transactions, payment links, checkout sessions and idempotency.
 
@@ -316,6 +316,58 @@ closing columns); the schema test found it and they are tightened in the generat
 limits are placeholders for Compliance to confirm (`docs/ARCHITECTURE.md`, "Phase 7 decisions to confirm").
 Encryption contexts: `merchant_profiles.tin:{merchantId}`, `kyc_parties.full_name:{ref}`,
 `kyc_parties.date_of_birth:{ref}`, `kyc_parties.id_number:{ref}`.
+
+## Support and operations tables (migration 0008)
+
+| Table                                                                                                         | Holds                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `complaint_categories`, `complaints`, `complaint_messages`                                                    | categories with their SLA hours; complaints with a fixed deadline; the thread, append-only                   |
+| `dispute_notes`; `disputes` gains `assigned_to`, `assigned_at`, `due_soon_notified_at`, `overdue_notified_at` | investigators' notes, append-only; who works a dispute and which deadline notices went out                   |
+| `incident_updates`, `incident_postmortems`; `incidents` gains public fields                                   | the timeline, append-only; one postmortem per incident; `public_message` and `public` on the incident        |
+| `notification_templates`, `notification_preferences`, `notification_destinations`                             | templates unique on (code, channel, locale); per-user, per-channel choices; encrypted SMS and push addresses |
+| `notifications`, `notification_deliveries`                                                                    | one row per recipient user; one row per channel attempt (partitioned monthly by `created_at`)                |
+| `reports`, `report_schedules`, `report_schedule_runs`                                                         | report requests and their files (an object key, size, SHA-256); schedules and the report each tick made      |
+| `daily_merchant_rollups`                                                                                      | per merchant, environment, day, currency, channel and provider; what the dashboards read                     |
+| `approvals`, `approval_decisions`                                                                             | requests for a second person's decision and each decision, append-only                                       |
+| `feature_flags`, `routing_rules`, `provider_status`                                                           | flags with rollout; routing rules by currency and priority; the switch and health of each provider           |
+| `consumer_cursors`, `maintenance_state`, `ops_signals`                                                        | the event consumer's position and heartbeat; the one maintenance row; when each monitor condition began      |
+
+### Invariants enforced by Postgres
+
+`test/integration/support-schema.int-spec.ts` violates them with plain SQL as the application role.
+
+| Invariant                                                                                                                                                                             | Mechanism                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| A complaint's subject, merchant, category and deadline never change; `closed` is final                                                                                                | `core.guard_complaint`; legal status moves only                                |
+| A report's identity and parameters never change; queued, running, then ready or failed; a ready report only expires; failed and expired are final; ready and expired carry their file | `core.guard_report`; CHECK `reports_ready_check`; no DELETE grant              |
+| A schedule run's report and window never change                                                                                                                                       | `core.guard_report_schedule_run`                                               |
+| An approval's request never changes; it is decided once and is then final                                                                                                             | `core.guard_approval`; CHECK on the decision columns                           |
+| A decision is never made by the person who requested it                                                                                                                               | `core.guard_approval_decision` (insert trigger)                                |
+| A notification is only ever marked read, once                                                                                                                                         | column grant (`UPDATE (read_at)` only) and `core.guard_notification`           |
+| A delivery's identity never changes; `failed` and `delivered` are final; `sent` may only become `delivered`; attempts never decrease                                                  | `core.guard_notification_delivery`                                             |
+| A postmortem belongs to one incident, which never changes                                                                                                                             | `core.guard_incident_postmortem`                                               |
+| A public incident has a public message                                                                                                                                                | CHECK `incidents_public_message_check`                                         |
+| Complaint messages, dispute notes, incident updates and approval decisions are never changed                                                                                          | `core.reject_mutation` triggers on UPDATE, DELETE and TRUNCATE                 |
+| Delivery rows are never deleted by the application (retention drops partitions)                                                                                                       | `DELETE, TRUNCATE` revoked on the table and every partition                    |
+| Money columns of the rollups and routing rules are `bigint`, never negative                                                                                                           | column types; CHECKs; `ledger-schema.int-spec.ts` lists every `*_minor` column |
+
+### Partitions
+
+`notification_deliveries` is `PARTITION BY RANGE (created_at)`, one partition a month. Migration 0008 creates the current month
+and three ahead, plus a default partition as a safety net. **Nothing creates later partitions yet** (partition automation and
+the 180-day retention are Phase 9): after four months rows land in the default partition, which still works but cannot be
+dropped by month. Create the next partitions with `core.create_monthly_partitions('notification_deliveries', <first day>, <months>, false)`
+before that. Every query on the table carries a `created_at` bound.
+
+### Hand edits to the generated migration
+
+drizzle-kit generated 0008; the partitioning of `notification_deliveries` was added to its `CREATE TABLE` by hand. Everything
+after the "Hand-written (Phase 8, support and operations)" marker is by hand: `updated_at` triggers, the partitions, the guards,
+the append-only triggers, the revokes, and the seeds: complaint categories with SLA hours (placeholders), the three providers,
+the consumer cursor `gateway` at 0, the maintenance row (off), the notification templates, and the staff and merchant
+permissions with their role grants (`support:*`, `incidents:*`, `ops:*`, `reports:platform`, `notification_templates:manage`; merchant
+`complaints:*`, `reports:*`, `analytics:read`). `consumer_cursors` is created here because the consumer (Phase 3) is not built;
+see `docs/ARCHITECTURE.md`, "Phase 8 decisions to confirm".
 
 ## Open question: table ownership
 

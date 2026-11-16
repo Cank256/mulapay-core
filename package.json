@@ -25,7 +25,7 @@
     "test:integration": "vitest run --project integration",
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --coverage",
-    "test:load": "node -e \"console.error('Load tests (k6) arrive in Phase 8. See docs/ARCHITECTURE.md.'); process.exit(1)\"",
+    "test:load": "LOAD=1 LOAD_WRITE_RESULTS=1 vitest run --project load",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "node -e \"console.error('Seed data (roles, currencies, chart of accounts) is applied by migrations. See docs/DATABASE.md.'); process.exit(1)\"",

@@ -39,10 +39,20 @@ export const FAKE_S3 = {
   reports: 'mulapay-reports',
 } as const;
 
+/** S3 refuses a part smaller than this unless it is the last one of the upload. */
+export const MIN_PART_BYTES = 5 * 1024 * 1024;
+
 export interface FakeS3 {
   readonly endpoint: string;
   readonly objects: Map<string, StoredFile>;
   readonly requests: RecordedRequest[];
+  /** Multipart uploads in progress (started, not completed or aborted). */
+  readonly uploads: Map<
+    string,
+    { key: string; contentType: string; encryption: string | null; parts: Map<number, Buffer> }
+  >;
+  /** The largest request body received, to prove a streamed file was never sent whole. */
+  maxBodyBytes: number;
   /** When set, every request answers this status (an outage). */
   failWith: number | null;
   config(overrides?: Record<string, string>): Record<string, string>;
@@ -71,7 +81,11 @@ function expired(params: URLSearchParams): boolean {
 export async function startFakeS3(): Promise<FakeS3> {
   const objects = new Map<string, StoredFile>();
   const requests: RecordedRequest[] = [];
-  const state = { failWith: null as number | null };
+  const uploads = new Map<
+    string,
+    { key: string; contentType: string; encryption: string | null; parts: Map<number, Buffer> }
+  >();
+  const state = { failWith: null as number | null, maxBodyBytes: 0 };
   const server: Server = createServer((req, res) => {
     void (async () => {
       const url = new URL(req.url ?? '/', 'http://localhost');
@@ -84,6 +98,7 @@ export async function startFakeS3(): Promise<FakeS3> {
         presigned,
       });
       const body = await read(req);
+      state.maxBodyBytes = Math.max(state.maxBodyBytes, body.length);
       if (state.failWith) {
         res.writeHead(state.failWith).end();
         return;
@@ -93,6 +108,68 @@ export async function startFakeS3(): Promise<FakeS3> {
         return;
       }
       const key = path.replace(/^\//, '');
+      const uploadId = url.searchParams.get('uploadId');
+      if (req.method === 'POST' && url.searchParams.has('uploads')) {
+        const id = `upload-${uploads.size + 1}-${Date.now()}`;
+        uploads.set(id, {
+          key,
+          contentType: req.headers['content-type'] ?? 'binary/octet-stream',
+          // As in S3, the encryption is chosen when the upload starts.
+          encryption: (req.headers['x-amz-server-side-encryption'] as string | undefined) ?? null,
+          parts: new Map(),
+        });
+        res
+          .writeHead(200, { 'content-type': 'application/xml' })
+          .end(
+            `<InitiateMultipartUploadResult><UploadId>${id}</UploadId></InitiateMultipartUploadResult>`
+          );
+        return;
+      }
+      if (uploadId) {
+        const upload = uploads.get(uploadId);
+        if (!upload || upload.key !== key) {
+          res.writeHead(404).end('NoSuchUpload');
+          return;
+        }
+        if (req.method === 'PUT') {
+          const number = Number(url.searchParams.get('partNumber'));
+          upload.parts.set(number, body);
+          res.writeHead(200, { etag: `"${createHash('md5').update(body).digest('hex')}"` }).end();
+          return;
+        }
+        if (req.method === 'DELETE') {
+          uploads.delete(uploadId);
+          res.writeHead(204).end();
+          return;
+        }
+        if (req.method === 'POST') {
+          const numbers = [
+            ...body.toString('utf8').matchAll(/<PartNumber>(\d+)<\/PartNumber>/g),
+          ].map((m) => Number(m[1]));
+          const ordered = numbers.map((n) => upload.parts.get(n));
+          if (ordered.some((p) => p === undefined)) {
+            res.writeHead(400).end('<Error><Code>InvalidPart</Code></Error>');
+            return;
+          }
+          const small = ordered.slice(0, -1).some((p) => (p as Buffer).length < MIN_PART_BYTES);
+          if (small) {
+            res.writeHead(400).end('<Error><Code>EntityTooSmall</Code></Error>');
+            return;
+          }
+          const whole = Buffer.concat(ordered as Buffer[]);
+          objects.set(key, {
+            body: whole,
+            contentType: upload.contentType,
+            checksumBase64: createHash('sha256').update(whole).digest('base64'),
+            encryption: upload.encryption,
+          });
+          uploads.delete(uploadId);
+          res
+            .writeHead(200, { 'content-type': 'application/xml' })
+            .end('<CompleteMultipartUploadResult/>');
+          return;
+        }
+      }
       if (req.method === 'PUT') {
         const declared = req.headers['x-amz-checksum-sha256'] as string | undefined;
         const actual = createHash('sha256').update(body).digest('base64');
@@ -170,6 +247,13 @@ export async function startFakeS3(): Promise<FakeS3> {
     endpoint,
     objects,
     requests,
+    uploads,
+    get maxBodyBytes() {
+      return state.maxBodyBytes;
+    },
+    set maxBodyBytes(value: number) {
+      state.maxBodyBytes = value;
+    },
     get failWith() {
       return state.failWith;
     },

@@ -357,10 +357,13 @@ describe('roles', () => {
     const list = await admin.client.get('/admin/v1/roles');
     const viewer = list.json().data.roles.find((r: { key: string }) => r.key === 'viewer');
     expect(viewer.permissions).toEqual([
+      'analytics:read',
+      'complaints:read',
       'disputes:read',
       'kyc:view',
       'merchant:read',
       'payments:read',
+      'reports:read',
       'settlements:read',
       'team:read',
       'transactions:read',
@@ -380,10 +383,13 @@ describe('roles', () => {
     expect(rows[0]).toMatchObject({
       before: {
         permissions: [
+          'analytics:read',
+          'complaints:read',
           'disputes:read',
           'kyc:view',
           'merchant:read',
           'payments:read',
+          'reports:read',
           'settlements:read',
           'team:read',
           'transactions:read',

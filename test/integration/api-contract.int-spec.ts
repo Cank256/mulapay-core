@@ -16,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { API_KEY_SCOPES } from '../../src/common/authz/permissions';
 import { ERROR_CATALOGUE } from '../../src/common/errors/catalogue';
 import { buildOpenApiDocuments } from '../../src/common/openapi/openapi';
+import { UNAUTHENTICATED_PATHS } from '../../src/common/openapi/public-api-document';
 import { MERCHANT_EVENT_TYPES } from '../../src/modules/events/domain/event-types';
 import {
   createMerchant,
@@ -84,7 +85,8 @@ function operations(): Array<{ path: string; method: (typeof METHODS)[number]; o
   }
   return out;
 }
-const apiOperations = () => operations().filter(({ path }) => !path.startsWith('/v1/health'));
+const apiOperations = () =>
+  operations().filter(({ path }) => !UNAUTHENTICATED_PATHS.some((p) => path.startsWith(p)));
 
 function responseValidator(method: string, path: string, status: number): ValidateFunction {
   const pointer = `api#/paths/${escapePointer(path)}/${method}/responses/${status}/content/application~1json/schema`;
@@ -138,10 +140,17 @@ describe('the document', () => {
     expect(doc.components?.schemas).toHaveProperty('ErrorEnvelope');
   });
 
+  it('documents the status feed as unauthenticated', () => {
+    const op = (doc.paths['/v1/status'] as Json).get as Json;
+    expect(op.security).toBeUndefined();
+    expect(op['x-required-scopes']).toBeUndefined();
+    expect(Object.keys(op.responses as Json)).toContain('200');
+  });
   it('documents every route of the public surface (nothing was left out of the document)', () => {
     const paths = Object.keys(doc.paths);
     for (const expected of [
       '/v1/ping',
+      '/v1/status',
       '/v1/payments',
       '/v1/payments/{ref}',
       '/v1/payments/{ref}/cancel',

@@ -19,6 +19,8 @@ import { RedisModule } from './common/redis/redis.module';
 import { TelemetryModule } from './common/telemetry/telemetry.module';
 import type { AppConfig } from './config/configuration';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { MaintenanceGuard } from './modules/operations/maintenance.guard';
+import { OperationsModule } from './modules/operations/operations.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SURFACE_MODULES, SURFACE_ROUTES } from './surfaces/surfaces';
 
@@ -44,6 +46,7 @@ export class AppModule {
         AuthCoreModule,
         AuthModule,
         ApiKeysModule,
+        OperationsModule,
         HealthModule,
         ...SURFACE_MODULES,
         RouterModule.register(SURFACE_ROUTES),
@@ -54,6 +57,8 @@ export class AppModule {
         // Every route passes the AuthGuard; a route without a policy decorator is refused.
         // The AuthGuard authenticates, rate limits API keys, then authorizes; the signature
         // guard runs after it and only acts on API key requests (spec 8.5, 6.11).
+        // Maintenance mode refuses writes before anything else looks at the request (spec 6.14).
+        { provide: APP_GUARD, useClass: MaintenanceGuard },
         { provide: APP_GUARD, useClass: AuthGuard },
         { provide: APP_GUARD, useClass: RequestSignatureGuard },
         { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },

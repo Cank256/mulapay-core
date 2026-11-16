@@ -42,6 +42,7 @@ describe('API docs', () => {
         '/v1/settlements',
         '/v1/settlements/{ref}',
         '/v1/settlements/{ref}/items',
+        '/v1/status',
         '/v1/transactions',
         '/v1/transactions/{ref}',
         '/v1/webhook-endpoints',

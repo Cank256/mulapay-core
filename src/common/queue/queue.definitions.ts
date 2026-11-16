@@ -37,8 +37,20 @@ export const QUEUES = {
     concurrency: 32,
     jobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
   },
-  notificationSend: { name: 'notification-send', concurrency: 16 },
-  reportGenerate: { name: 'report-generate', concurrency: 2 },
+  // Notification retries are spaced by BullMQ from NOTIFICATION_RETRY_BASE_SECONDS and counted
+  // on the delivery row; the attempts and backoff are set when the job is published, from
+  // configuration (src/modules/notifications/notification.handlers.ts).
+  notificationSend: {
+    name: 'notification-send',
+    concurrency: 16,
+    jobOptions: { attempts: 6, backoff: { type: 'exponential', delay: 30_000 } },
+  },
+  // A report that fails is retried twice more, 30 s apart, then marked failed.
+  reportGenerate: {
+    name: 'report-generate',
+    concurrency: 2,
+    jobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 30_000 } },
+  },
   settlementRun: {
     name: 'settlement-run',
     concurrency: 1,
@@ -62,6 +74,14 @@ export const QUEUES = {
     name: 'reconciliation-run',
     concurrency: 2,
     jobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 30_000 } },
+  },
+  // Phase 8: the minute sweeps that are not tied to a queue of spec 8.9 (complaint SLAs, dispute
+  // deadlines, approval expiry, the automatic incident monitors). One at a time; each sweep
+  // re-checks every row under its lock, so a late or repeated tick is harmless.
+  supportOps: {
+    name: 'support-ops',
+    concurrency: 1,
+    jobOptions: { attempts: 1 },
   },
 } as const satisfies Record<string, QueueDefinition>;
 

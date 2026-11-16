@@ -7880,6 +7880,4029 @@
         ],
         "x-required-permission": "disputes:write"
       }
+    },
+    "/dashboard/v1/complaints/categories": {
+      "get": {
+        "operationId": "DashboardComplaintsController_categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "slaHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "defaultPriority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "normal",
+                                  "high",
+                                  "urgent"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "name",
+                              "description",
+                              "slaHours",
+                              "defaultPriority"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The complaint categories, with the hours each is answered within",
+        "tags": [
+          "Complaints"
+        ],
+        "x-required-permission": "complaints:read"
+      }
+    },
+    "/dashboard/v1/complaints": {
+      "post": {
+        "description": "Its deadline is the category’s hours from now. A transaction, if named, must be the merchant’s own.",
+        "operationId": "DashboardComplaintsController_file",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string"
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "transaction": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "high",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "in_progress",
+                            "awaiting_customer",
+                            "escalated",
+                            "resolved",
+                            "closed"
+                          ]
+                        },
+                        "slaDueAt": {
+                          "type": "string"
+                        },
+                        "resolution": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "resolvedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "satisfactionScore": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "category",
+                        "subject",
+                        "description",
+                        "transaction",
+                        "priority",
+                        "status",
+                        "slaDueAt",
+                        "resolution",
+                        "resolvedAt",
+                        "closedAt",
+                        "satisfactionScore",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "File a complaint",
+        "tags": [
+          "Complaints"
+        ],
+        "x-required-permission": "complaints:write"
+      },
+      "get": {
+        "operationId": "DashboardComplaintsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "in_progress",
+                "awaiting_customer",
+                "escalated",
+                "resolved",
+                "closed"
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 41,
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "category": {
+                                "type": "string"
+                              },
+                              "subject": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "transaction": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "normal",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "in_progress",
+                                  "awaiting_customer",
+                                  "escalated",
+                                  "resolved",
+                                  "closed"
+                                ]
+                              },
+                              "slaDueAt": {
+                                "type": "string"
+                              },
+                              "resolution": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "resolvedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "closedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "satisfactionScore": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "category",
+                              "subject",
+                              "description",
+                              "transaction",
+                              "priority",
+                              "status",
+                              "slaDueAt",
+                              "resolution",
+                              "resolvedAt",
+                              "closedAt",
+                              "satisfactionScore",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the merchant’s complaints, newest first",
+        "tags": [
+          "Complaints"
+        ],
+        "x-required-permission": "complaints:read"
+      }
+    },
+    "/dashboard/v1/complaints/{ref}": {
+      "get": {
+        "operationId": "DashboardComplaintsController_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string"
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "transaction": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "high",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "in_progress",
+                            "awaiting_customer",
+                            "escalated",
+                            "resolved",
+                            "closed"
+                          ]
+                        },
+                        "slaDueAt": {
+                          "type": "string"
+                        },
+                        "resolution": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "resolvedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "satisfactionScore": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "messages": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "authorType": {
+                                "type": "string",
+                                "enum": [
+                                  "merchant",
+                                  "admin",
+                                  "system",
+                                  "customer"
+                                ]
+                              },
+                              "body": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "authorType",
+                              "body",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "category",
+                        "subject",
+                        "description",
+                        "transaction",
+                        "priority",
+                        "status",
+                        "slaDueAt",
+                        "resolution",
+                        "resolvedAt",
+                        "closedAt",
+                        "satisfactionScore",
+                        "createdAt",
+                        "messages"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "One complaint with its public messages",
+        "tags": [
+          "Complaints"
+        ],
+        "x-required-permission": "complaints:read"
+      }
+    },
+    "/dashboard/v1/complaints/{ref}/messages": {
+      "post": {
+        "operationId": "DashboardComplaintsController_message",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string"
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "transaction": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "high",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "in_progress",
+                            "awaiting_customer",
+                            "escalated",
+                            "resolved",
+                            "closed"
+                          ]
+                        },
+                        "slaDueAt": {
+                          "type": "string"
+                        },
+                        "resolution": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "resolvedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "satisfactionScore": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "messages": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "authorType": {
+                                "type": "string",
+                                "enum": [
+                                  "merchant",
+                                  "admin",
+                                  "system",
+                                  "customer"
+                                ]
+                              },
+                              "body": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "authorType",
+                              "body",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "category",
+                        "subject",
+                        "description",
+                        "transaction",
+                        "priority",
+                        "status",
+                        "slaDueAt",
+                        "resolution",
+                        "resolvedAt",
+                        "closedAt",
+                        "satisfactionScore",
+                        "createdAt",
+                        "messages"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Answer on a complaint",
+        "tags": [
+          "Complaints"
+        ],
+        "x-required-permission": "complaints:write"
+      }
+    },
+    "/dashboard/v1/complaints/{ref}/close": {
+      "post": {
+        "description": "A satisfaction score from 1 to 5 can be given once the complaint is resolved.",
+        "operationId": "DashboardComplaintsController_close",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "category": {
+                          "type": "string"
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "transaction": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "normal",
+                            "high",
+                            "urgent"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "in_progress",
+                            "awaiting_customer",
+                            "escalated",
+                            "resolved",
+                            "closed"
+                          ]
+                        },
+                        "slaDueAt": {
+                          "type": "string"
+                        },
+                        "resolution": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "resolvedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "satisfactionScore": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "messages": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "authorType": {
+                                "type": "string",
+                                "enum": [
+                                  "merchant",
+                                  "admin",
+                                  "system",
+                                  "customer"
+                                ]
+                              },
+                              "body": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "authorType",
+                              "body",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "category",
+                        "subject",
+                        "description",
+                        "transaction",
+                        "priority",
+                        "status",
+                        "slaDueAt",
+                        "resolution",
+                        "resolvedAt",
+                        "closedAt",
+                        "satisfactionScore",
+                        "createdAt",
+                        "messages"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Close a complaint",
+        "tags": [
+          "Complaints"
+        ],
+        "x-required-permission": "complaints:write"
+      }
+    },
+    "/dashboard/v1/notifications": {
+      "get": {
+        "operationId": "DashboardNotificationsController_inbox",
+        "parameters": [
+          {
+            "name": "unread",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "template": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "body": {
+                                "type": "string"
+                              },
+                              "data": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              },
+                              "read": {
+                                "type": "boolean"
+                              },
+                              "readAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "template",
+                              "title",
+                              "body",
+                              "data",
+                              "read",
+                              "readAt",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The in-app inbox, newest first",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/dashboard/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "DashboardNotificationsController_unread",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "unread": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "unread"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "How many in-app notifications are unread",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/dashboard/v1/notifications/read-all": {
+      "post": {
+        "operationId": "DashboardNotificationsController_readAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "marked": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "marked"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Mark every unread notification read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/dashboard/v1/notifications/{ref}/read": {
+      "post": {
+        "operationId": "DashboardNotificationsController_read",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "read": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "read"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Mark one notification read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/dashboard/v1/notification-preferences": {
+      "get": {
+        "operationId": "DashboardNotificationsController_preferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "template": {
+                                "type": "string"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "email",
+                                  "sms",
+                                  "push",
+                                  "in_app"
+                                ]
+                              },
+                              "enabled": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "template",
+                              "channel",
+                              "enabled"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The channels the user has switched on or off, per notification type",
+        "tags": [
+          "Notifications"
+        ]
+      },
+      "patch": {
+        "description": "`template: \"*\"` applies to every notification on the channel. Required notifications (security, disputes) cannot be switched off.",
+        "operationId": "DashboardNotificationsController_setPreferences",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPreferencesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "template": {
+                                "type": "string"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "email",
+                                  "sms",
+                                  "push",
+                                  "in_app"
+                                ]
+                              },
+                              "enabled": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "template",
+                              "channel",
+                              "enabled"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Switch channels on or off",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/dashboard/v1/notification-destinations": {
+      "get": {
+        "operationId": "DashboardNotificationsController_destinations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "sms",
+                                  "push"
+                                ]
+                              },
+                              "hint": {
+                                "type": "string"
+                              },
+                              "updatedAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "channel",
+                              "hint",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Where SMS and push notifications go (addresses are never returned in full)",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/dashboard/v1/notification-destinations/{channel}": {
+      "put": {
+        "operationId": "DashboardNotificationsController_setDestination",
+        "parameters": [
+          {
+            "name": "channel",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sms",
+                "push"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDestinationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "sms",
+                            "push"
+                          ]
+                        },
+                        "hint": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "channel",
+                        "hint",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Set the phone number (sms) or device token (push) to notify",
+        "tags": [
+          "Notifications"
+        ]
+      },
+      "delete": {
+        "operationId": "DashboardNotificationsController_removeDestination",
+        "parameters": [
+          {
+            "name": "channel",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sms",
+                "push"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "removed": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "removed"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Stop notifying this channel",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/dashboard/v1/reports": {
+      "post": {
+        "description": "Answers 202 at once with the report reference; the file is produced in the background. Poll `GET /reports/{ref}` or wait for the notification, then call `download`. Types: transactions, payments, payouts, refunds, fees, balance_statement, settlement_statement, merchant_performance. Formats: csv and json (xlsx and pdf are refused). Files are kept 7 days.",
+        "operationId": "DashboardReportsController_request",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "transactions",
+                            "payments",
+                            "payouts",
+                            "refunds",
+                            "fees",
+                            "balance_statement",
+                            "ledger_account_statement",
+                            "settlement_statement",
+                            "reconciliation_exceptions",
+                            "aml_alerts",
+                            "kyc_status",
+                            "audit_trail",
+                            "merchant_performance"
+                          ]
+                        },
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "csv",
+                            "json"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "ready",
+                            "failed",
+                            "expired"
+                          ]
+                        },
+                        "params": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "rowCount": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "fileSize": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "sha256": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "finishedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "format",
+                        "status",
+                        "params",
+                        "rowCount",
+                        "fileSize",
+                        "sha256",
+                        "error",
+                        "createdAt",
+                        "finishedAt",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Request a report",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:create"
+      },
+      "get": {
+        "operationId": "DashboardReportsController_list",
+        "parameters": [
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "transactions",
+                "payments",
+                "payouts",
+                "refunds",
+                "fees",
+                "balance_statement",
+                "ledger_account_statement",
+                "settlement_statement",
+                "reconciliation_exceptions",
+                "aml_alerts",
+                "kyc_status",
+                "audit_trail",
+                "merchant_performance"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "queued",
+                "running",
+                "ready",
+                "failed",
+                "expired"
+              ]
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "transactions",
+                                  "payments",
+                                  "payouts",
+                                  "refunds",
+                                  "fees",
+                                  "balance_statement",
+                                  "ledger_account_statement",
+                                  "settlement_statement",
+                                  "reconciliation_exceptions",
+                                  "aml_alerts",
+                                  "kyc_status",
+                                  "audit_trail",
+                                  "merchant_performance"
+                                ]
+                              },
+                              "format": {
+                                "type": "string",
+                                "enum": [
+                                  "csv",
+                                  "json"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "queued",
+                                  "running",
+                                  "ready",
+                                  "failed",
+                                  "expired"
+                                ]
+                              },
+                              "params": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "rowCount": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "fileSize": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "sha256": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "error": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "finishedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "expiresAt": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "format",
+                              "status",
+                              "params",
+                              "rowCount",
+                              "fileSize",
+                              "sha256",
+                              "error",
+                              "createdAt",
+                              "finishedAt",
+                              "expiresAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the merchant’s reports, newest first",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:read"
+      }
+    },
+    "/dashboard/v1/reports/{ref}": {
+      "get": {
+        "operationId": "DashboardReportsController_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "transactions",
+                            "payments",
+                            "payouts",
+                            "refunds",
+                            "fees",
+                            "balance_statement",
+                            "ledger_account_statement",
+                            "settlement_statement",
+                            "reconciliation_exceptions",
+                            "aml_alerts",
+                            "kyc_status",
+                            "audit_trail",
+                            "merchant_performance"
+                          ]
+                        },
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "csv",
+                            "json"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "ready",
+                            "failed",
+                            "expired"
+                          ]
+                        },
+                        "params": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "rowCount": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "fileSize": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "sha256": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "finishedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "format",
+                        "status",
+                        "params",
+                        "rowCount",
+                        "fileSize",
+                        "sha256",
+                        "error",
+                        "createdAt",
+                        "finishedAt",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "One report and its status",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:read"
+      }
+    },
+    "/dashboard/v1/reports/{ref}/download": {
+      "get": {
+        "description": "Valid for 15 minutes; ask again for a new one while the file exists (7 days).",
+        "operationId": "DashboardReportsController_download",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        },
+                        "filename": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "expiresAt",
+                        "filename"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "A presigned download link",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:read"
+      }
+    },
+    "/dashboard/v1/report-schedules": {
+      "post": {
+        "description": "A report is produced for the day, week or month before each run. Recipients must be people of this business: they are told in the dashboard and by email when it is ready. A schedule turns itself off after repeated failures.",
+        "operationId": "DashboardReportSchedulesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "reportType": {
+                          "type": "string",
+                          "enum": [
+                            "transactions",
+                            "payments",
+                            "payouts",
+                            "refunds",
+                            "fees",
+                            "balance_statement",
+                            "ledger_account_statement",
+                            "settlement_statement",
+                            "reconciliation_exceptions",
+                            "aml_alerts",
+                            "kyc_status",
+                            "audit_trail",
+                            "merchant_performance"
+                          ]
+                        },
+                        "params": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "period": {
+                          "type": "string",
+                          "enum": [
+                            "previous_day",
+                            "previous_week",
+                            "previous_month"
+                          ]
+                        },
+                        "cron": {
+                          "type": "string"
+                        },
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "recipients": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "csv",
+                            "json"
+                          ]
+                        },
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "lastRunAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "nextRunAt": {
+                          "type": "string"
+                        },
+                        "lastStatus": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "consecutiveFailures": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "disabledReason": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "reportType",
+                        "params",
+                        "period",
+                        "cron",
+                        "timezone",
+                        "recipients",
+                        "format",
+                        "active",
+                        "lastRunAt",
+                        "nextRunAt",
+                        "lastStatus",
+                        "consecutiveFailures",
+                        "disabledReason",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Schedule a report",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:create"
+      },
+      "get": {
+        "operationId": "DashboardReportSchedulesController_list",
+        "parameters": [
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "reportType": {
+                                "type": "string",
+                                "enum": [
+                                  "transactions",
+                                  "payments",
+                                  "payouts",
+                                  "refunds",
+                                  "fees",
+                                  "balance_statement",
+                                  "ledger_account_statement",
+                                  "settlement_statement",
+                                  "reconciliation_exceptions",
+                                  "aml_alerts",
+                                  "kyc_status",
+                                  "audit_trail",
+                                  "merchant_performance"
+                                ]
+                              },
+                              "params": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "period": {
+                                "type": "string",
+                                "enum": [
+                                  "previous_day",
+                                  "previous_week",
+                                  "previous_month"
+                                ]
+                              },
+                              "cron": {
+                                "type": "string"
+                              },
+                              "timezone": {
+                                "type": "string"
+                              },
+                              "recipients": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "format": {
+                                "type": "string",
+                                "enum": [
+                                  "csv",
+                                  "json"
+                                ]
+                              },
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "lastRunAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "nextRunAt": {
+                                "type": "string"
+                              },
+                              "lastStatus": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "consecutiveFailures": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "disabledReason": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "reportType",
+                              "params",
+                              "period",
+                              "cron",
+                              "timezone",
+                              "recipients",
+                              "format",
+                              "active",
+                              "lastRunAt",
+                              "nextRunAt",
+                              "lastStatus",
+                              "consecutiveFailures",
+                              "disabledReason",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "List report schedules",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:read"
+      }
+    },
+    "/dashboard/v1/report-schedules/{ref}": {
+      "get": {
+        "operationId": "DashboardReportSchedulesController_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "reportType": {
+                          "type": "string",
+                          "enum": [
+                            "transactions",
+                            "payments",
+                            "payouts",
+                            "refunds",
+                            "fees",
+                            "balance_statement",
+                            "ledger_account_statement",
+                            "settlement_statement",
+                            "reconciliation_exceptions",
+                            "aml_alerts",
+                            "kyc_status",
+                            "audit_trail",
+                            "merchant_performance"
+                          ]
+                        },
+                        "params": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "period": {
+                          "type": "string",
+                          "enum": [
+                            "previous_day",
+                            "previous_week",
+                            "previous_month"
+                          ]
+                        },
+                        "cron": {
+                          "type": "string"
+                        },
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "recipients": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "csv",
+                            "json"
+                          ]
+                        },
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "lastRunAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "nextRunAt": {
+                          "type": "string"
+                        },
+                        "lastStatus": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "consecutiveFailures": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "disabledReason": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "history": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "dueAt": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "queued",
+                                  "succeeded",
+                                  "failed",
+                                  "skipped"
+                                ]
+                              },
+                              "error": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "startedAt": {
+                                "type": "string"
+                              },
+                              "finishedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "dueAt",
+                              "status",
+                              "error",
+                              "startedAt",
+                              "finishedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "reportType",
+                        "params",
+                        "period",
+                        "cron",
+                        "timezone",
+                        "recipients",
+                        "format",
+                        "active",
+                        "lastRunAt",
+                        "nextRunAt",
+                        "lastStatus",
+                        "consecutiveFailures",
+                        "disabledReason",
+                        "createdAt",
+                        "history"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "One schedule with its last 20 runs",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:read"
+      },
+      "patch": {
+        "operationId": "DashboardReportSchedulesController_update",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "reportType": {
+                          "type": "string",
+                          "enum": [
+                            "transactions",
+                            "payments",
+                            "payouts",
+                            "refunds",
+                            "fees",
+                            "balance_statement",
+                            "ledger_account_statement",
+                            "settlement_statement",
+                            "reconciliation_exceptions",
+                            "aml_alerts",
+                            "kyc_status",
+                            "audit_trail",
+                            "merchant_performance"
+                          ]
+                        },
+                        "params": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "period": {
+                          "type": "string",
+                          "enum": [
+                            "previous_day",
+                            "previous_week",
+                            "previous_month"
+                          ]
+                        },
+                        "cron": {
+                          "type": "string"
+                        },
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "recipients": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "csv",
+                            "json"
+                          ]
+                        },
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "lastRunAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "nextRunAt": {
+                          "type": "string"
+                        },
+                        "lastStatus": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "consecutiveFailures": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "disabledReason": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "reportType",
+                        "params",
+                        "period",
+                        "cron",
+                        "timezone",
+                        "recipients",
+                        "format",
+                        "active",
+                        "lastRunAt",
+                        "nextRunAt",
+                        "lastStatus",
+                        "consecutiveFailures",
+                        "disabledReason",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change a schedule, or switch it on or off",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:create"
+      },
+      "delete": {
+        "operationId": "DashboardReportSchedulesController_remove",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "deleted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "deleted"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delete a schedule (reports already produced stay)",
+        "tags": [
+          "Reports"
+        ],
+        "x-required-permission": "reports:create"
+      }
+    },
+    "/dashboard/v1/analytics/overview": {
+      "get": {
+        "description": "Daily figures are recomputed every 15 minutes, so the newest numbers can be up to that old.",
+        "operationId": "DashboardAnalyticsController_overview",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "currency",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "currencies": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "currency": {
+                                "type": "string"
+                              },
+                              "paymentCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "paymentMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "refundCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "refundMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "payoutCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "payoutMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "feeMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "successCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "failureCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "successRate": {
+                                "nullable": true,
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "currency",
+                              "paymentCount",
+                              "paymentMinor",
+                              "refundCount",
+                              "refundMinor",
+                              "payoutCount",
+                              "payoutMinor",
+                              "feeMinor",
+                              "successCount",
+                              "failureCount",
+                              "successRate"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "currencies"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Totals per currency for a window (default the last 30 days)",
+        "tags": [
+          "Analytics"
+        ],
+        "x-required-permission": "analytics:read"
+      }
+    },
+    "/dashboard/v1/analytics/volume": {
+      "get": {
+        "operationId": "DashboardAnalyticsController_volume",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "currency",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "points": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "paymentCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "paymentMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "refundMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "payoutMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "feeMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "currency",
+                              "paymentCount",
+                              "paymentMinor",
+                              "refundMinor",
+                              "payoutMinor",
+                              "feeMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "points"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Daily payment, refund, payout and fee volume",
+        "tags": [
+          "Analytics"
+        ],
+        "x-required-permission": "analytics:read"
+      }
+    },
+    "/dashboard/v1/analytics/success-rate": {
+      "get": {
+        "operationId": "DashboardAnalyticsController_successRate",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "currency",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "points": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "successCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "failureCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "successRate": {
+                                "nullable": true,
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "currency",
+                              "successCount",
+                              "failureCount",
+                              "successRate"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "points"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Daily payment success rate",
+        "tags": [
+          "Analytics"
+        ],
+        "x-required-permission": "analytics:read"
+      }
+    },
+    "/dashboard/v1/analytics/channels": {
+      "get": {
+        "operationId": "DashboardAnalyticsController_channels",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "currency",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Z]{3}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "live",
+              "type": "string",
+              "enum": [
+                "test",
+                "live"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "channels": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "channel": {
+                                "type": "string"
+                              },
+                              "provider": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "paymentCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "paymentMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "successCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "failureCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "successRate": {
+                                "nullable": true,
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "channel",
+                              "provider",
+                              "currency",
+                              "paymentCount",
+                              "paymentMinor",
+                              "successCount",
+                              "failureCount",
+                              "successRate"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "channels"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Volume and success rate by channel and provider",
+        "tags": [
+          "Analytics"
+        ],
+        "x-required-permission": "analytics:read"
+      }
+    },
+    "/dashboard/v1/status": {
+      "get": {
+        "operationId": "DashboardStatusController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "operational",
+                            "degraded",
+                            "major_outage"
+                          ]
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "incidents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "headline": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "investigating",
+                                  "identified",
+                                  "monitoring",
+                                  "resolved"
+                                ]
+                              },
+                              "impact": {
+                                "type": "string",
+                                "enum": [
+                                  "minor",
+                                  "major"
+                                ]
+                              },
+                              "components": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "startedAt": {
+                                "type": "string"
+                              },
+                              "resolvedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "updates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "investigating",
+                                        "identified",
+                                        "monitoring",
+                                        "resolved"
+                                      ]
+                                    },
+                                    "body": {
+                                      "type": "string"
+                                    },
+                                    "at": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "status",
+                                    "body",
+                                    "at"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "headline",
+                              "status",
+                              "impact",
+                              "components",
+                              "startedAt",
+                              "resolvedAt",
+                              "updates"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "updatedAt",
+                        "incidents"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Platform status and public incident updates",
+        "tags": [
+          "Status"
+        ]
+      }
     }
   },
   "info": {
@@ -8580,6 +12603,302 @@
         "required": [
           "text"
         ],
+        "additionalProperties": false
+      },
+      "FileDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 41
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5000
+          },
+          "transaction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "urgent"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "subject",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "MessageDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5000
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "CloseDto": {
+        "type": "object",
+        "properties": {
+          "satisfactionScore": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetPreferencesDto": {
+        "type": "object",
+        "properties": {
+          "preferences": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "template": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 81
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "email",
+                    "sms",
+                    "push",
+                    "in_app"
+                  ]
+                },
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "template",
+                "channel",
+                "enabled"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "preferences"
+        ],
+        "additionalProperties": false
+      },
+      "SetDestinationDto": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "address"
+        ],
+        "additionalProperties": false
+      },
+      "RequestDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "transactions",
+              "payments",
+              "payouts",
+              "refunds",
+              "fees",
+              "balance_statement",
+              "ledger_account_statement",
+              "settlement_statement",
+              "reconciliation_exceptions",
+              "aml_alerts",
+              "kyc_status",
+              "audit_trail",
+              "merchant_performance"
+            ]
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "json",
+              "xlsx",
+              "pdf"
+            ]
+          },
+          "environment": {
+            "default": "live",
+            "type": "string",
+            "enum": [
+              "test",
+              "live"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "CreateScheduleDto": {
+        "type": "object",
+        "properties": {
+          "reportType": {
+            "type": "string",
+            "enum": [
+              "transactions",
+              "payments",
+              "payouts",
+              "refunds",
+              "fees",
+              "balance_statement",
+              "ledger_account_statement",
+              "settlement_statement",
+              "reconciliation_exceptions",
+              "aml_alerts",
+              "kyc_status",
+              "audit_trail",
+              "merchant_performance"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "previous_day",
+              "previous_week",
+              "previous_month"
+            ]
+          },
+          "cron": {
+            "type": "string",
+            "minLength": 9,
+            "maxLength": 100
+          },
+          "timezone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "recipients": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 254,
+              "format": "email",
+              "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+            }
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "json"
+            ]
+          },
+          "environment": {
+            "default": "live",
+            "type": "string",
+            "enum": [
+              "test",
+              "live"
+            ]
+          }
+        },
+        "required": [
+          "reportType",
+          "period",
+          "cron",
+          "recipients"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateScheduleDto": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "previous_day",
+              "previous_week",
+              "previous_month"
+            ]
+          },
+          "cron": {
+            "type": "string",
+            "minLength": 9,
+            "maxLength": 100
+          },
+          "timezone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "recipients": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 254,
+              "format": "email",
+              "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+            }
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "json"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
         "additionalProperties": false
       }
     }

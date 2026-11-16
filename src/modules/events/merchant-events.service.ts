@@ -19,6 +19,7 @@ import { decodeCursor, filterFingerprint, toPage, type Page } from '../../common
 import { resolveWindow } from '../../common/pagination/window';
 import { CLOCK } from '../../common/tokens';
 import type { MerchantEventType } from './domain/event-types';
+import { NOTIFIABLE_EVENT_TYPES, NOTIFICATION_EVENT_OUTBOX_TYPE } from './domain/notifiable-events';
 import { MerchantEventsRepository } from './merchant-events.repository';
 import { toMerchantEventView, type MerchantEventView } from './merchant-event.views';
 
@@ -71,6 +72,16 @@ export class MerchantEventsService {
       payload: { eventId: row.id },
       dedupeKey: `merchant_event:${row.id}`,
     });
+    // Live events that concern the merchant's people also become notifications (spec 6.12).
+    if (input.environment === 'live' && NOTIFIABLE_EVENT_TYPES.has(input.type)) {
+      await this.outbox.enqueue(tx, {
+        eventType: NOTIFICATION_EVENT_OUTBOX_TYPE,
+        aggregateType: 'merchant_event',
+        aggregateId: row.id,
+        payload: { eventId: row.id },
+        dedupeKey: `notification_event:${row.id}`,
+      });
+    }
     return { id: row.id, ref: row.ref };
   }
 

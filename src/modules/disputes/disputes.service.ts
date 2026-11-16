@@ -22,6 +22,7 @@
  *    merchant events.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import type { Logger } from 'pino';
 import { AuditService } from '../../common/audit/audit.service';
 import type { MerchantScope } from '../../common/auth/merchant-scope';
 import type { Clock } from '../../common/clock/clock';
@@ -31,7 +32,10 @@ import { UnitOfWork } from '../../common/db/unit-of-work';
 import { AppError } from '../../common/errors/app-error';
 import { publicId, uuidv7 } from '../../common/ids/ids';
 import { decodeCursor, filterFingerprint, toPage, type Page } from '../../common/pagination/cursor';
-import { CLOCK } from '../../common/tokens';
+import { APP_CONFIG, CLOCK, ROOT_LOGGER } from '../../common/tokens';
+import type { AppConfig } from '../../config/configuration';
+import { AmlStaffDirectory } from '../aml/aml-staff.directory';
+import { NotificationsService } from '../notifications/notifications.service';
 import { merchantAccountCode, providerAccountCode } from '../accounts/domain/chart-of-accounts';
 import { BalancesService } from '../balances/balances.service';
 import { MerchantEventsService } from '../events/merchant-events.service';
@@ -89,7 +93,11 @@ export class DisputesService {
     private readonly events: MerchantEventsService,
     private readonly unitOfWork: UnitOfWork,
     private readonly audit: AuditService,
-    @Inject(CLOCK) private readonly clock: Clock
+    private readonly staffDirectory: AmlStaffDirectory,
+    private readonly notifications: NotificationsService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
   /** Staff record a dispute notice from a provider or scheme. */
@@ -321,6 +329,9 @@ export class DisputesService {
     scope?: MerchantScope;
     merchantRef?: string;
     status?: DisputeStatus;
+    assignedToRef?: string;
+    unassigned?: boolean;
+    deadline?: 'overdue' | 'due_soon';
     limit: number;
     cursor?: string;
   }): Promise<Page<DisputeWithRefs>> {
@@ -334,12 +345,33 @@ export class DisputesService {
       env: query.scope?.environment,
       merchant: query.merchantRef,
       status: query.status,
+      assignee: query.assignedToRef,
+      unassigned: query.unassigned,
+      deadline: query.deadline,
     });
     const after = query.cursor ? decodeCursor(query.cursor, fingerprint) : undefined;
+    const now = this.clock.now();
+    const assignedTo = query.assignedToRef
+      ? await this.staffDirectory.idOf(query.assignedToRef)
+      : undefined;
     const rows = await this.disputes.list({
       scope: query.scope,
       merchantId,
       status: query.status,
+      assignedTo,
+      unassigned: query.unassigned,
+      deadline:
+        query.deadline === 'overdue'
+          ? { kind: 'overdue', now }
+          : query.deadline === 'due_soon'
+            ? {
+                kind: 'due_soon',
+                now,
+                until: new Date(
+                  now.getTime() + this.config.DISPUTE_DEADLINE_WARNING_HOURS * 3_600_000
+                ),
+              }
+            : undefined,
       after,
       limit: query.limit,
     });
@@ -347,6 +379,127 @@ export class DisputesService {
       createdAt: r.row.createdAt,
       id: r.row.ref,
     }));
+  }
+
+  /** Staff put an investigator on a dispute. An unresolved dispute can be reassigned. */
+  async assign(ref: string, assigneeRef: string, staff: Staff): Promise<DisputeWithRefs> {
+    const assigneeId = await this.staffDirectory.idOf(assigneeRef);
+    await this.unitOfWork.run(async (tx) => {
+      const current = await this.disputes.lockByRef(tx, ref);
+      if (!current) throw new AppError('NOT_FOUND');
+      if (current.status === 'resolved') {
+        throw new AppError('DISPUTE_TRANSITION_INVALID', {
+          messageParams: { reason: 'dispute_resolved' },
+          details: { reason: 'dispute_resolved' },
+        });
+      }
+      const now = this.clock.now();
+      await this.disputes.update(tx, current.id, { assignedTo: assigneeId, assignedAt: now });
+      if (assigneeId !== staff.userId) {
+        await this.notifications.notify(tx, {
+          templateCode: 'dispute.assigned',
+          audience: { kind: 'user', userId: assigneeId },
+          resourceKey: current.ref,
+          variables: { dispute_ref: current.ref },
+        });
+      }
+      await this.audit.record(tx, {
+        action: 'dispute.assigned',
+        resourceType: 'dispute',
+        resourceId: current.ref,
+        merchantId: current.merchantId,
+        before: { assignedTo: current.assignedTo },
+        after: { assignee: assigneeRef },
+      });
+    });
+    return this.require(ref);
+  }
+
+  /** An investigator's note. Staff only and append-only; allowed on a resolved dispute too. */
+  async addNote(ref: string, body: string, staff: Staff) {
+    return this.unitOfWork.run(async (tx) => {
+      const current = await this.disputes.lockByRef(tx, ref);
+      if (!current) throw new AppError('NOT_FOUND');
+      const now = this.clock.now();
+      const note = await this.disputes.insertNote(tx, {
+        id: uuidv7(now),
+        disputeId: current.id,
+        authorId: staff.userId,
+        body,
+        createdAt: now,
+      });
+      await this.audit.record(tx, {
+        action: 'dispute.note_added',
+        resourceType: 'dispute',
+        resourceId: current.ref,
+        merchantId: current.merchantId,
+        after: { length: body.length },
+      });
+      return { row: note, authorRef: staff.userRef };
+    });
+  }
+
+  async notes(ref: string) {
+    const found = await this.disputes.findByRef(ref);
+    if (!found) throw new AppError('NOT_FOUND');
+    return this.disputes.notes(found.row.id);
+  }
+
+  /**
+   * Tells staff when an unresolved dispute's evidence deadline is near (`DISPUTE_DEADLINE_WARNING_HOURS`)
+   * and when it has passed: the assignee, or everyone who can work disputes when nobody is
+   * assigned. Each warning is sent once, under the dispute's row lock.
+   */
+  async sweepDeadlines(): Promise<number> {
+    const now = this.clock.now();
+    const soonUntil = new Date(
+      now.getTime() + this.config.DISPUTE_DEADLINE_WARNING_HOURS * 3_600_000
+    );
+    const refs = await this.disputes.deadlineCandidates(now, soonUntil, 200);
+    let notified = 0;
+    for (const ref of refs) {
+      try {
+        const sent = await this.unitOfWork.run(async (tx) => {
+          const dispute = await this.disputes.lockByRef(tx, ref);
+          if (!dispute || dispute.status === 'resolved' || !dispute.evidenceDueAt) return false;
+          const overdue = dispute.evidenceDueAt.getTime() < now.getTime();
+          const soon = dispute.evidenceDueAt.getTime() <= soonUntil.getTime();
+          const wantsOverdue = overdue && dispute.overdueNotifiedAt === null;
+          const wantsSoon = !overdue && soon && dispute.dueSoonNotifiedAt === null;
+          if (!wantsOverdue && !wantsSoon) return false;
+          await this.notifications.notify(tx, {
+            templateCode: wantsOverdue ? 'dispute.deadline_overdue' : 'dispute.deadline_due_soon',
+            audience: dispute.assignedTo
+              ? { kind: 'user', userId: dispute.assignedTo }
+              : { kind: 'staff', permission: 'chargebacks:work' },
+            resourceKey: dispute.ref,
+            sourceKey: `${wantsOverdue ? 'dispute.overdue' : 'dispute.due_soon'}:${dispute.ref}`,
+            variables: { dispute_ref: dispute.ref, due_at: dispute.evidenceDueAt.toISOString() },
+          });
+          await this.disputes.update(tx, dispute.id, {
+            ...(wantsOverdue
+              ? { overdueNotifiedAt: now, dueSoonNotifiedAt: dispute.dueSoonNotifiedAt ?? now }
+              : { dueSoonNotifiedAt: now }),
+          });
+          await this.audit.record(tx, {
+            action: wantsOverdue ? 'dispute.deadline_overdue' : 'dispute.deadline_due_soon',
+            resourceType: 'dispute',
+            resourceId: dispute.ref,
+            merchantId: dispute.merchantId,
+            after: { evidenceDueAt: dispute.evidenceDueAt.toISOString() },
+            actor: { type: 'job', id: 'dispute-deadlines', label: 'dispute deadline sweep' },
+          });
+          return true;
+        });
+        if (sent) notified += 1;
+      } catch (error) {
+        this.logger.error(
+          { dispute: ref, err: error instanceof Error ? error.message : 'unknown' },
+          'dispute deadline sweep failed for one dispute'
+        );
+      }
+    }
+    return notified;
   }
 
   /**

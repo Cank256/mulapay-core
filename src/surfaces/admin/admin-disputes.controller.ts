@@ -18,18 +18,27 @@ import { ApiEnvelopedResponses } from '../../common/http/response-schema.decorat
 import {
   adminDisputePageSchema,
   adminDisputeSchema,
+  disputeNoteSchema,
+  disputeNotesSchema,
   toAdminDispute,
+  toDisputeNote,
 } from '../../modules/disputes/dispute.views';
 import { DisputesService } from '../../modules/disputes/disputes.service';
 import {
-  adminDisputeListQuerySchema,
   openDisputeSchema,
   patchDisputeSchema,
   resolveDisputeSchema,
 } from '../shared/dispute.schemas';
 import { refParamSchema } from '../shared/schemas';
+import {
+  adminDisputeQueueSchema,
+  assignSchema,
+  disputeNoteBodySchema,
+} from '../shared/support.schemas';
 
-class ListDto extends createZodDto(adminDisputeListQuerySchema) {}
+class ListDto extends createZodDto(adminDisputeQueueSchema) {}
+class AssignDto extends createZodDto(assignSchema) {}
+class NoteDto extends createZodDto(disputeNoteBodySchema) {}
 class RefDto extends createZodDto(refParamSchema) {}
 class OpenDto extends createZodDto(openDisputeSchema) {}
 class PatchDto extends createZodDto(patchDisputeSchema) {}
@@ -42,12 +51,19 @@ export class AdminDisputesController {
 
   @Get()
   @RequirePermission('chargebacks:read')
-  @ApiOperation({ summary: 'Disputes, newest first' })
+  @ApiOperation({
+    summary: 'Disputes, newest first',
+    description:
+      'Filter by investigator (`assignee`, `unassigned`) and by evidence deadline: `overdue` (passed, unresolved) or `due_soon` (within the warning window).',
+  })
   @ApiEnvelopedResponses({ 200: adminDisputePageSchema })
   async list(@Query() q: ListDto) {
     const page = await this.disputes.list({
       merchantRef: q.merchant,
       status: q.status,
+      assignedToRef: q.assignee,
+      unassigned: q.unassigned,
+      deadline: q.deadline,
       limit: q.limit,
       cursor: q.cursor,
     });
@@ -98,6 +114,46 @@ export class AdminDisputesController {
   @ApiEnvelopedResponses({ 200: adminDisputeSchema })
   async patch(@Param() p: RefDto, @Body() body: PatchDto) {
     return toAdminDispute(await this.disputes.update(p.ref, body));
+  }
+
+  @Post(':ref/assign')
+  @HttpCode(200)
+  @RequirePermission('chargebacks:work')
+  @Audited('dispute.assigned', 'dispute')
+  @ApiOperation({ summary: 'Assign an investigator' })
+  @ApiEnvelopedResponses({ 200: adminDisputeSchema })
+  async assign(@Param() p: RefDto, @Body() body: AssignDto, @CurrentStaff() staff: StaffPrincipal) {
+    return toAdminDispute(
+      await this.disputes.assign(p.ref, body.assignee, {
+        userId: staff.userId,
+        userRef: staff.userRef,
+      })
+    );
+  }
+
+  @Get(':ref/notes')
+  @RequirePermission('chargebacks:read')
+  @ApiOperation({ summary: 'The investigators’ notes, oldest first' })
+  @ApiEnvelopedResponses({ 200: disputeNotesSchema })
+  async notes(@Param() p: RefDto) {
+    return { items: (await this.disputes.notes(p.ref)).map(toDisputeNote) };
+  }
+
+  @Post(':ref/notes')
+  @RequirePermission('chargebacks:work')
+  @Audited('dispute.note_added', 'dispute')
+  @ApiOperation({
+    summary: 'Record an investigation note',
+    description: 'Staff only, append-only; never shown to the merchant.',
+  })
+  @ApiEnvelopedResponses({ 201: disputeNoteSchema })
+  async addNote(@Param() p: RefDto, @Body() body: NoteDto, @CurrentStaff() staff: StaffPrincipal) {
+    return toDisputeNote(
+      await this.disputes.addNote(p.ref, body.body, {
+        userId: staff.userId,
+        userRef: staff.userRef,
+      })
+    );
   }
 
   @Post(':ref/resolve')

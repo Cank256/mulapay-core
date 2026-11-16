@@ -266,6 +266,31 @@ export const envSchema = z
       csv(z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'entries must be upper-case list codes'))
     ),
 
+    // Phase 8: notification transport (the vendors' own HTTP APIs; base URLs only for tests).
+    EMAIL_BASE_URL: optional(httpUrl),
+    SMS_BASE_URL: optional(httpUrl),
+    SMS_USERNAME: optional(z.string().min(1)),
+    FCM_BASE_URL: optional(httpUrl),
+    NOTIFICATION_TIMEOUT_MS: integer(10_000, 500, 60_000),
+    NOTIFICATION_MAX_ATTEMPTS: integer(6, 1, 20),
+    NOTIFICATION_RETRY_BASE_SECONDS: integer(30, 1, 3600),
+    // Phase 8: reports (spec 6.12: 15 minute links and 7 day files are fixed by the spec).
+    REPORT_MAX_ROWS: integer(5_000_000, 1000, 100_000_000),
+    REPORT_MAX_ACTIVE_PER_MERCHANT: integer(5, 1, 50),
+    REPORT_CURSOR_BATCH_SIZE: integer(1000, 100, 10_000),
+    REPORT_MULTIPART_PART_BYTES: integer(5 * 1024 * 1024, 5 * 1024 * 1024, 64 * 1024 * 1024),
+    REPORT_SCHEDULE_MAX_FAILURES: integer(5, 1, 100),
+    // Phase 8: support and operations.
+    DISPUTE_DEADLINE_WARNING_HOURS: integer(48, 1, 720),
+    OPS_STUCK_TXN_MINUTES: integer(15, 1, 1440),
+    OPS_STUCK_TXN_SEV2_MINUTES: integer(60, 1, 10080),
+    OPS_QUEUE_DEPTH_THRESHOLD: integer(1000, 1, 10_000_000),
+    OPS_QUEUE_DEPTH_SUSTAIN_SECONDS: integer(300, 0, 86400),
+    OPS_SUSPENSE_SEV1_HOURS: integer(24, 1, 720),
+    OPS_MONITOR_INTERVAL_SECONDS: integer(60, 5, 3600),
+    OPS_FLAG_CHANGE_APPROVAL: withDefault(z.enum(['production', 'always', 'never']), 'production'),
+    APPROVAL_TTL_HOURS: integer(24, 1, 168),
+    MAINTENANCE_RETRY_AFTER_SECONDS: integer(60, 1, 86400),
     // CORS
     CORS_DASHBOARD_ORIGINS: csv(origin),
     CORS_ADMIN_ORIGINS: csv(origin),
@@ -302,7 +327,19 @@ export const envSchema = z
     validateEncryptionKey(env.DATA_ENCRYPTION_KEY, env.KMS_KEY_ID, issue);
     validateJwtKeys(env, issue);
 
+    if (env.OPS_STUCK_TXN_SEV2_MINUTES < env.OPS_STUCK_TXN_MINUTES) {
+      issue('OPS_STUCK_TXN_SEV2_MINUTES', 'must not be below OPS_STUCK_TXN_MINUTES');
+    }
+    if (env.OPS_SUSPENSE_SEV1_HOURS < env.SUSPENSE_ALERT_HOURS) {
+      issue('OPS_SUSPENSE_SEV1_HOURS', 'must not be below SUSPENSE_ALERT_HOURS');
+    }
     if (isProduction) {
+      if (env.OPS_FLAG_CHANGE_APPROVAL === 'never') {
+        issue(
+          'OPS_FLAG_CHANGE_APPROVAL',
+          'must not be "never" in production (feature flag changes need approval, spec 11)'
+        );
+      }
       if (env.WEBHOOK_ALLOW_PRIVATE_NETWORKS) {
         issue(
           'WEBHOOK_ALLOW_PRIVATE_NETWORKS',

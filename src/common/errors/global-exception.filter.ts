@@ -35,7 +35,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       method: request.method,
       route: request.routeOptions?.url,
     };
-    if (resolved.isServerError) {
+    // A write refused for maintenance is expected and planned, not a failure to page on.
+    if (resolved.isServerError && resolved.code !== 'MAINTENANCE_MODE') {
       this.logger.error({ ...logFields, err: toLoggableError(exception) }, 'request failed');
     } else {
       this.logger.warn(logFields, 'request rejected');

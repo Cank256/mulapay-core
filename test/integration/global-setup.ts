@@ -25,14 +25,30 @@ export interface TestDatabaseUrls {
   readonly ro: string;
 }
 
+/**
+ * A second database, prepared like the first. Suites that change platform-wide state (maintenance
+ * mode, provider switches, routing rules, feature flags, the consumer cursor) or that read every
+ * transaction in the database (the incident monitors) run here, so they cannot act on the
+ * suites that share the main database.
+ */
+const ISOLATED_DB = 'mulapay_isolated';
+/** The runbook walk-through changes the same platform-wide state as the operations suite: its own database. */
+const RUNBOOKS_DB = 'mulapay_runbooks';
+
 declare module 'vitest' {
   export interface ProvidedContext {
     databaseUrls: TestDatabaseUrls;
+    isolatedDatabaseUrls: TestDatabaseUrls;
+    runbookDatabaseUrls: TestDatabaseUrls;
     redisUrl: string;
   }
 }
 
-async function psql(container: StartedPostgreSqlContainer, args: string[]): Promise<void> {
+async function psql(
+  container: StartedPostgreSqlContainer,
+  args: string[],
+  database: string = DB
+): Promise<void> {
   const result = await container.exec([
     'psql',
     '-v',
@@ -40,7 +56,7 @@ async function psql(container: StartedPostgreSqlContainer, args: string[]): Prom
     '-U',
     'postgres',
     '-d',
-    DB,
+    database,
     ...args,
   ]);
   if (result.exitCode !== 0) {
@@ -96,7 +112,41 @@ export async function setup(project: TestProject): Promise<void> {
     logger: pino({ level: 'silent' }),
   });
 
+  const bootstrapArgs = [
+    '-v',
+    `rw_password=${RW_PASSWORD}`,
+    '-v',
+    `ro_password=${RO_PASSWORD}`,
+    '-v',
+    'statement_timeout=15s',
+    '-v',
+    'idle_tx_timeout=10s',
+    '-f',
+    '/bootstrap/001_core_roles_and_schema.sql',
+  ];
+  const container = postgres;
+  const prepareDatabase = async (name: string): Promise<TestDatabaseUrls> => {
+    await psql(container, ['-c', `CREATE DATABASE ${name}`]);
+    await psql(container, bootstrapArgs, name);
+    await psql(container, ['-f', '/fixtures/gateway-contract-tables.sql'], name);
+    await psql(container, ['-f', '/bootstrap/002_gateway_read_grants.sql'], name);
+    const prepared: TestDatabaseUrls = {
+      superuser: `postgres://postgres:postgres@${host}:${port}/${name}`,
+      rw: `postgres://mulapay_core_rw:${RW_PASSWORD}@${host}:${port}/${name}`,
+      ro: `postgres://mulapay_core_ro:${RO_PASSWORD}@${host}:${port}/${name}`,
+    };
+    await runMigrations({
+      connectionString: prepared.rw,
+      migrationsFolder: resolve(ROOT, 'src/db/migrations'),
+      logger: pino({ level: 'silent' }),
+    });
+    return prepared;
+  };
+  const isolated = await prepareDatabase(ISOLATED_DB);
+  const runbooks = await prepareDatabase(RUNBOOKS_DB);
   project.provide('databaseUrls', urls);
+  project.provide('isolatedDatabaseUrls', isolated);
+  project.provide('runbookDatabaseUrls', runbooks);
   project.provide('redisUrl', redis.getConnectionUrl());
 }
 
