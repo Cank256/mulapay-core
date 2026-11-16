@@ -115,8 +115,9 @@ miss one that did. `GET /v1/events` lists them (use it to catch up after downtim
 `payment.created`, `payment.requires_action`, `payment.succeeded`, `payment.failed`,
 `payment.expired`, `payment.cancelled`, `refund.*`, `payout.*`, `balance.updated`, `hold.created`,
 `hold.released`, `settlement.*`, `dispute.*`, `kyc.*`, `merchant.suspended`, `merchant.activated`,
-and `webhook_endpoint.auto_disabled`. The refund, payout, settlement, dispute and KYC events are
-emitted once those modules exist (see "What is built").
+and `webhook_endpoint.auto_disabled`. `kyc.*` and `dispute.*` events are emitted now (`kyc.approved`, `kyc.rejected`,
+`kyc.info_requested`, `kyc.reverification_due`, `kyc.expired`, `dispute.created`, `dispute.resolved`).
+The refund, payout and settlement events are emitted once those modules exist (see "What is built").
 
 Register an endpoint with `POST /v1/webhook-endpoints` (`url`, `enabledEvents`, an optional
 `description`). The URL must be `https` and reach a public address: private, loopback, link-local
@@ -192,17 +193,17 @@ counted, not logged.
 
 ## What is built
 
-| Route group                                                      | State                                                   |
-| ---------------------------------------------------------------- | ------------------------------------------------------- |
-| `ping`                                                           | built                                                   |
-| `payments`, `payment-links`, `checkout-sessions`, `transactions` | built (Phase 4 domain, without the gateway)             |
-| `balances`, `balance-transactions`, `holds`                      | built, read only                                        |
-| `events`, `webhook-endpoints`                                    | built                                                   |
-| `payment-methods`                                                | **not built**: needs routing (Phase 4)                  |
-| `refunds`, `payouts`, `payout-batches`                           | **not built**: money movement (Phase 4)                 |
-| `customers`                                                      | **not built**: table and PII handling belong to Phase 4 |
-| `settlements`                                                    | **not built**: Phase 6                                  |
-| `disputes`                                                       | **not built**: Phase 7                                  |
+| Route group                                                      | State                                                               |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `ping`                                                           | built                                                               |
+| `payments`, `payment-links`, `checkout-sessions`, `transactions` | built (Phase 4 domain, without the gateway)                         |
+| `balances`, `balance-transactions`, `holds`                      | built, read only                                                    |
+| `events`, `webhook-endpoints`                                    | built                                                               |
+| `payment-methods`                                                | **not built**: needs routing (Phase 4)                              |
+| `refunds`, `payouts`, `payout-batches`                           | **not built**: money movement (Phase 4)                             |
+| `customers`                                                      | **not built**: table and PII handling belong to Phase 4             |
+| `settlements`                                                    | **not built**: Phase 6                                              |
+| `disputes`                                                       | **not built** on `/v1`: Phase 7 has dashboard and admin routes only |
 
 Their scopes exist, and the signing and rate rules for `payouts:write` are enforced by the same
 guards the day the routes arrive; `test/integration/request-signing.int-spec.ts` proves them on

@@ -9,6 +9,8 @@ import { Module } from '@nestjs/common';
 import { ApiKeysModule } from '../../modules/api-keys/api-keys.module';
 import { AuthModule } from '../../modules/auth/auth.module';
 import { DeveloperModule } from '../../modules/developer/developer.module';
+import { DisputesModule } from '../../modules/disputes/disputes.module';
+import { KycModule } from '../../modules/kyc/kyc.module';
 import { MerchantsModule } from '../../modules/merchants/merchants.module';
 import { PaymentsModule } from '../../modules/payments/payments.module';
 import { SettlementModule } from '../../modules/settlement/settlement.module';
@@ -16,6 +18,8 @@ import { TransactionsModule } from '../../modules/transactions/transactions.modu
 import { WebhooksModule } from '../../modules/webhooks/webhooks.module';
 import { DashboardApiKeysController } from './api-keys.controller';
 import { DashboardAuthController } from './auth.controller';
+import { DashboardDisputesController } from './disputes.controller';
+import { DashboardKycController } from './kyc.controller';
 import { DashboardMerchantController } from './merchant.controller';
 import {
   DashboardPaymentsController,
@@ -35,6 +39,8 @@ import {
     MerchantsModule,
     ApiKeysModule,
     DeveloperModule,
+    DisputesModule,
+    KycModule,
     PaymentsModule,
     SettlementModule,
     TransactionsModule,
@@ -51,6 +57,8 @@ import {
     DashboardWebhookDeliveriesController,
     DashboardRequestLogsController,
     DashboardSettlementsController,
+    DashboardKycController,
+    DashboardDisputesController,
   ],
 })
 export class DashboardSurfaceModule {}

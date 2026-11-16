@@ -7,6 +7,7 @@ import { QUEUES } from '../common/queue/queue.definitions';
 import { QueueRegistry } from '../common/queue/queue.registry';
 import { APP_CONFIG } from '../common/tokens';
 import type { AppConfig } from '../config/configuration';
+import { AML_JOBS } from './aml-screen.processor';
 import { TICK_JOBS } from './outbox-dispatch.processor';
 import { RECONCILIATION_JOBS } from './reconciliation-run.processor';
 import { SETTLEMENT_TICK_JOB } from './settlement-run.processor';
@@ -37,6 +38,7 @@ export class JobSchedulers implements OnApplicationBootstrap {
       );
     }
     await this.registerSettlementAndReconciliation();
+    await this.registerCompliance();
   }
 
   /**
@@ -67,6 +69,29 @@ export class JobSchedulers implements OnApplicationBootstrap {
       'reconciliation-proof',
       { pattern: '0 2 * * *', tz: 'UTC' },
       { name: RECONCILIATION_JOBS.proof, opts: TICK_OPTIONS }
+    );
+  }
+
+  /**
+   * Phase 7 (spec 6.13): the SLA sweep every minute, the blocklist mirror every 5 minutes and
+   * the KYC expiry and re-verification sweep every hour. Each tick is idempotent.
+   */
+  private async registerCompliance(): Promise<void> {
+    const aml = this.queues.get(QUEUES.amlScreen.name);
+    await aml.upsertJobScheduler(
+      'aml-tick',
+      { every: 60_000 },
+      { name: AML_JOBS.tick, opts: TICK_OPTIONS }
+    );
+    await aml.upsertJobScheduler(
+      'aml-blocklist-rebuild',
+      { every: 300_000 },
+      { name: AML_JOBS.blocklistRebuild, opts: TICK_OPTIONS }
+    );
+    await aml.upsertJobScheduler(
+      'kyc-lifecycle',
+      { every: 3_600_000 },
+      { name: AML_JOBS.kycLifecycle, opts: TICK_OPTIONS }
     );
   }
 }

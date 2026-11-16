@@ -357,6 +357,8 @@ describe('roles', () => {
     const list = await admin.client.get('/admin/v1/roles');
     const viewer = list.json().data.roles.find((r: { key: string }) => r.key === 'viewer');
     expect(viewer.permissions).toEqual([
+      'disputes:read',
+      'kyc:view',
       'merchant:read',
       'payments:read',
       'settlements:read',
@@ -378,6 +380,8 @@ describe('roles', () => {
     expect(rows[0]).toMatchObject({
       before: {
         permissions: [
+          'disputes:read',
+          'kyc:view',
           'merchant:read',
           'payments:read',
           'settlements:read',
@@ -403,6 +407,11 @@ describe('roles', () => {
     expect((await admin.client.patch('/admin/v1/roles/nope', { permissions: [] })).statusCode).toBe(
       404
     );
+    // The roles live in the one database every suite shares: put the viewer back.
+    const restored = await admin.client.patch('/admin/v1/roles/viewer', {
+      permissions: viewer.permissions,
+    });
+    expect(restored.statusCode).toBe(200);
   });
 });
 

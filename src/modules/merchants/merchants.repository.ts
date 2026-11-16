@@ -79,6 +79,22 @@ export class MerchantsRepository {
     return row;
   }
 
+  /** KYC approval: the merchant's level, and its status when the approval changes it. */
+  async setKycLevel(
+    tx: Executor,
+    id: string,
+    kycLevel: number,
+    status?: MerchantStatus
+  ): Promise<MerchantRow> {
+    const [row] = await tx
+      .update(merchants)
+      .set({ kycLevel, ...(status ? { status } : {}) })
+      .where(eq(merchants.id, id))
+      .returning();
+    if (!row) throw new Error('merchant kyc update returned no row');
+    return row;
+  }
+
   /** Admin list, newest first, keyset on (created_at, ref). Reads the replica (spec 9.2). */
   list(filter: MerchantListFilter) {
     const conditions: SQL[] = [];

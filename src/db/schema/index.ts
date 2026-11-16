@@ -17,3 +17,6 @@ export * from './developer';
 export * from './settlement';
 export * from './reconciliation';
 export * from './incidents';
+export * from './kyc';
+export * from './aml';
+export * from './disputes';

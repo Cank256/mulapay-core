@@ -8,10 +8,14 @@ import { OutboxDispatcher } from '../common/outbox/outbox-dispatcher';
 import { OUTBOX_HANDLERS, type OutboxHandler } from '../common/outbox/outbox-handler';
 import { OutboxModule } from '../common/outbox/outbox.module';
 import { QUEUE_PROCESSORS, type QueueProcessor } from '../common/queue/queue-processor';
+import { AmlModule } from '../modules/aml/aml.module';
+import { AmlTerminalHandler } from '../modules/aml/monitoring/aml-monitoring.trigger';
 import { DeveloperModule } from '../modules/developer/developer.module';
 import { SandboxModule } from '../modules/developer/sandbox/sandbox.module';
 import { SandboxPaymentHandler } from '../modules/developer/sandbox/sandbox.handler';
 import { SandboxProcessor } from '../modules/developer/sandbox/sandbox.processor';
+import { KycModule } from '../modules/kyc/kyc.module';
+import { KycScreeningRequestedHandler } from '../modules/kyc/kyc-screening.handler';
 import { ReconciliationModule } from '../modules/reconciliation/reconciliation.module';
 import { StatementUploadedHandler } from '../modules/reconciliation/statement-uploaded.handler';
 import { SettlementModule } from '../modules/settlement/settlement.module';
@@ -22,6 +26,7 @@ import {
   MerchantEventFanoutHandler,
 } from '../modules/webhooks/webhook-fanout.handlers';
 import { WebhooksModule } from '../modules/webhooks/webhooks.module';
+import { AmlScreenProcessor } from './aml-screen.processor';
 import { JobSchedulers } from './job-schedulers';
 import { OutboxDispatchProcessor } from './outbox-dispatch.processor';
 import {
@@ -32,7 +37,9 @@ import { SettlementRunProcessor } from './settlement-run.processor';
 
 @Module({
   imports: [
+    AmlModule,
     DeveloperModule,
+    KycModule,
     OutboxModule,
     ReconciliationModule,
     SandboxModule,
@@ -41,6 +48,7 @@ import { SettlementRunProcessor } from './settlement-run.processor';
   ],
   providers: [
     OutboxDispatcher,
+    AmlScreenProcessor,
     OutboxDispatchProcessor,
     ReconciliationRunProcessor,
     SettlementRunProcessor,
@@ -53,6 +61,8 @@ import { SettlementRunProcessor } from './settlement-run.processor';
         SandboxPaymentHandler,
         SettlementSubmitHandler,
         StatementUploadedHandler,
+        AmlTerminalHandler,
+        KycScreeningRequestedHandler,
       ],
       useFactory: (...handlers: OutboxHandler[]) => handlers,
     },
@@ -65,6 +75,7 @@ import { SettlementRunProcessor } from './settlement-run.processor';
         SettlementRunProcessor,
         ReconciliationRunProcessor,
         StatementMatchProcessor,
+        AmlScreenProcessor,
       ],
       useFactory: (...processors: QueueProcessor[]) => processors,
     },

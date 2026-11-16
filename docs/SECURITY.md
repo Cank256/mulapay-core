@@ -277,3 +277,29 @@ otpauth URI once, to stdout. Writes a `staff.bootstrapped` audit row with actor 
   audit row in their transaction. Status changes driven by the gateway, the chase job or the
   expiry sweep are recorded in `transaction_events` (which is append-only), not in the audit
   chain, to keep the chain-head lock off the event path.
+
+## Compliance (Phase 7)
+
+- **Permissions.** Merchant: `kyc:view`, `kyc:submit`, `disputes:read`, `disputes:write` (viewer and
+  support get the two read permissions; owner and admin get all four; finance gets `kyc:view` and
+  both dispute permissions). Staff: `kyc:read|review|approve|view_documents|requirements`,
+  `aml:read|work|rules|blocklist|block|str`, `chargebacks:read|work|resolve`. `compliance` and
+  `super_admin` hold all of them. `operations`, `support_agent` and `auditor` hold read-only subsets
+  (operations may also work chargebacks).
+- **Maker-checker.** A reviewer who verified a document or recorded a check in the current
+  submission cannot approve that submission.
+- **Documents.** The browser uploads straight to object storage with a presigned PUT that signs the
+  content type, length, SHA-256 and the server-side encryption header. Confirmation reads the first
+  16 bytes and checks them against PDF, JPEG or PNG magic numbers, never the extension; a refused
+  object is deleted. Core never relays file contents. A staff view is a short-lived presigned GET
+  and writes an audit row every time. `S3_SERVER_SIDE_ENCRYPTION` is required in production.
+- **Personal data.** TIN, director and UBO names, dates of birth and ID numbers are AES-GCM
+  encrypted (contexts in `docs/DATABASE.md`); blocklist and screening lookups use an HMAC of the
+  value (`PiiHasher`, keyed by `PII_HMAC_PEPPER`, required in production), so the database and
+  Redis hold a digest, not the identifier.
+- **Screening provider.** Fails closed: with no usable provider the merchant stays unscreened and
+  cannot activate. A confirmed sanctions or PEP match blocks activation, opens an AML case and is audited.
+- **Tipping off.** AML alerts, cases, screenings and block reasons are admin-only routes. See
+  `docs/ARCHITECTURE.md` ("Phase 7 decisions to confirm") for what a merchant is told.
+- **Audit.** Every KYC, screening, rule, alert, case, STR, blocklist, block and dispute change writes
+  an audit row in the transaction of the change.

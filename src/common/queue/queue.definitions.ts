@@ -45,7 +45,14 @@ export const QUEUES = {
     // A payout submission retries with the same externalId, so retrying cannot pay twice.
     jobOptions: { attempts: 8, backoff: { type: 'exponential', delay: 5000 } },
   },
-  amlScreen: { name: 'aml-screen', concurrency: 8 },
+  // Phase 7: screening, monitoring and the compliance sweeps. A screening provider outage can
+  // last minutes, so a job retries 8 times from 10 s (about 21 minutes in all); every job is
+  // keyed by what it works on, so a retry or a duplicate has no second effect.
+  amlScreen: {
+    name: 'aml-screen',
+    concurrency: 8,
+    jobOptions: { attempts: 8, backoff: { type: 'exponential', delay: 10_000 } },
+  },
   statementMatch: { name: 'statement-match', concurrency: 2 },
   rollupAggregate: { name: 'rollup-aggregate', concurrency: 2 },
   gatewayChase: { name: 'gateway-chase', concurrency: 8 },

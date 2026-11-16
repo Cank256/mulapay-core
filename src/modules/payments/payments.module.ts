@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IdempotencyModule } from '../../common/idempotency/idempotency.module';
 import { OutboxModule } from '../../common/outbox/outbox.module';
+import { AmlModule } from '../aml/aml.module';
 import { BalancesModule } from '../balances/balances.module';
 import { EventsModule } from '../events/events.module';
 import { LedgerModule } from '../ledger/ledger.module';
@@ -23,6 +24,7 @@ import { PaymentsService } from './payments.service';
  */
 @Module({
   imports: [
+    AmlModule,
     BalancesModule,
     EventsModule,
     IdempotencyModule,

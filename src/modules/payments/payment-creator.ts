@@ -11,9 +11,9 @@
  * it. The gateway `externalId` is already fixed (the payment ref), so a retried submission
  * can never become a second collection (spec 3.4).
  *
- * Not checked yet, because the data does not exist: merchant limits (`merchant_limits`),
- * AML pre-checks (Phase 7) and route availability (Phase 4). They must exist before payments
- * are submitted to a provider.
+ * A live payment also passes the AML pre-check (spec 6.1, 6.13) before anything is written:
+ * the blocklist, the merchant's status and its hard limits, all answered from Redis. A payment
+ * that is declined never exists. Route availability arrives with the gateway (Phase 4).
  */
 import { Inject, Injectable } from '@nestjs/common';
 import type { MerchantScope } from '../../common/auth/merchant-scope';
@@ -27,6 +27,7 @@ import { APP_CONFIG, CLOCK } from '../../common/tokens';
 import type { AppConfig } from '../../config/configuration';
 import { isSandboxScenario } from '../developer/sandbox/domain/sandbox-scenario';
 import { MerchantEventsService } from '../events/merchant-events.service';
+import { AmlPrecheckService } from '../aml/precheck/precheck.service';
 import { TransactionsRepository } from '../transactions/transactions.repository';
 import {
   assertMerchantMayTransact,
@@ -76,6 +77,7 @@ export class PaymentCreator {
     private readonly encryption: FieldEncryption,
     private readonly events: MerchantEventsService,
     private readonly outbox: OutboxService,
+    private readonly precheck: AmlPrecheckService,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(APP_CONFIG) private readonly config: Pick<AppConfig, 'PAYMENT_EXPIRY_MINUTES'>
   ) {}
@@ -115,6 +117,13 @@ export class PaymentCreator {
     if (scope.environment === 'test' && simulate !== undefined && !isSandboxScenario(simulate)) {
       throw invalid('simulate_value_invalid');
     }
+    // Live payments only (the check ignores the test environment): declined before any write.
+    const payerNumber = input.msisdn === undefined ? null : normalizeMsisdn(input.msisdn);
+    await this.precheck.check(scope, {
+      amountMinor: input.amountMinor,
+      currency,
+      identifiers: payerNumber ? [{ type: 'msisdn', value: payerNumber }] : [],
+    });
     const transaction = await this.transactions.insert(tx, {
       id: ids.transactionId,
       ref: ids.transactionRef,

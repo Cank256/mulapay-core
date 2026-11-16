@@ -274,6 +274,49 @@ the other partitioned tables.
 `webhook_deliveries` and `api_request_logs` refs embed their creation time: a lookup by ref reads
 one partition. Retention (spec 11): both 90 days, by dropping partitions.
 
+## Compliance tables (migration 0007)
+
+| Table                                                           | Holds                                                                                           |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `kyc_profiles`, `kyc_reviews`                                   | one profile per merchant (state, submission number, expiry); every review decision, append-only |
+| `kyc_documents`                                                 | object key, SHA-256, content type, size, review state; the file itself is in object storage     |
+| `kyc_parties`, `merchant_profiles`                              | directors and UBOs, and the business TIN; personal fields are AES-GCM encrypted                 |
+| `kyc_verifications`                                             | each check a reviewer or provider recorded, append-only                                         |
+| `kyc_requirements`, `kyc_level_limits`, `merchant_limits`       | data-driven requirements by country, business type and level; limits per level and currency     |
+| `aml_screenings`                                                | sanctions and PEP screenings of merchant, directors and UBOs                                    |
+| `aml_rules`, `aml_rule_versions`                                | monitoring rules and their append-only change history                                           |
+| `aml_alerts`, `aml_cases`, `aml_case_notes`, `aml_str_packages` | alerts with SLA, cases, notes and STR exports                                                   |
+| `aml_transaction_facts`                                         | what monitoring saw of each terminal transaction, append-only                                   |
+| `aml_blocklist`, `aml_blocks`, `aml_block_holds`                | blocklist entries, merchant blocks, and the holds a block placed                                |
+| `disputes`                                                      | disputes and chargebacks with their hold and resolution                                         |
+
+### Invariants enforced by Postgres
+
+`test/integration/compliance-schema.int-spec.ts` violates each with plain SQL.
+
+| Invariant                                                                                             | Mechanism                                                                   |
+| ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| A KYC profile moves along allowed transitions; its merchant never changes                             | `core.guard_kyc_profile`                                                    |
+| A document's file never changes; verified or rejected is final; removal is final                      | `core.guard_kyc_document`; CHECK that review columns agree with the status  |
+| A screening's result never changes; only a potential match is decided, once                           | `core.guard_aml_screening`                                                  |
+| An alert's cause never changes; a closed alert is final                                               | `core.guard_aml_alert`; CHECK that resolution columns agree with the status |
+| A closed case is final, except one STR filing record                                                  | `core.guard_aml_case`; CHECK that closing columns agree with the status     |
+| A blocklist entry is removed once, by timestamp; a block is lifted once                               | `core.guard_aml_blocklist`, `core.guard_aml_block`; CHECK on lifted columns |
+| A dispute's subject never changes; open, under review, resolved only; resolved final                  | `core.guard_dispute`; CHECK on resolution columns                           |
+| Reviews, verifications, rule versions, case notes, STR packages, facts, block holds are never changed | `UPDATE, DELETE, TRUNCATE` revoked, plus `core.reject_mutation` triggers    |
+| No compliance table loses rows                                                                        | `DELETE, TRUNCATE` revoked on the other tables                              |
+
+### Hand edits to the generated migration
+
+drizzle-kit generated 0007. Everything after the "Hand-written part of migration 0007" marker is
+by hand: the guards, `updated_at` triggers, append-only triggers, revokes, the seeds (KYC
+requirements, level limits, eight AML rules **disabled**) and the staff and merchant permissions
+with their role grants. The paired-column CHECKs were first too weak (a closed row could omit its
+closing columns); the schema test found it and they are tightened in the generated part. Seeded
+limits are placeholders for Compliance to confirm (`docs/ARCHITECTURE.md`, "Phase 7 decisions to confirm").
+Encryption contexts: `merchant_profiles.tin:{merchantId}`, `kyc_parties.full_name:{ref}`,
+`kyc_parties.date_of_birth:{ref}`, `kyc_parties.id_number:{ref}`.
+
 ## Open question: table ownership
 
 Still open. Decision D2 gives `mulapay_core_rw` full rights on `core`, so it owns the

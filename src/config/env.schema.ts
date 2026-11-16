@@ -222,6 +222,11 @@ export const envSchema = z
     S3_SECRET_ACCESS_KEY: optional(z.string().min(1)),
     PRESIGN_UPLOAD_TTL_SECONDS: integer(900, 60, 3600),
     PRESIGN_DOWNLOAD_TTL_SECONDS: integer(900, 60, 3600),
+    // Phase 7: path-style addressing for MinIO and other S3-compatible stores, and the
+    // server-side encryption header that every presigned upload must carry (spec 11).
+    S3_FORCE_PATH_STYLE: flag(false),
+    S3_SERVER_SIDE_ENCRYPTION: optional(z.enum(['AES256', 'aws:kms'])),
+
     // Notifications
     EMAIL_PROVIDER: optional(z.enum(['ses', 'postmark', 'resend'])),
     EMAIL_API_KEY: optional(z.string().min(1)),
@@ -244,6 +249,18 @@ export const envSchema = z
     // Compliance
     SANCTIONS_PROVIDER: optional(z.enum(['opensanctions', 'complyadvantage'])),
     SANCTIONS_API_KEY: optional(z.string().min(1)),
+    SANCTIONS_BASE_URL: optional(httpUrl),
+    SANCTIONS_TIMEOUT_MS: integer(5000, 500, 60000),
+    // Phase 7: a hit scoring at least REVIEW needs an analyst; at least CONFIRM is a match.
+    AML_SCREENING_REVIEW_SCORE: withDefault(z.coerce.number().min(0).max(1), 0.7),
+    AML_SCREENING_CONFIRM_SCORE: withDefault(z.coerce.number().min(0).max(1), 0.9),
+    // Hours an alert may stay unworked before it escalates, by severity (spec 6.13).
+    AML_ALERT_SLA_HOURS_LOW: integer(72, 1, 720),
+    AML_ALERT_SLA_HOURS_MEDIUM: integer(24, 1, 720),
+    AML_ALERT_SLA_HOURS_HIGH: integer(8, 1, 720),
+    AML_ALERT_SLA_HOURS_CRITICAL: integer(4, 1, 720),
+    KYC_VALIDITY_DAYS: integer(365, 30, 3650),
+    KYC_REVERIFY_NOTICE_DAYS: integer(30, 1, 180),
     SANCTIONS_LISTS: z.preprocess(
       (v) => blankToUndefined(v) ?? 'UN,OFAC,EU,UK,PEP',
       csv(z.string().regex(/^[A-Z][A-Z0-9_]*$/, 'entries must be upper-case list codes'))
@@ -279,6 +296,9 @@ export const envSchema = z
       issue('DATABASE_DIRECT_URL', 'is required for APP_ROLE=consumer (singleton advisory lock)');
     }
 
+    if (env.AML_SCREENING_CONFIRM_SCORE < env.AML_SCREENING_REVIEW_SCORE) {
+      issue('AML_SCREENING_CONFIRM_SCORE', 'must not be below AML_SCREENING_REVIEW_SCORE');
+    }
     validateEncryptionKey(env.DATA_ENCRYPTION_KEY, env.KMS_KEY_ID, issue);
     validateJwtKeys(env, issue);
 
@@ -312,6 +332,12 @@ export const envSchema = z
       ] as const;
       for (const key of productionSecrets) {
         if (env[key] === undefined) issue(key, 'is required in production');
+      }
+      if (env.S3_BUCKET_DOCUMENTS !== undefined && env.S3_SERVER_SIDE_ENCRYPTION === undefined) {
+        issue(
+          'S3_SERVER_SIDE_ENCRYPTION',
+          'is required in production when S3_BUCKET_DOCUMENTS is set (KYC documents are encrypted at rest)'
+        );
       }
     }
   });

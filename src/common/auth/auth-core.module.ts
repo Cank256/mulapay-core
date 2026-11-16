@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { FieldEncryption } from '../crypto/field-encryption';
+import { PiiHasher } from '../crypto/pii-hasher';
 import { AuthFailureLimiter } from '../ratelimit/auth-failure-limiter';
 import { RateLimitGuard } from '../ratelimit/rate-limit.guard';
 import { RateLimiter } from '../ratelimit/rate-limiter';
@@ -20,6 +21,7 @@ import { TotpService } from './totp.service';
     TotpService,
     SessionRevocationStore,
     FieldEncryption,
+    PiiHasher,
     ApiKeyCache,
     ApiKeyUsageTracker,
     SignatureReplayStore,
@@ -33,6 +35,7 @@ import { TotpService } from './totp.service';
     TotpService,
     SessionRevocationStore,
     FieldEncryption,
+    PiiHasher,
     ApiKeyCache,
     ApiKeyUsageTracker,
     SignatureReplayStore,

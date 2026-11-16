@@ -20,6 +20,10 @@ export const MERCHANT_PERMISSIONS = [
   'webhooks:manage',
   'request_logs:read',
   'settlements:read',
+  'kyc:view',
+  'kyc:submit',
+  'disputes:read',
+  'disputes:write',
 ] as const;
 
 /**
@@ -46,6 +50,20 @@ export const STAFF_PERMISSIONS = [
   'reconciliation:read',
   'reconciliation:work',
   'reconciliation:approve',
+  'kyc:read',
+  'kyc:review',
+  'kyc:approve',
+  'kyc:view_documents',
+  'kyc:requirements',
+  'aml:read',
+  'aml:work',
+  'aml:rules',
+  'aml:blocklist',
+  'aml:block',
+  'aml:str',
+  'chargebacks:read',
+  'chargebacks:work',
+  'chargebacks:resolve',
 ] as const;
 
 export type MerchantPermission = (typeof MERCHANT_PERMISSIONS)[number];

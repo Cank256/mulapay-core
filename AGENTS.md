@@ -69,9 +69,12 @@ request logs, the sandbox, the public OpenAPI document) is built, also ahead of 
 the `/v1` groups that need the unbuilt money domains are listed in `docs/API_PUBLIC.md` ("What
 is built"). Phase 6 (settlement and reconciliation: cycles, payables, batches with approval and
 release, rolling reserve, the four reconciliation runs, the exception queue, statements) is built
-on the Phase 2 ledger, also ahead of Phases 3 and 4; see `docs/RECONCILIATION.md`. Open questions
+on the Phase 2 ledger, also ahead of Phases 3 and 4; see `docs/RECONCILIATION.md`. Phase 7
+(compliance: KYC levels, requirements, documents, review and atomic activation, re-verification,
+AML screening, the pre-transaction check, post-transaction monitoring, alerts, cases and STR,
+the merchant block, disputes) is built; see `docs/ARCHITECTURE.md` ("Compliance (Phase 7)"). Open questions
 are listed in `docs/ARCHITECTURE.md` ("Phase 0/1/2 decisions to confirm", "Phase 5 decisions to
-confirm", "Phase 6 decisions to confirm") and `docs/DATABASE.md` (table ownership).
+confirm", "Phase 6 decisions to confirm", "Phase 7 decisions to confirm") and `docs/DATABASE.md` (table ownership).
 
 ## Commands
 

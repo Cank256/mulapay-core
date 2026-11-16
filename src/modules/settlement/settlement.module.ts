@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { OutboxModule } from '../../common/outbox/outbox.module';
 import { GatewayOperationsModule } from '../../integrations/gateway/gateway-operations.module';
+import { AmlModule } from '../aml/aml.module';
 import { BalancesModule } from '../balances/balances.module';
 import { EventsModule } from '../events/events.module';
 import { HoldsModule } from '../holds/holds.module';
@@ -28,6 +29,7 @@ import { SettlementTickService } from './settlement-tick.service';
 /** Settlement (spec 6.9): cycles, runs, batches, release, rolling reserve and statements. */
 @Module({
   imports: [
+    AmlModule,
     BalancesModule,
     EventsModule,
     GatewayOperationsModule,

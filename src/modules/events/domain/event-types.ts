@@ -32,6 +32,10 @@ export const MERCHANT_EVENT_TYPES = [
   'merchant.activated',
   // Added by Phase 5: tells the merchant their endpoint stopped receiving events.
   'webhook_endpoint.auto_disabled',
+  // Added by Phase 7: KYC needs the merchant's attention again.
+  'kyc.info_requested',
+  'kyc.reverification_due',
+  'kyc.expired',
 ] as const;
 
 export type MerchantEventType = (typeof MERCHANT_EVENT_TYPES)[number];

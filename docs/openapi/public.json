@@ -9382,7 +9382,10 @@
                 "kyc.rejected",
                 "merchant.suspended",
                 "merchant.activated",
-                "webhook_endpoint.auto_disabled"
+                "webhook_endpoint.auto_disabled",
+                "kyc.info_requested",
+                "kyc.reverification_due",
+                "kyc.expired"
               ]
             },
             "example": "payment.created"
@@ -9485,7 +9488,10 @@
                                   "kyc.rejected",
                                   "merchant.suspended",
                                   "merchant.activated",
-                                  "webhook_endpoint.auto_disabled"
+                                  "webhook_endpoint.auto_disabled",
+                                  "kyc.info_requested",
+                                  "kyc.reverification_due",
+                                  "kyc.expired"
                                 ]
                               },
                               "environment": {
@@ -9940,7 +9946,10 @@
                             "kyc.rejected",
                             "merchant.suspended",
                             "merchant.activated",
-                            "webhook_endpoint.auto_disabled"
+                            "webhook_endpoint.auto_disabled",
+                            "kyc.info_requested",
+                            "kyc.reverification_due",
+                            "kyc.expired"
                           ]
                         },
                         "environment": {
@@ -14705,7 +14714,7 @@
           },
           "enabledEvents": {
             "minItems": 1,
-            "maxItems": 26,
+            "maxItems": 29,
             "type": "array",
             "items": {
               "anyOf": [
@@ -14736,7 +14745,10 @@
                     "kyc.rejected",
                     "merchant.suspended",
                     "merchant.activated",
-                    "webhook_endpoint.auto_disabled"
+                    "webhook_endpoint.auto_disabled",
+                    "kyc.info_requested",
+                    "kyc.reverification_due",
+                    "kyc.expired"
                   ]
                 },
                 {
@@ -14771,7 +14783,7 @@
           },
           "enabledEvents": {
             "minItems": 1,
-            "maxItems": 26,
+            "maxItems": 29,
             "type": "array",
             "items": {
               "anyOf": [
@@ -14802,7 +14814,10 @@
                     "kyc.rejected",
                     "merchant.suspended",
                     "merchant.activated",
-                    "webhook_endpoint.auto_disabled"
+                    "webhook_endpoint.auto_disabled",
+                    "kyc.info_requested",
+                    "kyc.reverification_due",
+                    "kyc.expired"
                   ]
                 },
                 {
@@ -14913,7 +14928,10 @@
               "kyc.rejected",
               "merchant.suspended",
               "merchant.activated",
-              "webhook_endpoint.auto_disabled"
+              "webhook_endpoint.auto_disabled",
+              "kyc.info_requested",
+              "kyc.reverification_due",
+              "kyc.expired"
             ]
           },
           "environment": {
@@ -15020,7 +15038,10 @@
       "kyc.rejected",
       "merchant.suspended",
       "merchant.activated",
-      "webhook_endpoint.auto_disabled"
+      "webhook_endpoint.auto_disabled",
+      "kyc.info_requested",
+      "kyc.reverification_due",
+      "kyc.expired"
     ],
     "headers": {
       "MulaPay-Signature": "t=<unix seconds>,v1=<hex HMAC-SHA256 of \"t.payload\" with the endpoint secret>. During a secret rotation there are two v1 entries. Reject a timestamp more than 300 seconds old, and compare in constant time.",

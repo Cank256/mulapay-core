@@ -4080,7 +4080,10 @@
                 "kyc.rejected",
                 "merchant.suspended",
                 "merchant.activated",
-                "webhook_endpoint.auto_disabled"
+                "webhook_endpoint.auto_disabled",
+                "kyc.info_requested",
+                "kyc.reverification_due",
+                "kyc.expired"
               ]
             }
           },
@@ -6048,6 +6051,1835 @@
         ],
         "x-required-permission": "settlements:read"
       }
+    },
+    "/dashboard/v1/kyc": {
+      "get": {
+        "operationId": "DashboardKycController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "level": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 3
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "not_started",
+                            "pending",
+                            "in_review",
+                            "approved",
+                            "rejected",
+                            "expired"
+                          ]
+                        },
+                        "targetLevel": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 3
+                        },
+                        "submittedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "reviewedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "rejection": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "reasons": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "details": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "target": {
+                                    "type": "string"
+                                  },
+                                  "note": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "reasons",
+                            "details"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "infoRequest": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "requestedAt": {
+                              "type": "string"
+                            },
+                            "note": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "requestedAt",
+                            "note"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "expiresAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "reverificationDueAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "missing": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "canSubmit": {
+                          "type": "boolean"
+                        },
+                        "requirements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "document",
+                                  "profile_field",
+                                  "party",
+                                  "verification"
+                                ]
+                              },
+                              "evidenceKey": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "mandatory": {
+                                "type": "boolean"
+                              },
+                              "level": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "missing",
+                                  "provided",
+                                  "verified"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "kind",
+                              "evidenceKey",
+                              "label",
+                              "description",
+                              "mandatory",
+                              "level",
+                              "state"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "uploaded",
+                                  "verified",
+                                  "rejected"
+                                ]
+                              },
+                              "mime": {
+                                "type": "string"
+                              },
+                              "sizeBytes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "uploadedAt": {
+                                "type": "string"
+                              },
+                              "reviewedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "rejectionReason": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "rejectionNote": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "expiresAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "metadata": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "status",
+                              "mime",
+                              "sizeBytes",
+                              "uploadedAt",
+                              "reviewedAt",
+                              "rejectionReason",
+                              "rejectionNote",
+                              "expiresAt",
+                              "metadata"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "limits": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "currency": {
+                                "type": "string"
+                              },
+                              "perTransactionMaxMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "dailyVolumeMaxMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "monthlyVolumeMaxMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              }
+                            },
+                            "required": [
+                              "currency",
+                              "perTransactionMaxMinor",
+                              "dailyVolumeMaxMinor",
+                              "monthlyVolumeMaxMinor"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "level",
+                        "status",
+                        "targetLevel",
+                        "submittedAt",
+                        "reviewedAt",
+                        "rejection",
+                        "infoRequest",
+                        "expiresAt",
+                        "reverificationDueAt",
+                        "missing",
+                        "canSubmit",
+                        "requirements",
+                        "documents",
+                        "limits"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "KYC status, what is missing, the documents uploaded and the limits in force",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:view"
+      }
+    },
+    "/dashboard/v1/kyc/requirements": {
+      "get": {
+        "description": "Resolved from the requirements data for the merchant’s country and business type. `level` defaults to the next level the merchant can apply for.",
+        "operationId": "DashboardKycController_requirements",
+        "parameters": [
+          {
+            "name": "level",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 3,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "targetLevel": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "requirements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "document",
+                                  "profile_field",
+                                  "party",
+                                  "verification"
+                                ]
+                              },
+                              "evidenceKey": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "mandatory": {
+                                "type": "boolean"
+                              },
+                              "level": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "missing",
+                                  "provided",
+                                  "verified"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "code",
+                              "kind",
+                              "evidenceKey",
+                              "label",
+                              "description",
+                              "mandatory",
+                              "level",
+                              "state"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "targetLevel",
+                        "requirements"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "What the merchant must provide for a level",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:view"
+      }
+    },
+    "/dashboard/v1/kyc/profile": {
+      "get": {
+        "operationId": "DashboardKycController_profile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "businessType": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "registrationNumber": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "tinLast4": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "incorporationDate": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "address": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "businessType",
+                        "registrationNumber",
+                        "tinLast4",
+                        "incorporationDate",
+                        "address"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "The business details given for KYC (TIN as its last four characters)",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:view"
+      },
+      "put": {
+        "operationId": "DashboardKycController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "businessType": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "registrationNumber": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "tinLast4": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "incorporationDate": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "address": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "businessType",
+                        "registrationNumber",
+                        "tinLast4",
+                        "incorporationDate",
+                        "address"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Set the business details used for KYC",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:submit"
+      }
+    },
+    "/dashboard/v1/kyc/parties": {
+      "get": {
+        "operationId": "DashboardKycController_parties",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "ref": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "director",
+                                  "ubo"
+                                ]
+                              },
+                              "fullName": {
+                                "type": "string"
+                              },
+                              "dateOfBirth": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "nationality": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "idNumberLast4": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "ownershipBps": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "ref",
+                              "kind",
+                              "fullName",
+                              "dateOfBirth",
+                              "nationality",
+                              "idNumberLast4",
+                              "ownershipBps"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Directors and beneficial owners given for KYC",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:view"
+      },
+      "post": {
+        "operationId": "DashboardKycController_addParty",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ref": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "director",
+                            "ubo"
+                          ]
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "dateOfBirth": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "nationality": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "idNumberLast4": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "ownershipBps": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "ref",
+                        "kind",
+                        "fullName",
+                        "dateOfBirth",
+                        "nationality",
+                        "idNumberLast4",
+                        "ownershipBps"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a director or a beneficial owner",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:submit"
+      }
+    },
+    "/dashboard/v1/kyc/parties/{id}": {
+      "delete": {
+        "operationId": "DashboardKycController_removeParty",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove a director or a beneficial owner",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:submit"
+      }
+    },
+    "/dashboard/v1/kyc/submit": {
+      "post": {
+        "description": "Needs everything mandatory that the merchant can supply for the level. A draft merchant becomes `pending_kyc`. Screening starts in the background.",
+        "operationId": "DashboardKycController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "initial",
+                            "resubmission",
+                            "upgrade",
+                            "reverification"
+                          ]
+                        },
+                        "level": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "submissionNo": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "merchantStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "pending_kyc",
+                            "active",
+                            "suspended",
+                            "closed"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "level",
+                        "submissionNo",
+                        "merchantStatus"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Submit KYC for review",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:submit"
+      }
+    },
+    "/dashboard/v1/kyc/documents/presign": {
+      "post": {
+        "description": "PDF, JPEG or PNG, at most 10 MB. Upload with an HTTP PUT of the file, sending exactly the headers returned, then call `POST /kyc/documents` with the same values. Core never receives the file; the file type is checked from its first bytes, not its name.",
+        "operationId": "DashboardKycController_presign",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "documentId": {
+                          "type": "string"
+                        },
+                        "upload": {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "type": "string"
+                            },
+                            "method": {
+                              "type": "string",
+                              "enum": [
+                                "PUT"
+                              ]
+                            },
+                            "headers": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            },
+                            "expiresAt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "url",
+                            "method",
+                            "headers",
+                            "expiresAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "documentId",
+                        "upload"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a presigned URL to upload one document",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:submit"
+      }
+    },
+    "/dashboard/v1/kyc/documents": {
+      "post": {
+        "operationId": "DashboardKycController_confirm",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "uploaded",
+                            "verified",
+                            "rejected"
+                          ]
+                        },
+                        "mime": {
+                          "type": "string"
+                        },
+                        "sizeBytes": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "uploadedAt": {
+                          "type": "string"
+                        },
+                        "reviewedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "rejectionReason": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "rejectionNote": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "status",
+                        "mime",
+                        "sizeBytes",
+                        "uploadedAt",
+                        "reviewedAt",
+                        "rejectionReason",
+                        "rejectionNote",
+                        "expiresAt",
+                        "metadata"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Confirm an upload: core checks the object and records the document",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:submit"
+      }
+    },
+    "/dashboard/v1/kyc/documents/{id}": {
+      "delete": {
+        "operationId": "DashboardKycController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Remove a document that has not been verified",
+        "tags": [
+          "KYC"
+        ],
+        "x-required-permission": "kyc:submit"
+      }
+    },
+    "/dashboard/v1/disputes": {
+      "get": {
+        "operationId": "DashboardDisputesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "under_review",
+                "resolved"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 512,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "transaction": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "chargeback",
+                                  "inquiry",
+                                  "pre_arbitration"
+                                ]
+                              },
+                              "amountMinor": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "reasonCode": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "under_review",
+                                  "resolved"
+                                ]
+                              },
+                              "outcome": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "merchant_won",
+                                  "merchant_lost",
+                                  "withdrawn"
+                                ]
+                              },
+                              "evidenceDueAt": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "evidence": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "at": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "at",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "resolvedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "transaction",
+                              "kind",
+                              "amountMinor",
+                              "currency",
+                              "reasonCode",
+                              "status",
+                              "outcome",
+                              "evidenceDueAt",
+                              "evidence",
+                              "createdAt",
+                              "resolvedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "List disputes against the merchant, newest first",
+        "tags": [
+          "Disputes"
+        ],
+        "x-required-permission": "disputes:read"
+      }
+    },
+    "/dashboard/v1/disputes/{ref}": {
+      "get": {
+        "operationId": "DashboardDisputesController_get",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "transaction": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "chargeback",
+                            "inquiry",
+                            "pre_arbitration"
+                          ]
+                        },
+                        "amountMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "reasonCode": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "under_review",
+                            "resolved"
+                          ]
+                        },
+                        "outcome": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "merchant_won",
+                            "merchant_lost",
+                            "withdrawn"
+                          ]
+                        },
+                        "evidenceDueAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "evidence": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "at",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "resolvedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "transaction",
+                        "kind",
+                        "amountMinor",
+                        "currency",
+                        "reasonCode",
+                        "status",
+                        "outcome",
+                        "evidenceDueAt",
+                        "evidence",
+                        "createdAt",
+                        "resolvedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "One dispute",
+        "tags": [
+          "Disputes"
+        ],
+        "x-required-permission": "disputes:read"
+      }
+    },
+    "/dashboard/v1/disputes/{ref}/evidence": {
+      "post": {
+        "description": "Allowed until the evidence due date, at most 20 items of 2,000 characters.",
+        "operationId": "DashboardDisputesController_addEvidence",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "transaction": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "chargeback",
+                            "inquiry",
+                            "pre_arbitration"
+                          ]
+                        },
+                        "amountMinor": {
+                          "type": "string",
+                          "pattern": "^\\d+$"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "reasonCode": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "under_review",
+                            "resolved"
+                          ]
+                        },
+                        "outcome": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "merchant_won",
+                            "merchant_lost",
+                            "withdrawn"
+                          ]
+                        },
+                        "evidenceDueAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "evidence": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "at",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "resolvedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "transaction",
+                        "kind",
+                        "amountMinor",
+                        "currency",
+                        "reasonCode",
+                        "status",
+                        "outcome",
+                        "evidenceDueAt",
+                        "evidence",
+                        "createdAt",
+                        "resolvedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "requestId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add evidence to a dispute",
+        "tags": [
+          "Disputes"
+        ],
+        "x-required-permission": "disputes:write"
+      }
     }
   },
   "info": {
@@ -6365,7 +8197,7 @@
           },
           "enabledEvents": {
             "minItems": 1,
-            "maxItems": 26,
+            "maxItems": 29,
             "type": "array",
             "items": {
               "anyOf": [
@@ -6396,7 +8228,10 @@
                     "kyc.rejected",
                     "merchant.suspended",
                     "merchant.activated",
-                    "webhook_endpoint.auto_disabled"
+                    "webhook_endpoint.auto_disabled",
+                    "kyc.info_requested",
+                    "kyc.reverification_due",
+                    "kyc.expired"
                   ]
                 },
                 {
@@ -6431,7 +8266,7 @@
           },
           "enabledEvents": {
             "minItems": 1,
-            "maxItems": 26,
+            "maxItems": 29,
             "type": "array",
             "items": {
               "anyOf": [
@@ -6462,7 +8297,10 @@
                     "kyc.rejected",
                     "merchant.suspended",
                     "merchant.activated",
-                    "webhook_endpoint.auto_disabled"
+                    "webhook_endpoint.auto_disabled",
+                    "kyc.info_requested",
+                    "kyc.reverification_due",
+                    "kyc.expired"
                   ]
                 },
                 {
@@ -6531,7 +8369,10 @@
               "kyc.rejected",
               "merchant.suspended",
               "merchant.activated",
-              "webhook_endpoint.auto_disabled"
+              "webhook_endpoint.auto_disabled",
+              "kyc.info_requested",
+              "kyc.reverification_due",
+              "kyc.expired"
             ]
           },
           "statuses": {
@@ -6565,6 +8406,179 @@
         "required": [
           "from",
           "to"
+        ],
+        "additionalProperties": false
+      },
+      "ProfileDto": {
+        "type": "object",
+        "properties": {
+          "businessType": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{1,39}$"
+          },
+          "registrationNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "tin": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32
+          },
+          "incorporationDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "address": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PartyDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "director",
+              "ubo"
+            ]
+          },
+          "fullName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "nationality": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "idNumber": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 64
+          },
+          "ownershipBps": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          }
+        },
+        "required": [
+          "kind",
+          "fullName"
+        ],
+        "additionalProperties": false
+      },
+      "SubmitDto": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          }
+        },
+        "additionalProperties": false
+      },
+      "PresignDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{1,63}$"
+          },
+          "contentType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10485760
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "type",
+          "contentType",
+          "sizeBytes",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "ConfirmDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{1,63}$"
+          },
+          "contentType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10485760
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "documentId": {
+            "type": "string",
+            "pattern": "^kdoc_[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "required": [
+          "type",
+          "contentType",
+          "sizeBytes",
+          "sha256",
+          "documentId"
+        ],
+        "additionalProperties": false
+      },
+      "EvidenceDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "text"
         ],
         "additionalProperties": false
       }

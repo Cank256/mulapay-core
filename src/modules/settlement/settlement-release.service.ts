@@ -46,6 +46,7 @@ import {
   type GatewayStatus,
 } from '../../integrations/gateway/gateway-operations.port';
 import { toMinor } from '../../integrations/gateway/money';
+import { PayoutControlService } from '../aml/block/payout-control.service';
 import { HoldsService } from '../holds/holds.service';
 import { MerchantsRepository } from '../merchants/merchants.repository';
 import { TransactionsRepository } from '../transactions/transactions.repository';
@@ -80,6 +81,7 @@ export class SettlementReleaseService {
     private readonly holds: HoldsService,
     private readonly outcome: SettlementOutcomeService,
     private readonly outbox: OutboxService,
+    private readonly payoutControl: PayoutControlService,
     private readonly audit: AuditService,
     private readonly unitOfWork: UnitOfWork,
     @Inject(DB_RW) private readonly db: Executor,
@@ -108,6 +110,8 @@ export class SettlementReleaseService {
           details: { reason: 'merchant_status' },
         });
       }
+      // An AML block suspends payouts (spec 6.13); the batch stays approved until it is lifted.
+      await this.payoutControl.assertPayoutsAllowed(batch.merchantId, tx);
       const destination = await this.destinations.findActive(tx, batch.merchantId, batch.currency);
       if (
         !destination ||
@@ -204,6 +208,11 @@ export class SettlementReleaseService {
       false
     );
     if (!payout || payout.status !== 'created') return 'already_submitted';
+    // A block placed after release stops the disbursement before it is sent. The job retries
+    // with the same externalId and the sweep re-drives it once the block is lifted.
+    if (await this.payoutControl.isSuspended(batch.merchantId)) {
+      throw new SettlementSubmitRetry('payouts_suspended');
+    }
     const destination = batch.destinationId
       ? await this.unitOfWork.run((tx) =>
           this.destinations.findById(tx, batch.destinationId as string)

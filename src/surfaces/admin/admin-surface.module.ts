@@ -6,15 +6,22 @@
  * shared; controllers are not.
  */
 import { Module } from '@nestjs/common';
+import { AmlModule } from '../../modules/aml/aml.module';
 import { BalancesModule } from '../../modules/balances/balances.module';
+import { DisputesModule } from '../../modules/disputes/disputes.module';
 import { HoldsModule } from '../../modules/holds/holds.module';
 import { LedgerModule } from '../../modules/ledger/ledger.module';
 import { AuditLogsModule } from '../../modules/audit/audit-logs.module';
 import { AuthModule } from '../../modules/auth/auth.module';
 import { IdentityModule } from '../../modules/identity/identity.module';
+import { KycModule } from '../../modules/kyc/kyc.module';
 import { MerchantsModule } from '../../modules/merchants/merchants.module';
 import { ReconciliationModule } from '../../modules/reconciliation/reconciliation.module';
 import { SettlementModule } from '../../modules/settlement/settlement.module';
+import { AdminAmlCasesController } from './admin-aml-cases.controller';
+import { AdminAmlControlsController } from './admin-aml-controls.controller';
+import { AdminDisputesController } from './admin-disputes.controller';
+import { AdminKycController } from './admin-kyc.controller';
 import { AdminReconciliationController } from './admin-reconciliation.controller';
 import { AdminSettlementController } from './admin-settlement.controller';
 import { AdminBalancesController } from './admin-balances.controller';
@@ -26,6 +33,9 @@ import { AdminRolesController } from './admin-roles.controller';
 
 @Module({
   imports: [
+    AmlModule,
+    DisputesModule,
+    KycModule,
     AuthModule,
     MerchantsModule,
     IdentityModule,
@@ -45,6 +55,10 @@ import { AdminRolesController } from './admin-roles.controller';
     AdminBalancesController,
     AdminSettlementController,
     AdminReconciliationController,
+    AdminKycController,
+    AdminAmlCasesController,
+    AdminAmlControlsController,
+    AdminDisputesController,
   ],
 })
 export class AdminSurfaceModule {}

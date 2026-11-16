@@ -36,6 +36,15 @@ export const ID_PREFIXES = {
   reconResolution: 'rca',
   providerStatement: 'pst',
   incident: 'inc',
+  kycDocument: 'kdoc',
+  kycParty: 'kpty',
+  screening: 'scr',
+  amlAlert: 'alrt',
+  amlCase: 'case',
+  strPackage: 'str',
+  blocklistEntry: 'bl',
+  amlBlock: 'blk',
+  dispute: 'dsp',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

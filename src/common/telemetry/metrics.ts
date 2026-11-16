@@ -153,6 +153,50 @@ export const settlementTransitionsTotal = new Counter({
   registers: [metricsRegistry],
 });
 
+/** Phase 7: compliance (spec 10). Label values come from fixed sets. */
+export const amlAlertsOpen = new Gauge({
+  name: 'core_aml_alerts_open',
+  help: 'AML alerts that are open, investigating or escalated',
+  labelNames: ['severity'] as const,
+  registers: [metricsRegistry],
+});
+export const amlAlertSlaBreaches = new Counter({
+  name: 'core_aml_alert_sla_breaches_total',
+  help: 'AML alerts escalated because their SLA passed',
+  labelNames: ['severity'] as const,
+  registers: [metricsRegistry],
+});
+export const amlAlertsRaised = new Counter({
+  name: 'core_aml_alerts_raised_total',
+  help: 'AML alerts raised by monitoring rules',
+  labelNames: ['rule_type', 'severity', 'action'] as const,
+  registers: [metricsRegistry],
+});
+export const amlPrecheckDuration = new Histogram({
+  name: 'core_aml_precheck_duration_seconds',
+  help: 'Duration of the synchronous pre-transaction AML check',
+  buckets: [0.001, 0.0025, 0.005, 0.01, 0.02, 0.05, 0.1, 0.5],
+  registers: [metricsRegistry],
+});
+export const amlPrecheckOutcomes = new Counter({
+  name: 'core_aml_precheck_total',
+  help: 'Pre-transaction AML checks by outcome',
+  labelNames: ['outcome'] as const,
+  registers: [metricsRegistry],
+});
+export const kycDecisionsTotal = new Counter({
+  name: 'core_kyc_decisions_total',
+  help: 'KYC decisions by outcome',
+  labelNames: ['decision'] as const,
+  registers: [metricsRegistry],
+});
+export const amlScreeningsTotal = new Counter({
+  name: 'core_aml_screenings_total',
+  help: 'Sanctions and PEP screenings by result',
+  labelNames: ['subject_type', 'status'] as const,
+  registers: [metricsRegistry],
+});
+
 /**
  * Functions that bring a gauge up to date from shared state. `MetricsService` runs them on
  * every scrape, as it does for pool and queue gauges, so the api process reports what the

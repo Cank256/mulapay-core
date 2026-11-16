@@ -28,6 +28,8 @@ describe('queue definitions', () => {
 
   it('let a queue override the defaults', () => {
     expect(jobOptionsFor(QUEUES.notificationSend)).toEqual(DEFAULT_JOB_OPTIONS);
+    // Screening outlasts a provider outage: more attempts, longer backoff.
+    expect(jobOptionsFor(QUEUES.amlScreen).attempts).toBe(8);
     // Payout submission retries more often, with the same externalId each time.
     expect(jobOptionsFor(QUEUES.settlementRun).attempts).toBe(8);
     expect(jobOptionsFor({ name: 'x', concurrency: 1, jobOptions: { attempts: 7 } }).attempts).toBe(

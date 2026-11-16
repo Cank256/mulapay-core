@@ -90,3 +90,27 @@ after 30 seconds; inserts are idempotent. Logs are kept 90 days: drop the partit
 Test payments are resolved by the worker (queue `gateway-chase`, job `sandbox.step`). A test
 payment stuck in `created` means the worker or the outbox is not running. `timeout` payments
 stay `processing` for `SANDBOX_TIMEOUT_RESOLVE_SECONDS` on purpose.
+
+## Compliance (Phase 7)
+
+- **AML rules ship disabled.** Nothing is monitored until Compliance reviews each seeded rule's
+  thresholds (`POST /admin/v1/aml/rules`, then enable). Limits per level are placeholders too.
+- **Queue `aml-screen`** runs screenings, post-transaction monitoring (`aml.monitor-transaction`),
+  the SLA and escalation tick (every minute), the blocklist mirror rebuild (every 5 minutes) and the
+  KYC expiry and re-verification sweep (hourly). Jobs retry 8 times from 10 s. A screening that
+  exhausts its retries sits in the dead-letter set: the merchant stays unscreened and cannot activate.
+  Fix the provider (`SANCTIONS_BASE_URL`), then retry the job; a duplicate has no second effect.
+- **Pre-transaction check and Redis.** With Redis down, payment creation returns `503` and writes
+  nothing (fail closed). The blocklist is mirrored in Redis from Postgres; if it looks wrong, wait for
+  the 5-minute rebuild or run `aml.blocklist-rebuild`. Limit counters rebuild from the database on a
+  miss, so flushing Redis is safe.
+- **Block and unblock.** A block holds the full available balance per currency and suspends payouts
+  and settlement release. It never reverses a completed transaction. Unblock releases only the holds
+  that block placed. `GET /admin/v1/aml/blocks` lists blocks.
+- **STR export.** `POST /admin/v1/aml/cases/{ref}/str` builds the package (append-only); record the
+  filing reference afterwards. Regenerating makes a new package, never an edit.
+- **Disputes.** Opening a dispute holds the disputed amount, or what is available with a recorded
+  `shortfall_minor`. Losing with too little posted balance returns `409 INSUFFICIENT_BALANCE` unless
+  the resolver passes `acceptDeficit`, which leaves a negative merchant balance for Finance to recover.
+- **Alerts.** Watch `core_aml_alerts_open` and `core_aml_alert_sla_breaches_total`, and
+  `core_aml_precheck_duration_seconds` (target well inside 20 ms).

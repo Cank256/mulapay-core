@@ -674,3 +674,171 @@ every path except the provider. See `modules/developer/sandbox`.
   so a lookup by ref reads one partition. A delivery created by fan-out takes its event's
   `created_at`, so a repeated fan-out produces the same `(dedupe_key, created_at)`.
 - Query plans for the new hot queries are in [query-plans/phase5.txt](query-plans/phase5.txt).
+
+## Compliance (Phase 7)
+
+KYC, AML and disputes (spec 6.13, 6.14). Three modules, none of which owns financial truth: a
+rule, an alert or a case decides whether to look at money or to stop a payout. The only paths to
+balances are `HoldsService` (holds) and `PostingService`/`ReversalService` (a lost dispute).
+
+```
+src/modules/kyc/        profiles, requirements as data, documents, submission, review, expiry
+src/modules/aml/        screening, pre-check, monitoring, rules, alerts, cases, STR, blocklist, block
+src/modules/disputes/   disputes and chargebacks
+src/integrations/storage/    S3-compatible object storage behind `ObjectStorage`
+src/integrations/sanctions/  sanctions and PEP screening behind `SanctionsScreening`
+```
+
+### KYC
+
+- **Levels.** `merchants.kyc_level` is the level a merchant is approved at. `kyc_profiles.level`
+  is the level being applied for. 0 is sign-up (test keys), 1 identity and contact, 2 business
+  registration, TIN and bank account, 3 directors, UBOs and source of funds.
+- **Requirements are rows of `kyc_requirements`.** A row applies when it is active, its level is at
+  or below the target and its country and business type are `*` or equal the merchant's. Where
+  several share a `requirement_code` the most specific wins, so a country or a business type adds
+  a requirement or relaxes one (`mandatory = false`) without code (`domain/requirements.ts`).
+  Each row says how it is evidenced: a `document` type, a `profile_field`, a `party` kind or a
+  staff `verification` check. An upgrade does not ask again for what an earlier approval verified.
+- **State machine** (`domain/kyc-state.ts`, mirrored by a trigger): `not_started -> pending ->
+in_review -> approved | rejected`, `in_review -> pending` after a request for information,
+  `approved -> expired | pending` (upgrade or renewal), `rejected | expired -> pending`.
+- **Submission** needs every mandatory item the merchant can supply, moves `draft -> pending_kyc`
+  through the merchant lifecycle's own rule, and queues screening through the outbox.
+- **Approval** (`KycReviewService.approve`) is one transaction under the merchant and profile row
+  locks: limits from `kyc_level_limits`, the merchant's level and status (`pending_kyc -> active`),
+  the profile, the review log, the merchant events and, last, the audit row. It needs every
+  mandatory requirement verified, a clear screening for the merchant and every active director and
+  UBO of the submission, and an approver who did not verify any document or check in this round
+  (maker-checker, spec 11). Tests fail the audit write and the event write and assert that the
+  profile, merchant, limits and events are all unchanged.
+- **Documents** go straight to object storage. `presign` signs the content type, the exact length,
+  the SHA-256 and the server-side-encryption header into a PUT URL; `confirm` checks the object
+  (size, the checksum the store verified, and the first 16 bytes against the PDF, JPEG or PNG
+  signature) and only then writes the row. A file that fails is deleted. Core never reads the
+  whole file. Staff open a file through a presigned GET of at most five minutes, issued only after
+  its audit row is committed.
+- **Re-verification.** Approval sets `expires_at` (`KYC_VALIDITY_DAYS`) and `next_review_at`
+  (`KYC_REVERIFY_NOTICE_DAYS` earlier). An hourly sweep emits `kyc.reverification_due` once, and
+  moves an unrenewed profile to `expired` after `expires_at`. A renewal asks for fresh checks.
+  Staleness is counted in submissions, not timestamps (`kyc_reviews.submission_no`), so two events
+  in one millisecond cannot be ordered wrongly.
+
+### AML
+
+- **Screening** (`aml-screen` queue): the merchant, each director and each UBO, one job per subject
+  keyed by (profile, submission, subject). The provider is called outside any transaction. A
+  result at or above `AML_SCREENING_REVIEW_SCORE` is a potential match, at or above
+  `AML_SCREENING_CONFIRM_SCORE` a confirmed match. Both stop activation. A confirmed match opens
+  an AML case and writes an audit row in the same transaction; an analyst decides a potential
+  match once. A provider that does not answer records nothing and the approval stays refused.
+- **Pre-transaction check** (`AmlPrecheckService`, called by `PaymentCreator` for live payments
+  before anything is written): merchant status from the scope, the blocklist in one Redis
+  pipeline, the per-transaction limit from cached limits, and daily and monthly volume in one Lua
+  script that checks and increments atomically. No SQL on the hot path unless a counter has to be
+  rebuilt. If Redis cannot answer the payment is declined with 503.
+- **Post-transaction monitoring.** `PaymentLifecycleService` enqueues an outbox row in the same
+  transaction as any live payment's move to a terminal status; the dispatcher turns it into one
+  `aml.monitor-transaction` job. The job takes a per-merchant advisory lock, writes the
+  transaction's fact row (its idempotency marker) and evaluates every enabled rule that was in
+  force when the payment completed. Rule types: `velocity` (count or value), `amount_threshold`,
+  `structuring`, `geography`, `new_account`, `round_amount`, `counterparty_reuse`. Parameters are
+  validated per type (`domain/rule-params.ts`); money is a string of minor units.
+- **Alerts** carry the rule version, severity, score, a `due_at` from `AML_ALERT_SLA_HOURS_*`, an
+  assignee, the transaction and the merchant. A minute sweep escalates alerts past `due_at`.
+- **Actions.** `flag` raises the alert. `hold` also holds the payment amount (or what is available
+  of it). `block` also blocks the merchant.
+- **Block** (`AmlBlockService`): holds the whole available balance per currency (`aml:block:{ref}`,
+  counted as an AML hold by settlement) and suspends payouts. `PayoutControlService` answers from
+  PostgreSQL; the settlement release and its payout submission ask it. A block never touches a
+  transaction or a ledger entry, and the merchant is not told.
+- **Cases and STR.** A case gathers alerts through `aml_alerts.case_id`, carries append-only
+  notes and an outcome, and exports an STR package: one JSON document in the reports bucket, its
+  SHA-256 recorded, a presigned download.
+
+### Disputes
+
+Opening a dispute holds the disputed amount (`dispute:{ref}`) under the balance lock. A lost
+dispute captures the hold and posts: a reversal of the payment's collection entry when the whole
+payment is disputed, a compensating entry (merchant payable to provider clearing) for a part. A
+won or withdrawn dispute releases the hold and posts nothing.
+
+### Processes and queues
+
+All compliance work runs in the `worker` process on the `aml-screen` queue (8 attempts, backoff
+from 10 s, so about 21 minutes of provider outage): `kyc.screen-subject`,
+`aml.monitor-transaction`, `aml.tick` (every minute), `aml.blocklist-rebuild` (every 5 minutes) and
+`kyc.lifecycle-sweep` (hourly). Every job is idempotent; `test/integration/compliance-jobs.int-spec.ts`
+runs each twice.
+
+## Phase 7 decisions to confirm
+
+Choices made where the spec is silent, ambiguous or differs from the request.
+**Differences from the request or the spec text**
+
+- **Document statuses.** The request names `pending`, `approved`, `rejected`; spec 5.2 names
+  `uploaded`, `verified`, `rejected`. The spec is the master, so the database uses its names:
+  `uploaded` is the request's pending, `verified` its approved.
+- **`aml_screenings.subject_type`** also allows `ubo` (spec 6.13 screens UBOs; 5.2 lists no such
+  type). **`kyc_verifications.check_type`** also allows `contact` (level 1 asks for contact
+  verification). Both are additive check-constraint values.
+- **Directors and UBOs live in `kyc_parties`**, with encrypted name, date of birth and ID number,
+  not in `merchant_profiles.directors jsonb` (5.2): screening needs a row per person to point at.
+- **A case holds its alerts through `aml_alerts.case_id`**, not an `alert_ids uuid[]` column
+  (5.2), so a foreign key keeps an alert in at most one case.
+- **Rule parameters carry the currency and the window.** `aml_rules` also has effective dates and
+  an append-only `aml_rule_versions` history, for the request's "effective dates" and "audit trail".
+- **Added routes** (spec 7 lists none): `PUT /dashboard/v1/kyc/profile`, `.../kyc/parties` (GET,
+  POST, DELETE), `POST /admin/v1/kyc/:merchantRef/checks`, `POST /admin/v1/kyc/requirements` and
+  `PATCH`/`DELETE .../requirements/:id`, `POST /admin/v1/aml/rules`, `POST
+/admin/v1/aml/screenings/:ref/decide`, `GET`/`POST /admin/v1/aml/blocks` and `POST
+.../blocks/:ref/lift`, `POST /admin/v1/disputes`. The blocklist delete is addressed by ref.
+- **Public `/v1/disputes`** (spec 7.1) is not built: the dashboard and admin routes are. The
+  request lists dispute handling, not the merchant API surface for it.
+- **New permissions** (migration 0007): staff `kyc:read|review|approve|view_documents|requirements`,
+  `aml:read|work|rules|blocklist|block|str`, `chargebacks:read|work|resolve`; merchant `kyc:view`,
+  `kyc:submit`, `disputes:read`, `disputes:write`. A key cannot be both a staff and a merchant
+  permission, hence `kyc:view` for merchants and `kyc:read` for staff.
+  **Policy values that need a decision**
+- **Limits per level** (`kyc_level_limits`) are placeholders: USD 300 / 1,000 / 5,000
+  (per transaction, a day, a month) at level 1, 3,000 / 20,000 / 200,000 at level 2 and 30,000 /
+  200,000 / 2,000,000 at level 3, converted at rounded rates into each currency. Payout limits
+  equal collection limits and are stored but not enforced yet (no payouts module). Compliance must
+  set the real numbers.
+- **The monitoring rules are seeded disabled**, one per type, in UGX. Until someone reviews the
+  thresholds and enables them (per currency) nothing is monitored. See OPERATIONS.md.
+- **KYC validity** is 365 days and the notice 30 days (`KYC_VALIDITY_DAYS`,
+  `KYC_REVERIFY_NOTICE_DAYS`). The spec fixes only the 30 days.
+- **Limit consequences of expiry** are not defined by the spec, so none is applied. The mechanism
+  exists as data: a `kyc_level_limits` row with `applies_when = 'expired'` is applied on expiry
+  and the renewal restores the `approved` limits. An expired merchant keeps its status and level.
+- **Screening thresholds** (0.7 review, 0.9 confirm) and **alert SLAs** (low 72 h, medium 24 h,
+  high 8 h, critical 4 h) are defaults.
+- **A confirmed PEP match blocks activation**, as the request says. Many regimes treat a PEP as
+  enhanced due diligence rather than a bar; this needs a compliance decision.
+- **`complyadvantage`** is accepted by the config schema but has no adapter: the system fails
+  closed (screenings fail, approval is refused). Only OpenSanctions is implemented.
+  **Behaviour choices**
+- **A merchant without limits is declined**, not let through: a live merchant with neither its own
+  row nor limits for its level and currency gets `TRANSACTION_DECLINED`.
+- **The pre-check fails closed**: a Redis failure declines the payment (503). Counters are exact
+  below 2^53 minor units; larger amounts are declined. A payment that is declined later in the
+  same transaction leaves its volume counted until the counter is rebuilt.
+- **Volume counters use UTC days and months** and are rebuilt from the database on a miss. The
+  spec's rebuild source (`daily_merchant_rollups`) is a Phase 8 table.
+- **A dispute is never refused for lack of funds.** If the balance cannot cover it, what is
+  available is held and the rest recorded as `shortfall_minor`. A lost dispute that would take the
+  balance below zero is refused (409) unless staff pass `acceptDeficit`, which is audited and
+  shows up in the ledger integrity run as a negative merchant payable (spec 5.3 rule 7).
+- **A lost whole-payment dispute reverses the collection entry**, which also reverses its fee
+  lines; fees are zero until the fee engine exists. A part is a compensating entry. Spec 6.14
+  says only "a reversing entry".
+- **A block does not hold money that arrives after it.** It holds the balance at that moment and
+  suspends payouts. Merchants can see a hold exist (`hold.created`, the holds list) but never its
+  reason; no merchant event says "blocked". Tipping-off rules differ by jurisdiction.
+- **Closing an AML case and resolving an alert are audited**; resolving an alert and generating an
+  STR need step-up. Closing a case does not, because a route cannot conditionally require it.
+- **STR packages include directors' and UBOs' names**, decrypted for the export, and ID numbers and
+  the TIN as their last four characters. The file is encrypted at rest by the bucket.
+- **The KYC review queue is newest first**, because the pagination helper (spec 8.6) is
+  descending-only.

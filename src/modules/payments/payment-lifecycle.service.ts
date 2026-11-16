@@ -30,6 +30,10 @@
  * A refused event is a result, not an exception: the consumer must still commit its cursor.
  * Callers that want an error (the cancel route) translate `rejected` themselves.
  *
+ * A live payment that reaches a terminal status also queues AML monitoring through the outbox,
+ * in the same transaction (spec 6.13), so monitoring exists for exactly the transitions that
+ * were committed.
+ *
  * Not done here: emitting `merchant_events` and webhooks (outbox, Phase 4/5) and releasing
  * holds (payments take none; payouts do).
  */
@@ -41,6 +45,7 @@ import { AppError } from '../../common/errors/app-error';
 import { uuidv7 } from '../../common/ids/ids';
 import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { ledgerIdempotencyKey } from '../ledger/domain/posting';
+import { AmlMonitoringTrigger } from '../aml/monitoring/aml-monitoring.trigger';
 import { BalancesService } from '../balances/balances.service';
 import { toMerchantBalanceView } from '../balances/balance.views';
 import { MerchantEventsService } from '../events/merchant-events.service';
@@ -128,6 +133,7 @@ export class PaymentLifecycleService {
     private readonly posting: PostingService,
     private readonly events: MerchantEventsService,
     private readonly balances: BalancesService,
+    private readonly monitoring: AmlMonitoringTrigger,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
@@ -207,6 +213,13 @@ export class PaymentLifecycleService {
       );
     }
     await this.announce(tx, payment, to, ledgerEntryRef !== null);
+    if (isTerminalPaymentStatus(to)) {
+      await this.monitoring.enqueue(tx, {
+        id: transaction.id,
+        environment: base.environment,
+        status: to,
+      });
+    }
     return { ...base, result: 'applied', from, to, ledgerEntryRef };
   }
 
