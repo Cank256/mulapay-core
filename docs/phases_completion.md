@@ -636,8 +636,13 @@ Migration `0007_compliance.sql`.
       merchant stays unscreened. Alert on it and document the retry procedure.
 - [ ] **P7-13 VERIFY. Counter drift.** A payment declined later in the same transaction leaves its volume counted
       until a rebuild; counters exact only below 2^53 minor units. Add a scheduled rebuild or a drift check.
-- [ ] **P7-14 VERIFY. Fail-closed behaviour.** Redis down gives 503 on payment creation; a merchant with no limits for
+- [x] **P7-14 VERIFY. Fail-closed behaviour.** Redis down gives 503 on payment creation; a merchant with no limits for
       level and currency is declined. Confirm this is the intended policy and test it.
+      _Result:_ Both behaviours are already tested: 'declines a live merchant that has no limits at all' and
+      'fails closed when Redis cannot answer: the payment is declined with 503 and nothing is written' in
+      test/integration/aml-controls.int-spec.ts. The policy (fail closed) follows the financial-system rule that a
+      control that cannot answer must not let money through; the owner still has to confirm it as the intended
+      policy.
 
 ### Verify
 
@@ -1046,6 +1051,13 @@ Each task lists the phases it closes items for.
       breaches, KYC decisions, screening failures (Phase 7); consumer lag, stuck transactions, queue-depth growth,
       webhook failure rate, replica lag (spec section 10), notification backlog, complaint SLA breaches (Phase 8).
       Keep them in the repository (for example `deploy/alerts/`) with a test that every referenced metric exists.
+      _Result:_ Partly done, left open on purpose. deploy/alerts/core-api.rules.yml holds 17 rules for the metrics
+      that exist (ledger integrity, suspense at 1 h and 24 h, gateway 401/403, stuck transactions, reconciliation
+      run failures, outbox exhaustion, queue depth, webhook failure rate, notification backlog, partitions, no AML
+      rule enabled, AML and complaint SLA breaches). src/common/telemetry/alert-rules.spec.ts fails if a rule
+      names a missing metric or a missing runbook heading. Still without a rule because the metric does not exist:
+      consumer lag, replica lag, age of open exceptions, batches stuck in releasing, screening failures, audit
+      chain lag. The webhook and notification thresholds are proposals.
 
 ### Documentation
 

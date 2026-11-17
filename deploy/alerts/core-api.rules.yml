@@ -1,0 +1,125 @@
+# Prometheus alert rules for the Core API (spec section 10; X-ALERT-1).
+#
+# Every `core_*` metric named in an `expr` must exist in src/common/telemetry/metrics.ts and every
+# `runbook` must point at a heading in docs/OPERATIONS.md: src/common/telemetry/alert-rules.spec.ts
+# fails otherwise. Thresholds that are not in the spec are proposals (marked "proposed"); change
+# them with the service owner, not to silence a page.
+#
+# Not covered yet, because the metric does not exist (see docs/phases_completion.md):
+#   consumer lag and gateway event lag (Phase 3), replica lag, how long a reconciliation exception
+#   has been open, batches stuck in `releasing`, screening provider failures, KYC decision
+#   anomalies, audit chain lag (P9-A7).
+groups:
+  - name: core-financial
+    rules:
+      - alert: CoreLedgerIntegrityFailure
+        expr: sum(core_ledger_integrity_failures) > 0
+        for: 0m
+        labels: { severity: critical }
+        annotations:
+          summary: The ledger integrity run found a discrepancy (opens a sev1).
+          runbook: docs/OPERATIONS.md#ledger-mismatch
+      - alert: CoreSuspenseBalanceNonZero
+        expr: max(abs(core_suspense_balance_minor)) > 0
+        for: 1h
+        labels: { severity: warning }
+        annotations:
+          summary: A suspense account has held a balance for an hour (SUSPENSE_ALERT_HOURS).
+          runbook: docs/OPERATIONS.md#suspense-balance
+      - alert: CoreSuspenseBalanceStale
+        expr: max(abs(core_suspense_balance_minor)) > 0
+        for: 24h
+        labels: { severity: critical }
+        annotations:
+          summary: A suspense account has held a balance for 24 hours (OPS_SUSPENSE_SEV1_HOURS).
+          runbook: docs/OPERATIONS.md#suspense-balance
+      - alert: CoreGatewayRejectsCoreCredentials
+        expr: increase(core_gateway_auth_rejections_total[5m]) > 0
+        for: 0m
+        labels: { severity: critical }
+        annotations:
+          summary: The gateway answered 401 or 403 (spec 3.5, page on-call). Payouts are not being retried in a loop.
+          runbook: docs/OPERATIONS.md#failed-settlement
+      - alert: CoreStuckTransactions
+        expr: sum(core_transactions_stuck) > 0
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: Transactions have been processing for longer than OPS_STUCK_TXN_MINUTES (spec 10).
+          runbook: docs/OPERATIONS.md#stuck-transaction
+      - alert: CoreReconciliationRunFailed
+        expr: increase(core_reconciliation_runs_total{status="failed"}[15m]) > 0
+        for: 0m
+        labels: { severity: warning }
+        annotations:
+          summary: A reconciliation run failed (gateway gap, ledger integrity, statements or balance proof).
+          runbook: docs/OPERATIONS.md#ledger-mismatch
+      - alert: CoreOutboxRowExhausted
+        expr: increase(core_outbox_exhausted_total[5m]) > 0
+        for: 0m
+        labels: { severity: critical }
+        annotations:
+          summary: An outbox row used all its attempts and waits for an operator.
+          runbook: docs/OPERATIONS.md#outbox-exhausted
+  - name: core-platform
+    rules:
+      - alert: CoreQueueDepthHigh
+        expr: max by (queue) (core_queue_depth) > 1000
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: A queue has stayed above OPS_QUEUE_DEPTH_THRESHOLD for OPS_QUEUE_DEPTH_SUSTAIN_SECONDS.
+          runbook: docs/OPERATIONS.md#queue-depth
+      - alert: CoreWebhookFailureRateHigh
+        # proposed: more than half of deliveries failing for 15 minutes
+        expr: sum(rate(core_webhook_delivery_duration_seconds_count{outcome!="success"}[15m])) / sum(rate(core_webhook_delivery_duration_seconds_count[15m])) > 0.5
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: More than half of webhook deliveries are failing.
+          runbook: docs/OPERATIONS.md#webhook-backlog
+      - alert: CoreNotificationBacklog
+        # proposed: 1,000 deliveries pending or failed in the last day
+        expr: sum(core_notification_deliveries_backlog{status=~"pending|failed"}) > 1000
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: Notification deliveries are piling up or failing.
+          runbook: docs/OPERATIONS.md#notification-delivery-failures
+      - alert: CorePartitionsRunningOut
+        expr: min by (table) (core_partition_months_ahead) < 2
+        for: 0m
+        labels: { severity: warning }
+        annotations:
+          summary: A partitioned table has fewer than two months of partitions ahead.
+          runbook: docs/OPERATIONS.md#a-tables-partitions-are-running-out
+      - alert: CoreRowsInDefaultPartition
+        expr: max by (table) (core_partition_default_has_rows) > 0
+        for: 0m
+        labels: { severity: critical }
+        annotations:
+          summary: Rows landed in a default partition because a month had no partition.
+          runbook: docs/OPERATIONS.md#a-tables-partitions-are-running-out
+  - name: core-compliance-and-support
+    rules:
+      - alert: CoreNoAmlRuleEnabled
+        expr: core_aml_rules_enabled == 0
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: No AML monitoring rule is enabled and in effect, so no transaction is monitored (P7-C2).
+          runbook: docs/OPERATIONS.md#compliance-phase-7
+      - alert: CoreAmlAlertSlaBreached
+        expr: increase(core_aml_alert_sla_breaches_total[15m]) > 0
+        for: 0m
+        labels: { severity: warning }
+        annotations:
+          summary: An AML alert passed its SLA unworked and was escalated.
+          runbook: docs/OPERATIONS.md#compliance-phase-7
+      - alert: CoreComplaintSlaBreached
+        expr: increase(core_complaint_sla_breaches_total[15m]) > 0
+        for: 0m
+        labels: { severity: warning }
+        annotations:
+          summary: A complaint passed its SLA.
+          runbook: docs/OPERATIONS.md#complaint-sla-breaches
