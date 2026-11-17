@@ -26,4 +26,4 @@ export * from './reports';
 export * from './operations';
 export * from './gateway';
 export * from './payouts';
-
+export * from './fees';

@@ -8,6 +8,7 @@ import { OutboxDispatcher } from '../common/outbox/outbox-dispatcher';
 import { OUTBOX_HANDLERS, type OutboxHandler } from '../common/outbox/outbox-handler';
 import { OutboxModule } from '../common/outbox/outbox.module';
 import { QUEUE_PROCESSORS, type QueueProcessor } from '../common/queue/queue-processor';
+import { GatewayOperationsModule } from '../integrations/gateway/gateway-operations.module';
 import { AmlModule } from '../modules/aml/aml.module';
 import { AmlTerminalHandler } from '../modules/aml/monitoring/aml-monitoring.trigger';
 import { DeveloperModule } from '../modules/developer/developer.module';
@@ -40,6 +41,7 @@ import {
 import { WebhooksModule } from '../modules/webhooks/webhooks.module';
 import { AmlScreenProcessor } from './aml-screen.processor';
 import { DataLifecycleProcessor } from './data-lifecycle.processor';
+import { GatewayChaseProcessor } from './gateway-chase.processor';
 import { NotificationSendProcessor } from './notification-send.processor';
 import { ReportGenerateProcessor } from './report-generate.processor';
 import { RollupProcessor } from './rollup.processor';
@@ -58,6 +60,7 @@ import { SettlementRunProcessor } from './settlement-run.processor';
     ComplaintsModule,
     DeveloperModule,
     DisputesModule,
+    GatewayOperationsModule,
     KycModule,
     LifecycleModule,
     NotificationsModule,
@@ -74,6 +77,7 @@ import { SettlementRunProcessor } from './settlement-run.processor';
     OutboxDispatcher,
     AmlScreenProcessor,
     DataLifecycleProcessor,
+    GatewayChaseProcessor,
     OutboxDispatchProcessor,
     ReconciliationRunProcessor,
     SettlementRunProcessor,
@@ -113,6 +117,7 @@ import { SettlementRunProcessor } from './settlement-run.processor';
         RollupProcessor,
         SupportOpsProcessor,
         DataLifecycleProcessor,
+        GatewayChaseProcessor,
       ],
       useFactory: (...processors: QueueProcessor[]) => processors,
     },

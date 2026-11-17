@@ -26,6 +26,9 @@ import { OpsSignalsRepository } from './ops-signals.repository';
 import { ProviderOpsService } from './provider-ops.service';
 import { QueueOpsService } from './queue-ops.service';
 import { RoutingRulesService } from './routing-rules.service';
+import { RoutingService } from './routing/routing.service';
+import { CIRCUIT_BREAKER } from './routing/circuit-breaker/circuit-breaker.port';
+import { CircuitBreakerStub } from './routing/circuit-breaker/circuit-breaker.stub';
 
 /**
  * The operations back office (spec 6.14): queues, consumer cursor and lag, stuck transactions,
@@ -64,6 +67,11 @@ import { RoutingRulesService } from './routing-rules.service';
     FeatureFlagsService,
     ProviderOpsService,
     RoutingRulesService,
+    RoutingService,
+    {
+      provide: CIRCUIT_BREAKER,
+      useClass: CircuitBreakerStub,
+    },
     ConsumerCursorsService,
     QueueOpsService,
     MaintenanceService,
@@ -82,6 +90,8 @@ import { RoutingRulesService } from './routing-rules.service';
     ProviderOpsService,
     QueueOpsService,
     RoutingRulesService,
+    RoutingService,
+    CIRCUIT_BREAKER,
   ],
 })
 export class OperationsModule {}

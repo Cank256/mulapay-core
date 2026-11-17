@@ -9,6 +9,7 @@ import { APP_CONFIG } from '../common/tokens';
 import type { AppConfig } from '../config/configuration';
 import { AML_JOBS } from './aml-screen.processor';
 import { LIFECYCLE_JOBS } from './data-lifecycle.processor';
+import { CHASE_JOB } from './gateway-chase.processor';
 import { NOTIFICATION_JOBS } from './notification-send.processor';
 import { REPORT_JOBS } from './report-generate.processor';
 import { ROLLUP_JOBS } from './rollup.processor';
@@ -42,10 +43,21 @@ export class JobSchedulers implements OnApplicationBootstrap {
         { name: schedule.name, opts: TICK_OPTIONS }
       );
     }
+    await this.registerGatewayChase();
     await this.registerSettlementAndReconciliation();
     await this.registerCompliance();
     await this.registerSupportAndOperations();
     await this.registerDataLifecycle();
+  }
+
+  /**
+   * Phase 4 (spec 8.9): gateway chase every 2 minutes to query provider status for stuck
+   * transactions (processing for > 5 minutes or outcome_unknown = true).
+   */
+  private async registerGatewayChase(): Promise<void> {
+    await this.queues
+      .get(QUEUES.gatewayChase.name)
+      .upsertJobScheduler('gateway-chase', { every: 120_000 }, { name: CHASE_JOB, opts: TICK_OPTIONS });
   }
 
   /**
