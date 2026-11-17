@@ -19,7 +19,12 @@
  *    accepted      `processing` (and a terminal status in the answer is applied at once)
  *    400 / 409     the gateway refused before creating an operation: the payout `failed`, the
  *                  hold is released. A core bug, so it is logged at error level
- *    401 / 403 / 404 / 429   nothing was created and nothing is decided: the job fails and is
+ *    401 / 403     nothing was created and nothing is decided, but core's key is bad or
+ *                  provider access is denied (spec 3.5): the job fails at once and is not
+ *                  retried in a loop, an error is logged and `core_gateway_auth_rejections_total`
+ *                  rises (alert above 0). The sweep re-drives the payout, with the same key,
+ *                  once per `SETTLEMENT_RELEASE_RETRY_SECONDS`, after the credentials are fixed
+ *    404 / 429     nothing was created and nothing is decided: the job fails and is
  *                  retried with the same key
  *    504, timeout, 5xx, unreadable answer   `processing` with `outcome_unknown`: the hold
  *                  stays and the payout waits for the gateway's own event or a status check.
@@ -36,7 +41,10 @@ import { UnitOfWork } from '../../common/db/unit-of-work';
 import { AppError } from '../../common/errors/app-error';
 import { publicId, uuidv7 } from '../../common/ids/ids';
 import { OutboxService } from '../../common/outbox/outbox.service';
-import { settlementTransitionsTotal } from '../../common/telemetry/metrics';
+import {
+  gatewayAuthRejectionsTotal,
+  settlementTransitionsTotal,
+} from '../../common/telemetry/metrics';
 import { APP_CONFIG, CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import type { AppConfig } from '../../config/configuration';
 import {
@@ -70,6 +78,16 @@ export class SettlementSubmitRetry extends Error {
   }
 }
 
+/**
+ * The gateway answered 401 or 403 (spec 3.5): page, do not loop. A kind of retry for the
+ * sweep, but the queue job must not retry it (the processor makes it unrecoverable).
+ */
+export class SettlementGatewayAuthRejected extends SettlementSubmitRetry {
+  constructor(readonly httpStatus: number) {
+    super('gateway_unauthorized');
+    this.name = 'SettlementGatewayAuthRejected';
+  }
+}
 @Injectable()
 export class SettlementReleaseService {
   constructor(
@@ -259,6 +277,14 @@ export class SettlementReleaseService {
             failureCode: `gateway_${result.reason}`,
           });
           return 'failed';
+        }
+        if (result.reason === 'unauthorized') {
+          gatewayAuthRejectionsTotal.inc({ operation: 'disbursement' });
+          this.logger.error(
+            { batch: batch.ref, httpStatus: result.httpStatus },
+            'gateway rejected core credentials on a settlement payout: page on-call, not retrying in a loop'
+          );
+          throw new SettlementGatewayAuthRejected(result.httpStatus);
         }
         this.logger.error(
           { batch: batch.ref, reason: result.reason, httpStatus: result.httpStatus },

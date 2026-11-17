@@ -10,7 +10,10 @@ import { publicId, uuidv7 } from '../../src/common/ids/ids';
 import { ledgerIdempotencyKey } from '../../src/modules/ledger/domain/posting';
 import { TransactionsRepository } from '../../src/modules/transactions/transactions.repository';
 import type { PayoutSignal } from '../../src/modules/settlement/domain/payout-outcome';
-import { SettlementSubmitRetry } from '../../src/modules/settlement/settlement-release.service';
+import {
+  SettlementGatewayAuthRejected,
+  SettlementSubmitRetry,
+} from '../../src/modules/settlement/settlement-release.service';
 import type { BatchRow } from '../../src/modules/settlement/settlement-batches.repository';
 import { sql } from '../support/payments';
 import {
@@ -594,10 +597,12 @@ describe('release and the gateway outcome', () => {
     expect(await holdOf(bad.batch)).toMatchObject({ state: 'released' });
 
     const retry = await released();
-    for (const code of [401, 404, 429]) {
+    for (const code of [401, 403, 404, 429]) {
       ctx.gateway.disbursement = { kind: 'status', code };
       const thrown = await ctx.release.submitPayout(retry.batch.id).catch((e: unknown) => e);
       expect(thrown).toBeInstanceOf(SettlementSubmitRetry);
+      // 401 and 403 are the spec 3.5 "page, do not loop" case; 404 and 429 are plain retries.
+      expect(thrown instanceof SettlementGatewayAuthRejected).toBe(code === 401 || code === 403);
       expect(await payoutOf(retry.batch)).toMatchObject({ status: 'created' });
       expect(await holdOf(retry.batch)).toMatchObject({ state: 'active' });
     }

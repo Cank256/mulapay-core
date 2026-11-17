@@ -114,7 +114,8 @@ independent per (provider, operation); and **fails open** when Redis is unreacha
 **Open finding GW-1: nothing calls it.** Spec 6.2's routing ("a route is skipped when its breaker is open")
 belongs to Phase 4. Until then the breaker protects nothing, and settlement payouts go to the gateway directly.
 
-Differences from spec 3.5 found in review, none financially unsafe, all recorded in `SECURITY.md`: GW-2 (a
-payout answered 401 or 403 is retried up to 8 times with the same key; the spec says page and do not loop),
-GW-3 (`GATEWAY_MAX_RETRIES` is validated and unused: the client makes one attempt and the caller retries with the
+A payout answered 401 or 403 (GW-2, closed) fails its queue job at once and is not retried in a loop, as spec 3.5
+asks: it logs an error and raises `core_gateway_auth_rejections_total`; the sweep re-sends it with the same key once
+per `SETTLEMENT_RELEASE_RETRY_SECONDS` after the credentials are fixed.
+Difference from spec 3.5 found in review, not financially unsafe, recorded in `SECURITY.md`: GW-3 (`GATEWAY_MAX_RETRIES` is validated and unused: the client makes one attempt and the caller retries with the
 same key, which is the safe design, so the setting should be removed or implemented).

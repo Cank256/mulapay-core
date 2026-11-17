@@ -7,6 +7,11 @@ import {
   ReconciliationRunProcessor,
   StatementMatchProcessor,
 } from './reconciliation-run.processor';
+import { UnrecoverableError } from 'bullmq';
+import {
+  SettlementGatewayAuthRejected,
+  SettlementSubmitRetry,
+} from '../modules/settlement/settlement-release.service';
 import { SettlementRunProcessor } from './settlement-run.processor';
 
 const job = (name: string, data: unknown = {}) => ({ name, data }) as unknown as Job;
@@ -49,6 +54,20 @@ describe('processors route by job name and refuse others', () => {
     expect(await p.process(job('settlement.submit-payout', { batchId: 'b1' }))).toBe('submitted');
     expect(release.submitPayout).toHaveBeenCalledWith('b1');
     await expect(p.process(job('nope'))).rejects.toThrow(/unknown settlement-run job/);
+  });
+  it('settlement-run does not loop on a gateway 401 or 403, but retries other refusals', async () => {
+    const tick = { tick: vi.fn() };
+    const release = { submitPayout: vi.fn() };
+    const p = new SettlementRunProcessor(tick as never, release as never);
+    const submit = job('settlement.submit-payout', { batchId: 'b1' });
+    for (const status of [401, 403]) {
+      release.submitPayout.mockRejectedValueOnce(new SettlementGatewayAuthRejected(status));
+      await expect(p.process(submit)).rejects.toBeInstanceOf(UnrecoverableError);
+    }
+    const rateLimited = new SettlementSubmitRetry('rate_limited');
+    release.submitPayout.mockRejectedValueOnce(rateLimited);
+    await expect(p.process(submit)).rejects.toBe(rateLimited);
+    expect(rateLimited).not.toBeInstanceOf(UnrecoverableError);
   });
   it('reconciliation-run', async () => {
     const scheduler = { runScheduled: vi.fn().mockResolvedValue({ outcome: 'completed' }) };

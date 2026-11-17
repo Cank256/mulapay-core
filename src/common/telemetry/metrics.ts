@@ -146,6 +146,12 @@ export const reconciliationRunsTotal = new Counter({
   labelNames: ['kind', 'status'] as const,
   registers: [metricsRegistry],
 });
+export const gatewayAuthRejectionsTotal = new Counter({
+  name: 'core_gateway_auth_rejections_total',
+  help: "Gateway answers of 401 or 403: core's key is bad or provider access is denied (spec 3.5: page on-call; alert above 0)",
+  labelNames: ['operation'] as const,
+  registers: [metricsRegistry],
+});
 export const settlementTransitionsTotal = new Counter({
   name: 'core_settlement_batch_transitions_total',
   help: 'Settlement batch status changes',
