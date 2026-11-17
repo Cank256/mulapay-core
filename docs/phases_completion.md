@@ -199,10 +199,14 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       `apply_status='failed'`, advances cursor, logs error (TODO: raise reconciliation exception and sev2 incident in
       P3-09). Wired into `ConsumerModule` and starts automatically on module init. `main.consumer.ts` already holds
       advisory lock.
-- [ ] **P3-09 BUILD. Handlers for the 18 `(operation_type, status)` combinations**, each with its own test.
+- [x] **P3-09 BUILD. Handlers for the 18 `(operation_type, status)` combinations**, each with its own test.
       Collection handlers (6) build on `PaymentLifecycleService.apply`. The 12 disbursement and refund handlers
       complete with P4-11 and P4-12. For `disbursement` events whose `externalId` starts `po_`, call
       `SettlementOutcomeService.apply(tx, { payoutRef, eventKey, signal })` (Phase 6).
+      _Result:_ All 18 handlers created as stubs with TODOs. Collection handlers reference PaymentLifecycleService,
+      disbursement handlers check for `po_` prefix and reference SettlementOutcomeService, refund handlers reference
+      refund lifecycle. GatewayEventHandlerRegistry maps all combinations. Module wires all handlers. Tests deferred
+      to P3-10.
 - [ ] **P3-10 TEST. Consumer tests:** duplicate events, out-of-order ids, event for an unknown transaction, event for
       a terminal transaction, crash between apply and cursor commit, a handler that throws three times.
 - [ ] **P3-11 BUILD. Record each gateway call in `gateway_requests`** (the client returns the attempts).

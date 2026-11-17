@@ -23,6 +23,7 @@ import {
   type GatewayEvent,
   type GatewayEventSource,
 } from '../../integrations/gateway/gateway-event-source.port';
+import { GatewayEventHandlerRegistry } from './handler.registry';
 
 const CURSOR_NAME = 'gateway';
 const MIN_POLL_MS = 250;
@@ -48,7 +49,8 @@ export class GatewayEventConsumer implements OnModuleInit {
     @Inject(DB_RO) private readonly ro: PostgresJsDatabase,
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
     @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(APP_CONFIG) private readonly config: AppConfig
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+    private readonly handlerRegistry: GatewayEventHandlerRegistry
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -118,8 +120,17 @@ export class GatewayEventConsumer implements OnModuleInit {
           return;
         }
 
-        // 2. Apply handler (to be implemented in P3-09)
-        // For now, mark as applied immediately
+        // 2. Apply handler using registry
+        const handler = this.handlerRegistry.getHandler(event.operationType, event.status);
+        if (handler) {
+          await handler.handle(tx, event);
+        } else {
+          this.logger.warn(
+            { operationType: event.operationType, status: event.status },
+            'no handler registered for event type/status combination'
+          );
+        }
+
         await this.markEventApplied(tx, event.eventId);
 
         // 3. Advance cursor (never moves backwards)
