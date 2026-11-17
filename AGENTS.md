@@ -59,6 +59,9 @@ The specification lives at `docs/CORE_API_BUILD_PROMPT.md`. Build order is spec 
 
 ## Current phase
 
+Phase 3 (gateway integration: client with retries and circuit breaker, event source, consumer loop,
+18 event handlers, request recording, verification command) is complete. Starting Phase 4 (money movement).
+
 Phases 0 (foundation), 1 (identity and merchants, plus API key issuance) and 2 (ledger core,
 holds, available balance and the read-only admin ledger routes) are in place. The payment and
 transaction domain (transactions, payments, state machine, idempotency, links, checkout
