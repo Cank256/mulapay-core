@@ -1,29 +1,31 @@
 /**
  * Gateway event consumer integration tests (P3-10): duplicate events, out-of-order ids,
  * handler failures with 3 attempts, crash between apply and cursor commit.
+ *
+ * These are database-level tests that verify the schema behavior (constraints, GREATEST,
+ * transactions) that the consumer relies on. Full end-to-end consumer tests require the
+ * running application.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, inject } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { Client } from 'pg';
 
 describe('Gateway Event Consumer (Integration)', () => {
-  let db: PostgresJsDatabase;
-  let sql_client: postgres.Sql;
+  let client: Client;
 
   beforeAll(async () => {
     const dbUrl = inject('databaseUrls').rw;
-    sql_client = postgres(dbUrl, { max: 2 });
-    db = drizzle(sql_client);
+    client = new Client({ connectionString: dbUrl });
+    await client.connect();
   });
 
   afterAll(async () => {
-    await sql_client?.end();
+    await client?.end();
   });
 
   beforeEach(async () => {
     // Initialize cursor
-    await db.execute(sql`
+    await client.query(`
       INSERT INTO core.consumer_cursors (name, position)
       VALUES ('gateway', '0')
       ON CONFLICT (name) DO UPDATE
@@ -31,7 +33,7 @@ describe('Gateway Event Consumer (Integration)', () => {
     `);
 
     // Clear any existing gateway events for this test
-    await db.execute(sql`DELETE FROM core.gateway_events`);
+    await client.query(`DELETE FROM core.gateway_events`);
   });
 
   const insertEvent = async (overrides: {
@@ -41,7 +43,7 @@ describe('Gateway Event Consumer (Integration)', () => {
     status?: string;
     apply_status?: string;
   }) => {
-    await db.execute(sql`
+    await client.query(`
       INSERT INTO core.gateway_events (
         gateway_event_id, gateway_id, operation_id, provider_id, operation_type,
         external_id, reference_id, provider_transaction_id, status, previous_status,
@@ -67,7 +69,7 @@ describe('Gateway Event Consumer (Integration)', () => {
   };
 
   const getCursor = async (): Promise<string> => {
-    const result = await db.execute(sql`
+    const result = await client.query(`
       SELECT position FROM core.consumer_cursors WHERE name = 'gateway'
     `);
     return result[0]?.position as string;
@@ -83,7 +85,7 @@ describe('Gateway Event Consumer (Integration)', () => {
       ).rejects.toThrow();
 
       // Verify only one row exists
-      const rows = await db.execute(sql`
+      const rows = await client.query(`
         SELECT COUNT(*) as count
         FROM core.gateway_events
         WHERE gateway_event_id = 'evt_dup_001'
@@ -95,7 +97,7 @@ describe('Gateway Event Consumer (Integration)', () => {
       await insertEvent({ id: BigInt(1), eventId: 'evt_dup_002' });
       await insertEvent({ id: BigInt(1), eventId: 'evt_dup_003' });
 
-      const rows = await db.execute(sql`
+      const rows = await client.query(`
         SELECT COUNT(*) as count
         FROM core.gateway_events
         WHERE gateway_id = '1'
@@ -106,7 +108,7 @@ describe('Gateway Event Consumer (Integration)', () => {
 
   describe('cursor advancement with GREATEST', () => {
     it('should advance cursor forward', async () => {
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET position = GREATEST(position, ${BigInt(10).toString()}::bigint)
         WHERE name = 'gateway'
@@ -117,14 +119,14 @@ describe('Gateway Event Consumer (Integration)', () => {
 
     it('should never move cursor backwards (GREATEST)', async () => {
       // Set cursor to 100
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET position = ${BigInt(100).toString()}
         WHERE name = 'gateway'
       `);
 
       // Try to set it to 50 (should stay at 100)
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET position = GREATEST(position, ${BigInt(50).toString()}::bigint)
         WHERE name = 'gateway'
@@ -135,7 +137,7 @@ describe('Gateway Event Consumer (Integration)', () => {
 
     it('should handle out-of-order advancement correctly', async () => {
       // Advance to 10
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET position = GREATEST(position, '10'::bigint)
         WHERE name = 'gateway'
@@ -143,7 +145,7 @@ describe('Gateway Event Consumer (Integration)', () => {
       expect(await getCursor()).toBe('10');
 
       // Try to go backwards to 5 (should stay at 10)
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET position = GREATEST(position, '5'::bigint)
         WHERE name = 'gateway'
@@ -151,7 +153,7 @@ describe('Gateway Event Consumer (Integration)', () => {
       expect(await getCursor()).toBe('10');
 
       // Advance to 15
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET position = GREATEST(position, '15'::bigint)
         WHERE name = 'gateway'
@@ -165,14 +167,14 @@ describe('Gateway Event Consumer (Integration)', () => {
       await insertEvent({ id: BigInt(20), eventId: 'evt_fail_001' });
 
       // Increment attempts
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.gateway_events
         SET attempts = attempts + 1,
             apply_error = 'Test error'
         WHERE gateway_event_id = 'evt_fail_001'
       `);
 
-      const result = await db.execute(sql`
+      const result = await client.query(`
         SELECT attempts, apply_error
         FROM core.gateway_events
         WHERE gateway_event_id = 'evt_fail_001'
@@ -189,7 +191,7 @@ describe('Gateway Event Consumer (Integration)', () => {
 
       // Simulate 3 failed attempts
       for (let i = 0; i < 3; i++) {
-        await db.execute(sql`
+        await client.query(`
           UPDATE core.gateway_events
           SET attempts = attempts + 1,
               apply_error = 'Handler error'
@@ -198,13 +200,13 @@ describe('Gateway Event Consumer (Integration)', () => {
       }
 
       // Mark as failed
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.gateway_events
         SET apply_status = 'failed'
         WHERE gateway_event_id = 'evt_fail_002'
       `);
 
-      const result = await db.execute(sql`
+      const result = await client.query(`
         SELECT attempts, apply_status
         FROM core.gateway_events
         WHERE gateway_event_id = 'evt_fail_002'
@@ -226,14 +228,14 @@ describe('Gateway Event Consumer (Integration)', () => {
       });
 
       // Mark as applied
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.gateway_events
         SET apply_status = 'applied',
             processed_at = now() AT TIME ZONE 'UTC'
         WHERE gateway_event_id = 'evt_status_001'
       `);
 
-      const result = await db.execute(sql`
+      const result = await client.query(`
         SELECT apply_status, processed_at
         FROM core.gateway_events
         WHERE gateway_event_id = 'evt_status_001'
@@ -250,7 +252,7 @@ describe('Gateway Event Consumer (Integration)', () => {
       await insertEvent({ id: BigInt(32), eventId: 'evt_st_applied', apply_status: 'applied' });
       await insertEvent({ id: BigInt(33), eventId: 'evt_st_failed', apply_status: 'failed' });
 
-      const result = await db.execute(sql`
+      const result = await client.query(`
         SELECT gateway_event_id, apply_status
         FROM core.gateway_events
         WHERE gateway_event_id LIKE 'evt_st_%'
@@ -266,25 +268,25 @@ describe('Gateway Event Consumer (Integration)', () => {
 
   describe('heartbeat updates', () => {
     it('should update heartbeat_at timestamp', async () => {
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET heartbeat_at = NULL
         WHERE name = 'gateway'
       `);
 
-      let cursor = await db.execute(sql`
+      let cursor = await client.query(`
         SELECT heartbeat_at FROM core.consumer_cursors WHERE name = 'gateway'
       `);
       expect(cursor[0]?.heartbeat_at).toBeNull();
 
       // Update heartbeat
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET heartbeat_at = now() AT TIME ZONE 'UTC'
         WHERE name = 'gateway'
       `);
 
-      cursor = await db.execute(sql`
+      cursor = await client.query(`
         SELECT heartbeat_at FROM core.consumer_cursors WHERE name = 'gateway'
       `);
       expect(cursor[0]?.heartbeat_at).toBeTruthy();
@@ -304,7 +306,7 @@ describe('Gateway Event Consumer (Integration)', () => {
       expect(await getCursor()).toBe('0');
 
       // After restart, cursor can be advanced
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors
         SET position = GREATEST(position, '100'::bigint)
         WHERE name = 'gateway'
@@ -322,13 +324,13 @@ describe('Gateway Event Consumer (Integration)', () => {
       });
 
       // Can update to applied
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.gateway_events
         SET apply_status = 'applied', processed_at = now() AT TIME ZONE 'UTC'
         WHERE gateway_event_id = 'evt_crash_002'
       `);
 
-      const result = await db.execute(sql`
+      const result = await client.query(`
         SELECT apply_status FROM core.gateway_events
         WHERE gateway_event_id = 'evt_crash_002'
       `);
@@ -344,13 +346,13 @@ describe('Gateway Event Consumer (Integration)', () => {
       await insertEvent({ id: BigInt(202), eventId: 'evt_order_003' });
 
       // Set cursor to 200
-      await db.execute(sql`
+      await client.query(`
         UPDATE core.consumer_cursors SET position = '200'
         WHERE name = 'gateway'
       `);
 
       // Fetch events after cursor (simulating consumer query)
-      const events = await db.execute(sql`
+      const events = await client.query(`
         SELECT gateway_id, gateway_event_id
         FROM core.gateway_events
         WHERE gateway_id > (SELECT position FROM core.consumer_cursors WHERE name = 'gateway')
@@ -367,7 +369,7 @@ describe('Gateway Event Consumer (Integration)', () => {
   describe('transaction boundaries (simulated)', () => {
     it('should support atomic insert and cursor advance within transaction', async () => {
       // Simulate the consumer's transaction: insert event, mark applied, advance cursor
-      await db.execute(sql`BEGIN`);
+      await client.query(`BEGIN`);
 
       try {
         await insertEvent({
@@ -376,21 +378,21 @@ describe('Gateway Event Consumer (Integration)', () => {
           apply_status: 'applied',
         });
 
-        await db.execute(sql`
+        await client.query(`
           UPDATE core.consumer_cursors
           SET position = GREATEST(position, '300'::bigint),
               heartbeat_at = now() AT TIME ZONE 'UTC'
           WHERE name = 'gateway'
         `);
 
-        await db.execute(sql`COMMIT`);
+        await client.query(`COMMIT`);
       } catch (error) {
-        await db.execute(sql`ROLLBACK`);
+        await client.query(`ROLLBACK`);
         throw error;
       }
 
       // Verify both event and cursor were committed
-      const event = await db.execute(sql`
+      const event = await client.query(`
         SELECT gateway_event_id FROM core.gateway_events
         WHERE gateway_event_id = 'evt_tx_001'
       `);

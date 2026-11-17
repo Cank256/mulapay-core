@@ -31,6 +31,7 @@ import {
   type OperationPage,
 } from './gateway-operations.port';
 import { toGatewayAmount, toMinor } from './money';
+import { GatewayRequestRecorder } from './gateway-request.recorder';
 
 /**
  * Exponential backoff with jitter for gateway retries (spec 3.5): base 1s, doubling per
@@ -53,6 +54,13 @@ const STATUSES: readonly string[] = [
   'cancelled',
 ];
 const OPERATION_TYPES: readonly string[] = ['collection', 'disbursement', 'refund'];
+
+interface CallMetadata {
+  readonly provider: string;
+  readonly operationType: 'collection' | 'disbursement' | 'refund' | 'query' | 'balance';
+  readonly externalId: string;
+  readonly attempt: number;
+}
 
 interface Reply {
   readonly status: number;
@@ -118,7 +126,8 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
-    private readonly breaker: RedisCircuitBreaker
+    private readonly breaker: RedisCircuitBreaker,
+    private readonly recorder: GatewayRequestRecorder
   ) {}
 
   async submitDisbursement(req: DisbursementRequest): Promise<DisbursementResult> {
@@ -149,7 +158,8 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
         `/api/v1/payment/${req.providerId}/disbursement`,
         body,
         req.providerId,
-        'disbursement'
+        'disbursement',
+        req.externalId
       );
     } catch (error) {
       // A timeout or a dropped connection: the gateway may have the operation (spec 3.5).
@@ -299,19 +309,26 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
   /**
    * Wraps `call` with retry logic. Retries 429 and 5xx (except 504) up to `GATEWAY_MAX_RETRIES`
    * with exponential backoff (spec 3.5). A 504 is never retried because the outcome is ambiguous.
+   * Records each attempt in gateway_requests.
    */
   private async callWithRetry(
     method: 'GET' | 'POST',
     path: string,
     body: string | undefined,
     providerId: string,
-    operation: string
+    operationType: 'collection' | 'disbursement' | 'refund',
+    externalId: string
   ): Promise<Reply> {
     const maxRetries = this.config.GATEWAY_MAX_RETRIES;
 
     for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
       try {
-        const reply = await this.call(method, path, body);
+        const reply = await this.call(method, path, body, {
+          provider: providerId,
+          operationType,
+          externalId,
+          attempt,
+        });
 
         // Don't retry on these status codes
         if (
@@ -327,7 +344,7 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
           if (attempt < maxRetries) {
             const delayMs = retryDelayMs(attempt);
             this.logger.info(
-              { providerId, operation, attempt, status: reply.status, delayMs },
+              { providerId, operation: operationType, attempt, status: reply.status, delayMs },
               'retrying gateway call after error'
             );
             await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -342,7 +359,7 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
         if (attempt < maxRetries) {
           const delayMs = retryDelayMs(attempt);
           this.logger.info(
-            { providerId, operation, attempt, err: toLoggableError(error), delayMs },
+            { providerId, operation: operationType, attempt, err: toLoggableError(error), delayMs },
             'retrying gateway call after transport error'
           );
           await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -357,27 +374,71 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
     throw new Error('gateway call failed after retries');
   }
 
-  private async call(method: 'GET' | 'POST', path: string, body?: string): Promise<Reply> {
-    const timeout = this.config.GATEWAY_TIMEOUT_MS;
-    const response = await request(new URL(path, this.config.GATEWAY_BASE_URL), {
-      method,
-      headers: {
-        [this.config.GATEWAY_API_KEY_HEADER]: this.config.GATEWAY_API_KEY ?? '',
-        'content-type': 'application/json',
-        accept: 'application/json',
-      },
-      ...(body === undefined ? {} : { body }),
-      headersTimeout: timeout,
-      bodyTimeout: timeout,
-      signal: AbortSignal.timeout(timeout),
-    });
-    const raw = await response.body.text();
-    let parsed: unknown;
+  private async call(
+    method: 'GET' | 'POST',
+    path: string,
+    body?: string,
+    metadata?: CallMetadata
+  ): Promise<Reply> {
+    const start = Date.now();
+    let httpStatus: number | undefined;
+    let errorCode: string | undefined;
+
     try {
-      parsed = raw.length > 0 ? JSON.parse(raw) : undefined;
-    } catch {
-      parsed = undefined;
+      const timeout = this.config.GATEWAY_TIMEOUT_MS;
+      const response = await request(new URL(path, this.config.GATEWAY_BASE_URL), {
+        method,
+        headers: {
+          [this.config.GATEWAY_API_KEY_HEADER]: this.config.GATEWAY_API_KEY ?? '',
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        ...(body === undefined ? {} : { body }),
+        headersTimeout: timeout,
+        bodyTimeout: timeout,
+        signal: AbortSignal.timeout(timeout),
+      });
+      httpStatus = response.statusCode;
+      const raw = await response.body.text();
+      let parsed: unknown;
+      try {
+        parsed = raw.length > 0 ? JSON.parse(raw) : undefined;
+      } catch {
+        parsed = undefined;
+      }
+      const latencyMs = Date.now() - start;
+
+      // Record the successful request
+      if (metadata) {
+        void this.recorder.record({
+          provider: metadata.provider,
+          operationType: metadata.operationType,
+          externalId: metadata.externalId,
+          httpStatus,
+          latencyMs,
+          attempt: metadata.attempt,
+        });
+      }
+
+      return { status: response.statusCode, body: parsed };
+    } catch (error) {
+      const latencyMs = Date.now() - start;
+      errorCode = error instanceof Error ? error.name : 'unknown_error';
+
+      // Record the failed request
+      if (metadata) {
+        void this.recorder.record({
+          provider: metadata.provider,
+          operationType: metadata.operationType,
+          externalId: metadata.externalId,
+          httpStatus,
+          latencyMs,
+          errorCode,
+          attempt: metadata.attempt,
+        });
+      }
+
+      throw error;
     }
-    return { status: response.statusCode, body: parsed };
   }
 }

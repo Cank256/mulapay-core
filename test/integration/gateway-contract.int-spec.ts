@@ -44,6 +44,10 @@ function client(): GatewayOperationsClient {
     mode: async () => 'closed' as const,
   } as unknown as RedisCircuitBreaker;
 
+  const noopRecorder = {
+    record: async () => {},
+  };
+
   return new GatewayOperationsClient(
     testConfig({
       GATEWAY_BASE_URL: gateway.baseUrl,
@@ -52,7 +56,8 @@ function client(): GatewayOperationsClient {
       GATEWAY_MAX_RETRIES: '2', // Test retries
     }),
     pino({ level: 'silent' }),
-    noopBreaker
+    noopBreaker,
+    noopRecorder as any
   );
 }
 

@@ -107,6 +107,10 @@ function client(timeoutMs = 1000, circuitBreaker?: RedisCircuitBreaker): Gateway
       mode: async () => 'closed' as const,
     } as unknown as RedisCircuitBreaker);
 
+  const noopRecorder = {
+    record: async () => {},
+  };
+
   return new GatewayOperationsClient(
     testConfig({
       GATEWAY_BASE_URL: baseUrl,
@@ -114,7 +118,8 @@ function client(timeoutMs = 1000, circuitBreaker?: RedisCircuitBreaker): Gateway
       GATEWAY_TIMEOUT_MS: String(timeoutMs),
     }),
     pino({ level: 'silent' }),
-    noopBreaker
+    noopBreaker,
+    noopRecorder as any
   );
 }
 
@@ -254,10 +259,15 @@ describe('disbursement outcomes: every non-answer is ambiguous', () => {
       mode: async () => 'closed' as const,
     } as unknown as RedisCircuitBreaker;
 
+    const noopRecorder = {
+      record: async () => {},
+    };
+
     const unconfigured = new GatewayOperationsClient(
       testConfig({ GATEWAY_BASE_URL: undefined, GATEWAY_API_KEY: undefined }),
       pino({ level: 'silent' }),
-      noopBreaker
+      noopBreaker,
+      noopRecorder as any
     );
     expect(await unconfigured.submitDisbursement(request)).toMatchObject({
       kind: 'rejected',

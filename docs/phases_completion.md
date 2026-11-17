@@ -214,7 +214,12 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       tracking (attempts counter, 3-attempt limit), apply_status transitions, heartbeat updates, crash recovery scenarios
       (event inserted but cursor not advanced), event ordering and selection, transaction boundaries. Tests verify the
       database schema behavior that the consumer relies on.
-- [ ] **P3-11 BUILD. Record each gateway call in `gateway_requests`** (the client returns the attempts).
+- [x] **P3-11 BUILD. Record each gateway call in `gateway_requests`** (the client returns the attempts).
+      _Result:_ Created GatewayRequestRecorder service that records every HTTP call to gateway_requests
+      (provider, operation_type, external_id, http_status, latency_ms, error_code, attempt, request_id).
+      Updated GatewayOperationsClient.call() and callWithRetry() to pass metadata and record each attempt
+      (including retries). Recorder runs async (fire-and-forget) to avoid blocking gateway calls. Wired into
+      GatewayOperationsModule. Updated contract and failure tests to mock the recorder.
 - [ ] **P3-12 BUILD. `npm run gateway:verify`** (connectivity, key validity, tenant id) and its `package.json` entry.
       Listed in spec section 13, absent today.
 - [ ] **P3-13 BUILD. Routing scope separation.** The `gateway-chase` queue is shared by sandbox steps (Phase 5) and the
