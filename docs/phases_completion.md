@@ -945,9 +945,12 @@ Write the tests first: they pin what `verify` must keep proving. Do not weaken a
       Document it or require the gateway for worker start in production.
 - [ ] **P9-V13 DECIDE. Retention periods not in the spec:** idempotency keys 7 days after expiry, published outbox
       rows 14 days. Confirm. Add the `gateway_events` 1-year policy row with the Phase 3 migration (P3-06).
-- [ ] **P9-V14 FIX. Outbox purge** is bounded by an id range that assumes UUID v7 time-ordered ids; if ids stop being
+- [x] **P9-V14 FIX. Outbox purge** is bounded by an id range that assumes UUID v7 time-ordered ids; if ids stop being
       time-ordered the purge deletes nothing. Add a guard test or a visible metric for rows older than retention that
       remain.
+      _Result:_ Chose the guard test. src/common/outbox/outbox-id-order.spec.ts fails if an outbox id leaves the
+      millisecond of created_at, or if a second insert path into core.outbox appears. A published-rows metric
+      needs a published_at index or a scan of the table, so it was not added.
 - [ ] **P9-V15 DOC.** Regenerate `docs/query-plans/phase9.txt` (the script gained a `DROP INDEX IF EXISTS` guard).
 - [ ] **P9-V16** A person who did not write the review reads and signs `PRODUCTION_READINESS.md`.
 
