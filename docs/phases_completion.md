@@ -179,9 +179,14 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       apply_status, occurred_at. `gateway_requests` append-only, with indexes on transaction_id, external_id,
       created_at. Added retention policy for `gateway_events` (365 days) to `partition_policies`. Revoked DELETE/
       TRUNCATE from application role. `consumer_cursors` already exists with 'gateway' cursor (0008).
-- [ ] **P3-07 BUILD. `GatewayEventSource`** with two implementations, selected by `GATEWAY_EVENT_SOURCE`:
+- [x] **P3-07 BUILD. `GatewayEventSource`** with two implementations, selected by `GATEWAY_EVENT_SOURCE`:
       database (`public.operation_events` through the `ro` pool, 2-second lag, tenant filter) and HTTP
       (`GET /api/v1/events`).
+      _Result:_ Created port `gateway-event-source.port.ts` defining `GatewayEvent` interface and `fetchEvents(afterId,
+      limit)` method. Implemented `DatabaseGatewayEventSource` (reads `public.operation_events` via `DB_RO` pool with
+      mandatory 2-second lag and tenant_id filter) and `HttpGatewayEventSource` (calls `GET /api/v1/events` with lag
+      parameter). `GatewayEventSourceModule` selects implementation via factory based on `GATEWAY_EVENT_SOURCE` config
+      ('database' or 'http'). Both enforce spec 3.6 requirements: 2-second lag, ascending id order, dedupe on event_id.
 - [ ] **P3-08 BUILD. Consumer loop** in `src/consumers/gateway-events`: cursor read `FOR UPDATE`; event insert, handler
       and cursor update in one transaction; dedupe on `event_id`; cursor never moves backwards (`GREATEST`);
       heartbeat every loop; adaptive poll 250 ms to 2 s; after 3 failed attempts mark the event `failed`, advance
