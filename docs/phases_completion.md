@@ -84,9 +84,12 @@ P3 (client, tables, consumer, handlers)
 
 Phases 0 to 2 are committed and green. The summary raises only these items.
 
-- [ ] **P0-01 VERIFY. Husky hooks.** Commit `3053c9d` was made with `-c core.hooksPath=/dev/null`, so the pre-commit
+- [x] **P0-01 VERIFY. Husky hooks.** Commit `3053c9d` was made with `-c core.hooksPath=/dev/null`, so the pre-commit
       hook (lint-staged and typecheck) did not run. Run the hook on a clean checkout of `3053c9d` or confirm the
       same checks run in CI. _Done when:_ hooks run clean, or CI enforces the same checks.
+      _Result (verified against HEAD `edd78cf`):_ there is no Husky or lint-staged in the repository, so no local hook
+      exists to run. `.github/workflows/ci.yml` runs `typecheck`, `lint`, `format:check`, `build`, `test:coverage`, an
+      audit and an image scan on every push to `main` and every pull request. CI enforces the same checks.
 - [ ] **P2-01 DECIDE. Admin statement query** uses a window function over the account's full history. Fine for admin
       use. _Default:_ keep; revisit when an account passes a size you pick (record that number).
 - [ ] **P2-02 DECIDE. `INSUFFICIENT_BALANCE` exposes `available`, `requested`, `currency`** (matches the spec 8.1
@@ -122,10 +125,18 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
 
 ### Tasks
 
-- [ ] **P3-01 VERIFY. Reconcile the working tree with the summary.** Confirm which of `gateway.client.ts`,
+- [x] **P3-01 VERIFY. Reconcile the working tree with the summary.** Confirm which of `gateway.client.ts`,
       `gateway.types.ts`, the `metrics.ts` gateway metrics and the `decimal.js` dependency exist. Run `npm ci` on a
       clean checkout of HEAD to confirm the lockfile installs (Phase 5 split `package-lock.json` by hand).
       _Done when:_ a list of what exists and what is missing is added to this task, and `npm ci` passes.
+      _Result (HEAD `edd78cf`):_ **Exist:** `src/integrations/gateway/` holds `money.ts`, `provider-capabilities.ts`,
+      `circuit-breaker.ts` (with a spec), `gateway-health.client.ts`, `gateway-operations.client.ts` (with a spec),
+      `gateway-operations.port.ts` and `gateway-operations.module.ts`; `decimal.js` is in `package.json` and imported
+      only by `money.ts`; `src/consumers/gateway-events/` holds only `constants.ts`; `GATEWAY_*` variables are in the
+      schema and `.env.example`. **Missing:** `gateway.client.ts`, `gateway.types.ts`, any gateway metric in
+      `src/common/telemetry/metrics.ts` (no `core_gateway_*` and no `core_payment_initiations_total`), the
+      `gateway_events` and `gateway_requests` tables, `npm run gateway:verify`. `npm ci --ignore-scripts` on a clean
+      `git archive` of HEAD succeeded (exit 0).
 - [ ] **P3-02 BUILD. Gateway client.** Typed client with timeouts, retries (`retryDelayMs`), the circuit breaker, and
       a result type for every outcome. Core never retries a 504 and never changes the `externalId`.
       Must call `assertGatewayEligible(environment)` (`src/modules/developer/sandbox/domain/gateway-boundary.ts`)
@@ -187,7 +198,7 @@ and reversal behaviour (`financial-system` rule). Payouts use holds before disbu
 - [ ] **P4-D3 DECIDE. Payout routes and request signatures** (spec 6.11). Phase 5 mandates signing for live keys with
       `payouts:write`. Decide whether test keys may skip it. _Default:_ live always signed.
 - [ ] **P4-D4 DECIDE. Payment expiry.** The sweep expires only `created` payments. Spec 6.1 lists `processing ->
-    expired`, left to the gateway `expired` event or the chase job. _Default:_ keep.
+  expired`, left to the gateway `expired` event or the chase job. _Default:_ keep.
 - [ ] **P4-D5 DECIDE. Pinned provider** (`payment_method.provider`): honour it once routing exists. _Default:_ honour.
 - [ ] **P4-D6 DECIDE. Provider fee `P`** has no source (gateway events carry no fee). _Default:_ 0 until a source is
       defined. Decide the source or accept 0 for launch.
@@ -422,7 +433,7 @@ migration `0006_settlement_reconciliation.sql`.
 ### Decisions
 
 - [ ] **P6-D1 Settlement credits `1010:provider_float:{provider}`, not `1100:bank`.** Spec 5.5 says `DR 1200 / CR
-    1100:bank`; spec 6.9 routes the payout through the gateway. **This is the one departure from the spec's own
+  1100:bank`; spec 6.9 routes the payout through the gateway. **This is the one departure from the spec's own
       posting text. It is an architectural conflict: stop and decide.** One line in
       `settlement/domain/settlement-posting.ts` reverts it.
 - [ ] **P6-D2 Reversals need approval,** not only write-offs (spec 6.6 and 11). Confirm.
