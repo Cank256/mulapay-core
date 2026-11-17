@@ -155,7 +155,11 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       with 6 tests for `retryDelayMs` covering exponential backoff (1s base doubling to 16s cap), jitter (0-500ms),
       and formula verification. `circuit-breaker.spec.ts` already has 9 tests covering all state transitions per spec
       6.2 (closed → open on 5 failures, half-open after reset, closed after 3 successes, window expiry).
-- [ ] **P3-04 BUILD. Integration module.** Register the client, breaker and capabilities in a Nest module.
+- [x] **P3-04 BUILD. Integration module.** Register the client, breaker and capabilities in a Nest module.
+      _Result:_ `GatewayOperationsModule` already complete: imports `RedisModule`; provides `RedisCircuitBreaker` and
+      `GatewayOperationsClient` (via `GATEWAY_OPERATIONS` token); exports both for use by other modules. Provider
+      capabilities are pure functions/constants exported directly from `provider-capabilities.ts` (no DI needed).
+      Module is imported and used by `ReconciliationModule`, `SettlementModule`, and `OperationsModule`.
 - [ ] **P3-05 TEST. Gateway contract tests** against a mocked gateway using the real response shapes from
       `provider_gateway/src/schemas/payment.ts` and `routes/payment.ts`: 201, 200 duplicate, 400, 401/403, 404, 409,
       429, 504, 5xx, connection refused, timeout. Assert no retry on 504 and a stable `externalId`. Extend
