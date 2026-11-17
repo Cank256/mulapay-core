@@ -215,3 +215,21 @@ never in it. Poll it no more than once a minute, or use your webhook alerts.
 Their scopes exist, and the signing and rate rules for `payouts:write` are enforced by the same
 guards the day the routes arrive; `test/integration/request-signing.int-spec.ts` proves them on
 a probe route.
+
+## Behaviour under failure (Phase 9)
+
+- **Retry the same request with the same `Idempotency-Key`.** Under a 3-minute test, 1,800 retries over 25 keys
+  returned the stored response (`Idempotency-Replayed: true`) every time and created no second payment. A
+  payment can never be created twice by a retried key: payments are unique on
+  `(merchant, environment, idempotency_key)` for ever. The stored response itself is kept for 24 hours and its
+  row removed 7 days after that; after 24 hours a new key is a new payment.
+- **A request that fails while the database or Redis is down creates nothing.** During a database outage the answer
+  is a 5xx with no internal detail and no payment and no idempotency key exists (both checked), so the same
+  request succeeds when the service returns. With Redis down, reads are served and writes are refused with `503`.
+- **Overload**: a request that cannot get a database connection within 5 s currently answers `500`, not `503` with
+  `Retry-After` (finding PERF-3). Treat a 500 on a write as "outcome unknown": retry with the same key.
+- **Deploys**: the API stops accepting new connections, answers the requests it already accepted, and exits within
+  seconds, so a rolling deploy does not reset accepted requests.
+- **Webhooks are at least once.** A worker killed mid-delivery is recovered by the queue (about a minute) and the
+  delivery attempted again; duplicates of the same delivery carry the same `MulaPay-Delivery-Id`.
+  Deduplicate on the event id.

@@ -1001,3 +1001,36 @@ scenarios. `npm run test:load` measures the spec 9.1 targets (`docs/LOAD_RESULTS
   processes (the 2-second in-process cache is the bound today), per-endpoint webhook ordering.
 - **Load targets.** `docs/LOAD_RESULTS.md` records what was measured and on what. The event consumer target (500 events/s)
   is not measured, because the consumer is not built. The soak test belongs to Phase 9.
+
+## Production hardening (Phase 9)
+
+What Phase 9 did and did not do, and the decisions it leaves open. The readiness verdict is in
+`PRODUCTION_READINESS.md`.
+
+**Added**: partition automation and retention (`src/modules/lifecycle`, migrations 0009 and 0010, the
+`data-lifecycle` queue); three connection-handling fixes found by the chaos suite: a connection that dies in use no longer crashes the process (DB-2), a silent connection is bounded by a client-side timeout (DB-3), and a connection failing at `BEGIN` is no longer leaked (DB-4) (`src/common/db/pools.ts`, `src/common/db/unit-of-work.ts`); a migration job that needs only the database URL (`src/db/migrate-config.ts`); the
+`core_ledger_posting_duration_seconds` metric and the partition gauges; a chaos and recovery suite
+(`npm run test:chaos`), a soak harness (`npm run test:soak`), a database-security suite and an independent
+financial-invariant checker.
+
+**Not added, because it would be new business functionality or an architecture change**: the gateway event
+consumer, merchant payouts, refunds and gateway collections (Phases 3 and 4); load shedding; a KMS-backed
+encryption key; separation of the database owner role from the application role; a sharded audit chain.
+
+### Decisions to confirm (Phase 9)
+
+| #   | Decision                                                                                                                                                                                                         | Where                   |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 1   | Separate the owner and migrator database role from `mulapay_core_rw` (spec D2 says rw has full rights on `core`). Needed to make the append-only controls hold against stolen credentials (DB-1).                | `SECURITY.md`           |
+| 2   | KMS-wrapped data keys, a keyring that decrypts with previous keys, and a re-encryption job (ENC-1). Today a key change makes every encrypted column unreadable.                                                  | `SECURITY.md`           |
+| 3   | The audit hash chain serialises every audited write platform-wide (PERF-2). Options: one chain per merchant or per shard, or a sequencer that hashes after commit. Each changes what `audit-logs/verify` proves. | `LOAD_RESULTS.md`       |
+| 4   | Whether an exhausted pool should answer `503` with `Retry-After` (PERF-3), and whether to build load shedding (PERF-1).                                                                                          | `SECURITY.md`           |
+| 5   | Retention periods for `idempotency_keys` rows (7 days after expiry) and published `outbox` rows (14 days) are not in the spec; chosen to be longer than the 24-hour replay window and any retry.                 | `DATABASE.md`           |
+| 6   | The transaction index `transactions_final_day_idx` was measured and not added; add it when a day's rollup window passes about five million rows.                                                                 | `query-plans/README.md` |
+
+### Process lifecycle, verified against the built artefact
+
+`test/chaos/shutdown.chaos-spec.ts`: the API keeps running after `SIGTERM` until the request it had accepted is
+answered, then exits cleanly; idle it exits in about a second; the worker exits cleanly. The runtime image was run with a
+read-only root filesystem: it boots, answers liveness and readiness, refuses unsafe production configuration by
+naming the variables, and stops in about a second with status 0.

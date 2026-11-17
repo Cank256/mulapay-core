@@ -69,3 +69,51 @@ the Phase 4 chase job arrives it must route by job name in the same processor
 (`SandboxProcessor`), because each processor starts a worker on the whole queue.
 `src/modules/developer/sandbox/sandbox-boundary.spec.ts` fails if the sandbox or the payment code
 imports `integrations/gateway`.
+
+## Failure behaviour (Phase 9 review)
+
+What exists is the settlement payout client (`GatewayOperationsClient`) and the circuit breaker. The event
+consumer, the collection and refund calls and the chase job are Phases 3 and 4 and are not built. What is
+below is verified for what exists (`test/integration/gateway-failure.int-spec.ts`, 36 tests;
+`test/chaos/gateway-queues.chaos-spec.ts`).
+
+**The rule: a failure to get an answer is never an answer.**
+
+| What happens                                      | Result for a disbursement                 | Result for a lookup, list or balance |
+| ------------------------------------------------- | ----------------------------------------- | ------------------------------------ |
+| 201 / 200 (duplicate)                             | `accepted` / `accepted, duplicate`        | operation found                      |
+| 504, 500, 502, 503                                | `ambiguous` (identifiers kept if present) | `unavailable`                        |
+| Timeout (no answer within `GATEWAY_TIMEOUT_MS`)   | `ambiguous`, one request sent             | `unavailable`                        |
+| Connection dropped, body cut off, not JSON, empty | `ambiguous`                               | `unavailable`                        |
+| 201 with no reference, or an unknown status       | `ambiguous`                               | `unavailable`                        |
+| A slow answer inside the timeout                  | `accepted`                                | found                                |
+| 400, 409                                          | `rejected` (provably created nothing)     | n/a                                  |
+| 401, 403, 404                                     | `rejected`                                | `unavailable`                        |
+| 429                                               | `rate_limited`                            | `unavailable`                        |
+| 404 on a by-external-id lookup only               | n/a                                       | `not_found`                          |
+
+An ambiguous payout stays `processing`, flagged `outcome_unknown`; the hold stays; nothing is posted; the
+sweep and `verifyPayout` ask the gateway by the **same** `externalId` and apply only a terminal answer. A retry
+carries the same `externalId` and amount; there is exactly one request per call; test-environment operations
+never reach the gateway.
+
+**One minute of 504** (chaos C, real time): the disbursement and every lookup answer 504. For 60 s the sweep
+and verification run every 5 s: every check answers `unavailable`, the payout stays `processing` and unknown, the
+hold stays active, the merchant's available balance does not move, **one** request ever reaches the gateway, and
+no ledger entry exists. The stuck-transaction monitor opens an incident (`ops:stuck_transactions`). When the
+gateway returns and says `successful`, `verifyPayout` applies it once: the batch is `paid`, two settlement entries
+exist, the hold is captured, still one gateway request, and a second verification or sweep changes nothing. A
+gateway that says `failed` after a 504 releases the hold and posts nothing.
+
+**Circuit breaker** (`RedisCircuitBreaker`, spec 6.2). Tested for the first time in Phase 9 (it had no tests):
+closed below 5 consecutive failures; failures more than 30 s apart do not accumulate; opens on the fifth; refuses
+calls; half-opens after exactly `GATEWAY_CIRCUIT_RESET_MS` (15 s); closes after 3 successful probes; a failed probe
+reopens for a full period; state is shared by every replica through Redis (concurrent updates are all counted);
+independent per (provider, operation); and **fails open** when Redis is unreachable.
+**Open finding GW-1: nothing calls it.** Spec 6.2's routing ("a route is skipped when its breaker is open")
+belongs to Phase 4. Until then the breaker protects nothing, and settlement payouts go to the gateway directly.
+
+Differences from spec 3.5 found in review, none financially unsafe, all recorded in `SECURITY.md`: GW-2 (a
+payout answered 401 or 403 is retried up to 8 times with the same key; the spec says page and do not loop),
+GW-3 (`GATEWAY_MAX_RETRIES` is validated and unused: the client makes one attempt and the caller retries with the
+same key, which is the safe design, so the setting should be removed or implemented).

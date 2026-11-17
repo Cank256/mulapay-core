@@ -8,6 +8,7 @@ import { QueueRegistry } from '../common/queue/queue.registry';
 import { APP_CONFIG } from '../common/tokens';
 import type { AppConfig } from '../config/configuration';
 import { AML_JOBS } from './aml-screen.processor';
+import { LIFECYCLE_JOBS } from './data-lifecycle.processor';
 import { NOTIFICATION_JOBS } from './notification-send.processor';
 import { REPORT_JOBS } from './report-generate.processor';
 import { ROLLUP_JOBS } from './rollup.processor';
@@ -44,6 +45,7 @@ export class JobSchedulers implements OnApplicationBootstrap {
     await this.registerSettlementAndReconciliation();
     await this.registerCompliance();
     await this.registerSupportAndOperations();
+    await this.registerDataLifecycle();
   }
 
   /**
@@ -143,6 +145,25 @@ export class JobSchedulers implements OnApplicationBootstrap {
       'ops-monitor',
       this.config.OPS_MONITOR_INTERVAL_SECONDS * 1000,
       SUPPORT_JOBS.monitor
+    );
+  }
+
+  /**
+   * Phase 9 (spec 5.1, 11): partitions are created every 6 hours (and at once when the worker
+   * first boots), retention runs daily at 03:15 UTC, off peak because dropping a partition takes
+   * a short lock on its parent table.
+   */
+  private async registerDataLifecycle(): Promise<void> {
+    const queue = this.queues.get(QUEUES.dataLifecycle.name);
+    await queue.upsertJobScheduler(
+      'partitions-ensure',
+      { every: 6 * 3_600_000 },
+      { name: LIFECYCLE_JOBS.ensurePartitions }
+    );
+    await queue.upsertJobScheduler(
+      'retention-enforce',
+      { pattern: '15 3 * * *', tz: 'UTC' },
+      { name: LIFECYCLE_JOBS.enforceRetention }
     );
   }
 }

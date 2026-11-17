@@ -9,6 +9,10 @@
  *   headers      object
  *   body         object, sent as JSON on POST
  *   uniqueKey    true: a fresh Idempotency-Key header on every request
+ *   keyPool      N: Idempotency-Key cycles through N fixed keys, so every key is sent again and
+ *                again with the same body (real client retries); replays are counted separately
+ *   keyPrefix    prefix of the fixed keys, so two runs do not share them
+ *   windowMs     also report percentiles per window of this length (to see latency drift)
  *   connections  keep-alive connections (default 32)
  *   mode         "open" (fixed arrival rate, default) or "closed" (as fast as the connections allow)
  *   rate         arrivals per second, open mode
@@ -32,6 +36,9 @@ const {
   headers = {},
   body,
   uniqueKey = false,
+  keyPool = 0,
+  keyPrefix = 'fixed',
+  windowMs = 0,
   connections = 32,
   mode = 'open',
   rate = 200,
@@ -42,16 +49,40 @@ const {
 const pool = new Pool(baseUrl, { connections, pipelining: 1 });
 const latencies = [];
 const byStatus = {};
+const windows = [];
+let windowLatencies = [];
+let windowFailures = 0;
+let windowStart = 0;
 let sequence = 0;
 let measuring = false;
 let failures = 0;
+let replayed = 0;
 const payload = body === undefined ? undefined : JSON.stringify(body);
+
+const quantile = (sorted, p) =>
+  sorted.length === 0
+    ? null
+    : sorted[Math.min(sorted.length - 1, Math.ceil(p * sorted.length) - 1)];
+
+function closeWindow(now) {
+  windowLatencies.sort((a, b) => a - b);
+  windows.push({
+    atSeconds: Math.round((now - windowStart) / 1000),
+    requests: windowLatencies.length,
+    failures: windowFailures,
+    p50: quantile(windowLatencies, 0.5),
+    p99: quantile(windowLatencies, 0.99),
+  });
+  windowLatencies = [];
+  windowFailures = 0;
+}
 
 async function one(dueAt) {
   const index = sequence++;
   const requestHeaders = { ...headers };
   if (payload !== undefined) requestHeaders['content-type'] = 'application/json';
   if (uniqueKey) requestHeaders['idempotency-key'] = `load-${randomUUID()}`;
+  if (keyPool > 0) requestHeaders['idempotency-key'] = `${keyPrefix}-${index % keyPool}`;
   const counted = measuring;
   try {
     const res = await pool.request({
@@ -62,11 +93,20 @@ async function one(dueAt) {
     });
     await res.body.dump();
     if (counted) {
-      latencies.push(performance.now() - dueAt);
+      const took = performance.now() - dueAt;
+      latencies.push(took);
       byStatus[res.statusCode] = (byStatus[res.statusCode] ?? 0) + 1;
+      if (res.headers['idempotency-replayed'] === 'true') replayed += 1;
+      if (windowMs > 0) {
+        windowLatencies.push(took);
+        if (performance.now() - windowStart >= windowMs) closeWindow(performance.now());
+      }
     }
   } catch {
-    if (counted) failures += 1;
+    if (counted) {
+      failures += 1;
+      windowFailures += 1;
+    }
   }
 }
 
@@ -101,9 +141,12 @@ await run(warmupMs);
 latencies.length = 0;
 for (const key of Object.keys(byStatus)) delete byStatus[key];
 failures = 0;
+replayed = 0;
 measuring = true;
 const startedAt = performance.now();
+windowStart = startedAt;
 await run(durationMs);
+if (windowMs > 0 && windowLatencies.length > 0) closeWindow(performance.now());
 const elapsedSeconds = (performance.now() - startedAt) / 1000;
 await pool.close();
 
@@ -120,6 +163,8 @@ process.stdout.write(
     requests: latencies.length,
     failures,
     byStatus,
+    replayed,
+    windows,
     throughput: latencies.length / elapsedSeconds,
     p50: at(0.5),
     p95: at(0.95),

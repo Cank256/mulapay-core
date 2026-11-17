@@ -293,6 +293,49 @@ export const opsActions = new Counter({
   registers: [metricsRegistry],
 });
 
+export const ledgerPostingDuration = new Histogram({
+  name: 'core_ledger_posting_duration_seconds',
+  help: 'Time to post one ledger entry (validate, lock balances, insert), including replays and refusals; the spec 9.1 target is p99 under 25 ms for six lines',
+  labelNames: ['source'] as const,
+  buckets: [0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5],
+  registers: [metricsRegistry],
+});
+export const partitionMonthsAhead = new Gauge({
+  name: 'core_partition_months_ahead',
+  help: 'Whole months of partitions that exist after the current one, per partitioned table (alert below 2)',
+  labelNames: ['table'] as const,
+  registers: [metricsRegistry],
+});
+export const partitionDefaultHasRows = new Gauge({
+  name: 'core_partition_default_has_rows',
+  help: '1 while a default partition holds rows, which means a month had no partition when it was written (alert above 0)',
+  labelNames: ['table'] as const,
+  registers: [metricsRegistry],
+});
+export const partitionsDropped = new Counter({
+  name: 'core_partitions_dropped_total',
+  help: 'Expired partitions dropped by the retention job',
+  labelNames: ['table'] as const,
+  registers: [metricsRegistry],
+});
+export const partitionsRetentionBlocked = new Counter({
+  name: 'core_partitions_retention_blocked_total',
+  help: 'Expired partitions the retention job kept, by reason',
+  labelNames: ['table', 'reason'] as const,
+  registers: [metricsRegistry],
+});
+export const retentionRowsDeleted = new Counter({
+  name: 'core_retention_rows_deleted_total',
+  help: 'Rows removed by the batched retention clean-ups (idempotency keys, published outbox rows)',
+  labelNames: ['target'] as const,
+  registers: [metricsRegistry],
+});
+export const lifecycleRuns = new Counter({
+  name: 'core_data_lifecycle_runs_total',
+  help: 'Partition maintenance and retention runs by outcome',
+  labelNames: ['job', 'outcome'] as const,
+  registers: [metricsRegistry],
+});
 /**
  * Functions that bring a gauge up to date from shared state. `MetricsService` runs them on
  * every scrape, as it does for pool and queue gauges, so the api process reports what the

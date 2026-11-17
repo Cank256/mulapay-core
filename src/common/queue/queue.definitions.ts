@@ -83,6 +83,13 @@ export const QUEUES = {
     concurrency: 1,
     jobOptions: { attempts: 1 },
   },
+  // Phase 9: partition automation and retention (spec 5.1, 11). One at a time; three attempts,
+  // five minutes apart, because a failure is usually a busy table (the drop bounds its lock wait).
+  dataLifecycle: {
+    name: 'data-lifecycle',
+    concurrency: 1,
+    jobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 300_000 } },
+  },
 } as const satisfies Record<string, QueueDefinition>;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES]['name'];

@@ -24,6 +24,23 @@ const loadProject = {
     fileParallelism: false,
   },
 };
+/**
+ * Chaos and disaster-recovery suites (`npm run test:chaos`, CHAOS=1): they kill and restart the
+ * Postgres and Redis containers, so they own their containers (fixed host ports, see
+ * global-setup) and never run with `npm test`. Files run one at a time.
+ */
+const chaosProject = {
+  extends: true,
+  test: {
+    name: 'chaos',
+    include: ['test/chaos/**/*.chaos-spec.ts'],
+    globalSetup: ['test/integration/global-setup.ts'],
+    testTimeout: 10 * 60_000,
+    hookTimeout: 10 * 60_000,
+    fileParallelism: false,
+  },
+};
+
 const ONE_HUNDRED = { lines: 100, functions: 100, branches: 100, statements: 100 };
 
 export default defineConfig({
@@ -49,6 +66,7 @@ export default defineConfig({
         },
       },
       ...(process.env.LOAD === '1' ? [loadProject] : []),
+      ...(process.env.CHAOS === '1' ? [chaosProject] : []),
     ],
     coverage: {
       provider: 'v8',

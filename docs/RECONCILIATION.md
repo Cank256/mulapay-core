@@ -222,3 +222,29 @@ reserve out of the payable account, so subtracting it again would count it twice
 reference, a masked destination, the status history, and the reconciliation references (statement rows
 that matched the payout; for staff also the ledger entries and open exceptions). `.../statement/csv`
 returns the same as CSV text; every cell is quoted and formula-looking text is neutralised.
+
+## Phase 9 verification
+
+Checked under failure, against real PostgreSQL, by `test/chaos/*.chaos-spec.ts` and the independent invariant
+queries in `test/support/invariants.ts` (written separately from `LedgerIntegrityService` so that a bug in one
+cannot hide a violation from the other; the same queries are in `LEDGER.md`).
+
+| Scenario                                                           | Outcome                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PostgreSQL SIGKILLed while 48 payment events apply (8 in parallel) | every event applied exactly once; callers saw errors during the outage and retried the same event key; no entry lost or doubled; all 48 payments `succeeded`; trial balance balances; all invariants hold; pools reconnect with no restart |
+| Commit succeeds but the acknowledgement is lost                    | redelivery returns `duplicate`; one entry                                                                                                                                                                                                  |
+| Connection killed before COMMIT                                    | nothing visible: no entry, payment still `processing`, no event row; redelivery applies once                                                                                                                                               |
+| 20 simultaneous deliveries of one event                            | 1 `applied`, 19 `duplicate`, one entry                                                                                                                                                                                                     |
+| Same event key, different amount                                   | never posted twice; the original amount stands                                                                                                                                                                                             |
+| A late event for a terminal payment                                | `rejected`, recorded; nothing changes                                                                                                                                                                                                      |
+| 16 events delivered in shuffled, tripled order                     | all converge, one entry each                                                                                                                                                                                                               |
+| Gateway 504 for a minute, then success or failure                  | no posting until the gateway says `successful`; see `GATEWAY_INTEGRATION.md`                                                                                                                                                               |
+| Restore from backup onto a new server                              | all seven checked tables have their rows; invariants pass; the books balance                                                                                                                                                               |
+
+The four reconciliation runs themselves were not changed in this phase. Two behaviours worth knowing: the scheduled
+gateway-gap run **fails** when no gateway is configured (`gateway_list_unavailable:gateway_not_configured`), which
+is right (it will not read "no operations" as "no gap"), but means a worker started without a gateway shows
+a failed job every five minutes; and the ledger-integrity and balance-proof runs complete.
+
+Not verifiable until Phase 3 exists: the consumer crash between applying an event and committing its cursor, a killed
+consumer mid-batch, and gateway event replay.

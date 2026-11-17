@@ -128,6 +128,12 @@ export const transactions = core.table(
       t.createdAt.desc(),
       t.ref.desc()
     ),
+    // Phase 9 (docs/query-plans/phase9.txt, part B): the stuck-transaction scans, the gateway gap
+    // run and the incident monitor read `status = 'processing'` across every merchant. Only rows in
+    // flight are indexed (a handful), so the write cost is within measurement noise (WAL -6.7%).
+    index('transactions_processing_idx')
+      .on(t.createdAt)
+      .where(sql`${t.status} = 'processing'`),
     index('transactions_gateway_external_id_idx')
       .on(t.gatewayExternalId)
       .where(sql`${t.gatewayExternalId} is not null`),

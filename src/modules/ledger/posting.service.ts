@@ -22,6 +22,7 @@ import type { Clock } from '../../common/clock/clock';
 import type { Executor } from '../../common/db/database.types';
 import { AppError } from '../../common/errors/app-error';
 import { publicId, uuidv7 } from '../../common/ids/ids';
+import { ledgerPostingDuration } from '../../common/telemetry/metrics';
 import { CLOCK } from '../../common/tokens';
 import type { AccountRow } from '../accounts/accounts.repository';
 import { AccountsService } from '../accounts/accounts.service';
@@ -85,7 +86,21 @@ export class PostingService {
     return toJournalEntry(entry, lines);
   }
 
+  /** Times the posting for `core_ledger_posting_duration_seconds` (spec 10), success or failure. */
   private async post(
+    tx: Executor,
+    posting: ValidatedPosting,
+    allowNegativeMerchantBalance: boolean
+  ): Promise<PostingResult> {
+    const stop = ledgerPostingDuration.startTimer({ source: posting.source });
+    try {
+      return await this.write(tx, posting, allowNegativeMerchantBalance);
+    } finally {
+      stop();
+    }
+  }
+
+  private async write(
     tx: Executor,
     posting: ValidatedPosting,
     allowNegativeMerchantBalance: boolean

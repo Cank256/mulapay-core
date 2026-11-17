@@ -25,28 +25,30 @@ The fenced blocks tagged `runbook:<name>` in this file are executed by
 
 An index of the runbooks:
 
-| Runbook                                                           | Starts from                                         |
-| ----------------------------------------------------------------- | --------------------------------------------------- |
-| [Stuck transaction](#stuck-transaction)                           | `core_transactions_stuck` above 0 for 15 minutes    |
-| [Consumer lag](#consumer-lag)                                     | lag above 60 s, or a stale consumer heartbeat       |
-| [Ledger mismatch](#ledger-mismatch)                               | `core_ledger_integrity_failures` above 0 (page)     |
-| [Suspense balance](#suspense-balance)                             | suspense non-zero for over an hour                  |
-| [Webhook backlog](#webhook-backlog)                               | webhook queue depth or failure rate                 |
-| [Outbox rows that exhausted their attempts](#outbox-exhausted)    | `core_outbox_exhausted_total`                       |
-| [Failed settlement](#failed-settlement)                           | a batch in `failed`, or `releasing` for too long    |
-| [Compromised API key](#compromised-api-key)                       | a merchant reports a leaked key                     |
-| [Queue depth](#queue-depth)                                       | `core_queue_depth` growing, a queue-depth incident  |
-| [Notification delivery failures](#notification-delivery-failures) | `core_notification_deliveries_backlog`, failed rows |
-| [Report failures](#report-failures)                               | a report `failed`, or stuck `queued`/`running`      |
-| [Complaint SLA breaches](#complaint-sla-breaches)                 | `core_complaint_sla_breaches_total`                 |
-| [Rollup staleness](#rollup-staleness)                             | dashboard analytics or overview volume looks old    |
-| [Maintenance mode](#maintenance-mode)                             | a planned change, or an emergency stop of writes    |
-| [Approvals](#approvals)                                           | `core_approvals_pending`                            |
-| [Provider disable and routing](#provider-disable-and-routing)     | a provider is down or must be taken out             |
-| [API request log buffer](#api-request-log-buffer)                 | `llen apilog:buffer` grows                          |
-| [Rate limits and signatures](#rate-limits-and-signatures)         | merchants report `429` or signature errors          |
-| [Sandbox](#sandbox)                                               | test payments stay `created`                        |
-| [Compliance](#compliance-phase-7)                                 | AML, KYC and dispute operations                     |
+| Runbook                                                           | Starts from                                                        |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [Stuck transaction](#stuck-transaction)                           | `core_transactions_stuck` above 0 for 15 minutes                   |
+| [Consumer lag](#consumer-lag)                                     | lag above 60 s, or a stale consumer heartbeat                      |
+| [Ledger mismatch](#ledger-mismatch)                               | `core_ledger_integrity_failures` above 0 (page)                    |
+| [Suspense balance](#suspense-balance)                             | suspense non-zero for over an hour                                 |
+| [Webhook backlog](#webhook-backlog)                               | webhook queue depth or failure rate                                |
+| [Outbox rows that exhausted their attempts](#outbox-exhausted)    | `core_outbox_exhausted_total`                                      |
+| [Failed settlement](#failed-settlement)                           | a batch in `failed`, or `releasing` for too long                   |
+| [Compromised API key](#compromised-api-key)                       | a merchant reports a leaked key                                    |
+| [Queue depth](#queue-depth)                                       | `core_queue_depth` growing, a queue-depth incident                 |
+| [Notification delivery failures](#notification-delivery-failures) | `core_notification_deliveries_backlog`, failed rows                |
+| [Report failures](#report-failures)                               | a report `failed`, or stuck `queued`/`running`                     |
+| [Complaint SLA breaches](#complaint-sla-breaches)                 | `core_complaint_sla_breaches_total`                                |
+| [Rollup staleness](#rollup-staleness)                             | dashboard analytics or overview volume looks old                   |
+| [Maintenance mode](#maintenance-mode)                             | a planned change, or an emergency stop of writes                   |
+| [Approvals](#approvals)                                           | `core_approvals_pending`                                           |
+| [Provider disable and routing](#provider-disable-and-routing)     | a provider is down or must be taken out                            |
+| [API request log buffer](#api-request-log-buffer)                 | `llen apilog:buffer` grows                                         |
+| [Rate limits and signatures](#rate-limits-and-signatures)         | merchants report `429` or signature errors                         |
+| [Sandbox](#sandbox)                                               | test payments stay `created`                                       |
+| [Compliance](#compliance-phase-7)                                 | AML, KYC and dispute operations                                    |
+| [Partitions and retention](#partitions-and-retention)             | `core_partition_months_ahead` below 2, rows in a default partition |
+| [Disaster recovery](#disaster-recovery)                           | restore, Redis loss, worker or gateway outage                      |
 
 ## Stuck transaction
 
@@ -859,3 +861,110 @@ select d.ref, d.status, d.amount_minor, d.hold_minor, d.shortfall_minor
  order by d.created_at desc
  limit 50;
 ```
+
+## Partitions and retention (Phase 9) {#partitions-and-retention}
+
+Seven tables are partitioned by month on `created_at`: `audit_logs`, `journal_entries`,
+`journal_lines`, `transactions`, `webhook_deliveries`, `api_request_logs`,
+`notification_deliveries`. The worker's `data-lifecycle` queue keeps them healthy; nothing here is
+a person's job unless an alert fires.
+
+| Job                 | Schedule                   | Does                                                                                                    |
+| ------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `partitions.ensure` | every 6 hours, and at boot | creates the current month and the next three for every table, with the policy's revokes                 |
+| `retention.enforce` | daily 03:15 UTC            | drops partitions entirely past their window; deletes expired idempotency keys and published outbox rows |
+
+What is kept and for how long (policy: `core.partition_policies`, changed only by migration):
+
+| Data                                                   | Kept                                                       | By                                                      |
+| ------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------- |
+| journal, transactions, audit log, everything financial | 7 years, **never deleted by a job**                        | the database refuses a retention period on these tables |
+| `api_request_logs`, `webhook_deliveries`               | 90 days (a month's partition goes once every row is older) | dropping the partition                                  |
+| `notification_deliveries`                              | 180 days                                                   | dropping the partition                                  |
+| `idempotency_keys`                                     | 24 hours of replay, row deleted 7 days after it expired    | batched delete                                          |
+| `outbox`                                               | published rows 14 days; unpublished rows never             | batched delete                                          |
+| report files                                           | 7 days (hourly sweep, `reports.expire`)                    | existing job                                            |
+| `gateway_events`                                       | 1 year in the spec; **table does not exist yet** (Phase 3) | add a policy row with its migration                     |
+
+A partition with a still-`pending` webhook delivery is kept and reported, never dropped.
+
+Signals (all on the API's `/metrics`):
+
+| Metric                                               | Alert when | Meaning                                                                                  |
+| ---------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `core_partition_months_ahead{table}`                 | below 2    | the creation job is failing; rows will land in the default partition in that many months |
+| `core_partition_default_has_rows{table}`             | above 0    | rows were written when no partition existed                                              |
+| `core_data_lifecycle_runs_total{outcome="problems"}` | increases  | a run finished with a blocked or failed month or drop                                    |
+| `core_partitions_retention_blocked_total`            | increases  | an expired partition was kept (pending deliveries, or a busy lock)                       |
+
+### A table's partitions are running out
+
+```
+select * from core.partition_status();                       -- months_ahead and default_has_rows per table
+select * from core.ensure_partitions();                      -- creates what is missing; reports what it could not
+```
+
+`ensure_partitions` is idempotent and safe to run by hand. An outcome of `blocked_default_has_rows`
+means rows for that month are already in the table's default partition. Creating the month would
+fail, and those rows cannot be moved: the ledger, transactions and audit tables are append-only, so
+a move (an insert and a delete) is refused by design. Do not disable a trigger to do it. Leave the
+rows in the default partition (queries still find them; only month-based dropping is affected, and
+none of the affected financial tables is ever dropped), fix the cause (the job was not running), and
+raise it with the DBA: the repair for a populated default partition is a reviewed migration.
+
+### Retention did not run, or dropped less than expected
+
+```
+select * from core.partitions_due_for_retention();           -- what is past its window, and why one is blocked
+```
+
+A `blocked_reason` of `pending_deliveries` means a webhook delivery in that month is still
+`pending`: resolve or exhaust it (see the webhook runbook) and the next run drops the partition. A
+`lock_timeout` outcome means the table was busy; the job waited 5 seconds and will retry tomorrow.
+Never `DROP` a partition by hand: `core.drop_partition` re-checks the policy, the age, the default
+partition and live work, and is the only supported way. Each drop is written to the audit log
+(`retention.partition_dropped`).
+
+## Disaster recovery {#disaster-recovery}
+
+What is tested (`test/chaos/*.chaos-spec.ts`, `npm run test:chaos`) and what is not.
+
+| Failure                                        | Behaviour, verified                                                                                                                                                                                       | Do                                                                                         |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| PostgreSQL killed (SIGKILL) while events apply | no event lost or doubled; pools reconnect with no restart; requests during the outage fail with a generic 5xx and create nothing; the same request succeeds when it returns                               | wait for the database; do not restart the API                                              |
+| A connection dies mid-transaction              | that request fails; the process keeps running (fixed in Phase 9, see `SECURITY.md` DB-2)                                                                                                                  | none                                                                                       |
+| Redis lost with all its data                   | outbox rows and webhook deliveries are rebuilt from Postgres and delivered once; requests during the outage fail closed; the API recovers by itself                                                       | restart Redis; the outbox dispatcher and the delivery sweep rebuild the jobs from Postgres |
+| Worker killed (SIGKILL) mid-job                | jobs in flight are recovered by BullMQ's stalled-job check and re-run, 68 s after the kill in the test (12 jobs, 4 in flight); each effect happens once                                                   | restart the worker                                                                         |
+| API or worker receives SIGTERM                 | the API finishes the requests it accepted and exits; the worker finishes its active jobs                                                                                                                  | none                                                                                       |
+| Gateway returns 504 for a minute               | the payout stays `processing` and unknown, the hold stays, nothing posts, one request ever reaches the gateway; the stuck-transaction incident opens; on recovery the payout is verified and settles once | [Stuck transaction](#stuck-transaction), never resend                                      |
+| Duplicate event, 20 at once                    | one ledger entry                                                                                                                                                                                          | none                                                                                       |
+| Backup restored onto a new server              | data, constraints, grants and role settings intact; the books balance; the application boots on it                                                                                                        | below                                                                                      |
+
+### Restore PostgreSQL from a backup
+
+Tested: logical (`pg_dump`) restore onto an empty server. **Point-in-time recovery from WAL has not
+been exercised** and must be rehearsed in staging before launch.
+
+1. Provision a new server and stop traffic (maintenance mode on the old one if it is reachable).
+2. Restore the roles first (they hold the passwords and the role settings that the dump does not):
+   `psql -f globals.sql` from `pg_dumpall --globals-only`.
+3. Create the database and restore: `pg_restore --exit-on-error -d <db> core.dump` as the superuser,
+   so ownership and grants come back as dumped. Then `GRANT CONNECT ON DATABASE <db> TO
+mulapay_core_rw, mulapay_core_ro`.
+4. Re-run `src/db/bootstrap/002_gateway_read_grants.sql` if the gateway's tables were restored too.
+5. Run the migrator from the image: it must report nothing to apply.
+6. Verify before opening traffic: the SQL checks in `LEDGER.md` all return no rows, the trial balance
+   balances per currency, `GET /admin/v1/audit-logs/verify` passes, `core_partition_months_ahead` is 2
+   or more.
+7. Point the services at it. Run reconciliation (gateway gap, then ledger integrity) immediately: the
+   restore point is older than the gateway's view, and the gap run finds anything the gateway
+   completed after it.
+
+### Redis loss
+
+Redis is not a source of financial truth. After a restart with data loss: restart the worker if it
+does not reconnect, wait one outbox tick (1 s) and one webhook sweep, and confirm `core_queue_depth`
+returns to normal and `core_outbox_exhausted_total` has not moved. API key caches rebuild on demand;
+rate-limit windows and replay-protection records restart empty, so for about five minutes a signed
+request replayed within its skew window is not detected: if that matters, enable maintenance mode for
+that period.

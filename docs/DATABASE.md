@@ -379,3 +379,84 @@ Phase 2 builds the ledger the same way as the Phase 1 audit log, which keeps the
 decision reversible: moving ownership to a separate migration role later is
 `ALTER TABLE ... OWNER TO` plus a bootstrap change, with no schema rewrite. This needs a
 decision before production.
+
+## Phase 9 (migrations 0009 and 0010)
+
+### Partition automation and retention (0009, hand-written)
+
+`core.partition_policies` lists the seven partitioned tables, the privileges revoked from the
+application role on each of their partitions, and a retention period where the specification gives one.
+Rows are inserted by the migration; the application role cannot change or delete them (revoked, and
+triggers refuse). Two CHECK constraints are the guard that matters: a retention period is only allowed on
+`api_request_logs`, `webhook_deliveries`, `notification_deliveries` or `gateway_events`, and never below 30
+days. The ledger, `transactions` and `audit_logs` therefore cannot be given one, whatever the application
+sends.
+
+| Function                                 | Does                                                                                                                                                                                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ensure_partitions(now, months_ahead)`   | creates the current month and `months_ahead` more per policy, applies the revokes; a month whose default partition already holds rows is reported as `blocked_default_has_rows` and left alone; each month is attempted on its own             |
+| `partition_status(now)`                  | partitions, months ahead and whether the default partition holds rows, per table                                                                                                                                                               |
+| `partitions_due_for_retention(now)`      | partitions whose upper bound is past the policy's window, with the reason one is blocked (`pending_deliveries`)                                                                                                                                |
+| `drop_partition(parent, partition, now)` | the only door to a drop. Re-checks the policy, that the partition belongs to the parent, that it is not the default partition, that it ends before the cutoff, and that no webhook delivery in it is `pending`; waits at most 5 s for the lock |
+| `partition_upper_bound(oid)`             | the exclusive upper bound read from the catalogue (time-zone independent)                                                                                                                                                                      |
+
+The migration calls `ensure_partitions()` once, so a database that has been running for months is brought up
+to date in the deploy. The functions are `SECURITY INVOKER`; there is no `SECURITY DEFINER` function in `core`.
+
+Why a default partition is never repaired by moving rows: the tables that matter most are append-only, so a
+move (insert, then delete) is refused by design. A month blocked this way is reported, the rest proceed, and the
+repair is a reviewed migration. Every partition automation creates gets the same revokes as the parent
+(`create_monthly_partitions` revokes only for append-only tables; the policy adds the others) and, for row
+triggers, the parent's cloned triggers.
+
+Verified by `test/integration/data-lifecycle.int-spec.ts` (16 tests): creation and exact UTC boundaries,
+revokes and cloned triggers on a partition addressed directly, idempotency, routing and pruning
+(`EXPLAIN` shows one partition), the default-partition guard, retention dropped at the exact second the
+window ends and not one millisecond before, pending deliveries kept, audit rows written, financial
+partitions never dropped even 14 years on, the function refusing a financial table, the default partition and
+a partition inside its window, and two runs at once. `migration-safety.int-spec.ts` applies 0009 and 0010
+as the application role over a database already holding data: no row, grant or trigger changes; a second
+run applies nothing; an edited migration is refused.
+
+### Retention of the tables that are not partitioned
+
+| Table              | Removed                                                                                  | Why that is safe                                                                                                                                                                                                                                     |
+| ------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `idempotency_keys` | rows that expired more than 7 days ago, 1,000 at a time                                  | the key is valid for 24 hours (spec 8.2); until deletion a row still blocks reuse, as today; `payments` keeps its own unique `(merchant, environment, idempotency_key)` for ever, so a payment can never be created twice by a key outliving its row |
+| `outbox`           | rows **published** more than 14 days ago, found by a primary-key range (ids are UUID v7) | unpublished and exhausted rows are never touched; producers write one-shot dedupe keys in the transaction that made the change                                                                                                                       |
+
+Neither purge writes an audit row (they are bulk housekeeping of rows with no business meaning); partition
+drops do. `reports.expire` (hourly, existing) deletes report files after 7 days.
+
+### Index added (0010)
+
+`transactions_processing_idx`, partial on `status = 'processing'`. Evidence and the index that was
+measured and **not** added are in `query-plans/README.md`. On a large table create it first without blocking
+(`DEPLOYMENT.md`, "Large-table index procedure"); the migration then does nothing.
+
+### Roles, grants and ownership (review)
+
+Verified by `test/integration/database-security.int-spec.ts` (45 passing assertions): neither role can escalate;
+`mulapay_core_rw` has no privilege on anything in `public`; `mulapay_core_ro` has `SELECT` on exactly
+`public.operation_events` and `public.provider_operations` and is read-only by default; `PUBLIC` holds nothing
+on `core`; there is no `SECURITY DEFINER` function; the append-only tables refuse `UPDATE`, `DELETE`,
+`TRUNCATE` to rw (twelve tables and their default partitions) and the financial tables refuse `DELETE` and
+`TRUNCATE` (twelve tables).
+
+**Open finding DB-1**: `mulapay_core_rw` _owns_ the `core` schema and its tables (`DATABASE.md` bootstrap:
+`CREATE SCHEMA core AUTHORIZATION mulapay_core_rw`), so the owner can `ALTER TABLE ... DISABLE TRIGGER`, `GRANT`
+itself privileges back and `DROP TABLE`. Three `it.fails` assertions in that suite prove it. The revokes stop
+mistakes and injected SQL; they do not stop whoever holds the role's credentials. The remedy is a separate
+owner and migrator role (spec D2 currently says rw has "full rights" on `core`), which is an architecture
+decision and has not been taken. Until then, treat rw credentials as able to rewrite the ledger and restrict
+them accordingly.
+
+No row-level security is used. Tenant isolation is `merchantId` in every repository method, enforced by tests.
+The specification does not ask for RLS; it would be a defence in depth that changes how every query runs.
+
+### Backup and restore
+
+A `pg_dump` (custom format) plus `pg_dumpall --globals-only` restores onto an empty server with data, constraints,
+triggers, grants and role settings intact (`test/chaos/recovery.chaos-spec.ts`). The role settings
+(`statement_timeout`, `default_transaction_read_only`) live with the roles, so the globals dump is required.
+Point-in-time recovery has not been exercised.

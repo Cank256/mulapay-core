@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppError } from '../../src/common/errors/app-error';
 import { isPublicId } from '../../src/common/ids/ids';
 import { CURRENCY_EXPONENTS } from '../../src/common/money/currency-codes';
+import { metricsRegistry } from '../../src/common/telemetry/metrics';
 import { seededAccounts } from '../../src/modules/accounts/domain/chart-of-accounts';
 import { OnboardingService } from '../../src/modules/merchants/onboarding.service';
 import {
@@ -613,5 +614,42 @@ describe('balances and merchant close', () => {
     expect(trial.balanced).toBe(true);
     expect(trial.totalDebitsMinor).toBe(trial.totalCreditsMinor);
     expect(trial.accounts.map((a) => a.accountCode)).toContain(FEES);
+  });
+});
+
+describe('core_ledger_posting_duration_seconds (spec 10)', () => {
+  /** The histogram's `_count` for one source, read from the registry. */
+  async function postings(source: string): Promise<number> {
+    const metric = await metricsRegistry
+      .getSingleMetric('core_ledger_posting_duration_seconds')
+      ?.get();
+    return (metric?.values ?? [])
+      .filter(
+        (v: { metricName?: string; labels: Record<string, unknown> }) =>
+          v.metricName === 'core_ledger_posting_duration_seconds_count' &&
+          v.labels.source === source
+      )
+      .reduce((n, v) => n + v.value, 0);
+  }
+
+  it('records a posting, a replay and a refused posting, each once, and labels only by source', async () => {
+    const merchant = await createMerchant(ctx);
+    const before = await postings('adjustment');
+    const input = postingInput(
+      [line(CLEARING, 'debit', 1_000n), line(merchant.payable, 'credit', 1_000n)],
+      { environment: 'live', source: 'adjustment', kind: 'adjustment', merchantId: merchant.id }
+    );
+    await post(ctx, input);
+    expect(await postings('adjustment')).toBe(before + 1);
+    // The same key again is a replay: still timed, still one more observation.
+    await post(ctx, input);
+    expect(await postings('adjustment')).toBe(before + 2);
+    // A posting the ledger refuses (a merchant account into a debit position) is timed too.
+    const refused = postingInput(
+      [line(merchant.payable, 'debit', 999_999_999n), line(CLEARING, 'credit', 999_999_999n)],
+      { environment: 'live', source: 'adjustment', kind: 'adjustment', merchantId: merchant.id }
+    );
+    await expect(post(ctx, refused)).rejects.toBeInstanceOf(AppError);
+    expect(await postings('adjustment')).toBe(before + 3);
   });
 });

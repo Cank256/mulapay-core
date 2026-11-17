@@ -31,11 +31,27 @@ type PoolSettings = Pick<
   | 'DATABASE_REPLICA_URL'
   | 'DB_POOL_MIN'
   | 'DB_POOL_MAX'
+  | 'DB_STATEMENT_TIMEOUT_MS'
   | 'APP_ROLE'
 >;
 
 const CONNECTION_TIMEOUT_MS = 5000;
 const IDLE_TIMEOUT_MS = 30000;
+/**
+ * The client gives up this long after the server's `statement_timeout` would have. The server's
+ * own error arrives first whenever the server is alive; this limit exists for the case where it is
+ * not: a network partition, a vanished host or a failover that never closes the socket. Then the
+ * server cannot time anything out, and without a client-side limit the query, the request waiting on
+ * it and the pool client wait for the operating system's TCP timeout, which is hours (Phase 9
+ * finding DB-3).
+ *
+ * It is derived from the global `DB_STATEMENT_TIMEOUT_MS`. A transaction that raises its own
+ * `statementTimeoutMs` above that (the `UnitOfWork` option) would be cut off here first: no caller does
+ * today; raise this limit with it if one ever does.
+ */
+const CLIENT_QUERY_GRACE_MS = 2000;
+/** Idle time before the first TCP keepalive probe, so a dead peer is noticed in about a minute. */
+const KEEPALIVE_INITIAL_DELAY_MS = 10000;
 
 function poolConfig(url: string, name: PoolName, settings: PoolSettings): PoolConfig {
   return {
@@ -45,6 +61,8 @@ function poolConfig(url: string, name: PoolName, settings: PoolSettings): PoolCo
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
     idleTimeoutMillis: IDLE_TIMEOUT_MS,
     keepAlive: true,
+    keepAliveInitialDelayMillis: KEEPALIVE_INITIAL_DELAY_MS,
+    query_timeout: settings.DB_STATEMENT_TIMEOUT_MS + CLIENT_QUERY_GRACE_MS,
     application_name: `mulapay-core:${settings.APP_ROLE}:${name}`,
   };
 }
@@ -54,6 +72,16 @@ function createPool(url: string, name: PoolName, settings: PoolSettings, logger:
   // An idle client error must not crash the process; the pool discards the client.
   pool.on('error', (error) => {
     logger.error({ pool: name, err: toLoggableError(error) }, 'idle database client error');
+  });
+  // pg-pool drops its own `error` listener while a client is checked out. A connection that dies
+  // mid-transaction (a failover, a crash, a killed backend) then emits `error` with no listener,
+  // which Node raises as an uncaught exception, and `runProcess` exits the process on one. Every
+  // client keeps a listener for its whole life: the failure reaches the caller as a rejected query,
+  // which is where it belongs, and is logged here without the connection details.
+  pool.on('connect', (client) => {
+    client.on('error', (error) => {
+      logger.warn({ pool: name, err: toLoggableError(error) }, 'database client error');
+    });
   });
   return pool;
 }

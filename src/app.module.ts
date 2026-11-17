@@ -20,6 +20,7 @@ import { TelemetryModule } from './common/telemetry/telemetry.module';
 import type { AppConfig } from './config/configuration';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { MaintenanceGuard } from './modules/operations/maintenance.guard';
+import { LifecycleModule } from './modules/lifecycle/lifecycle.module';
 import { OperationsModule } from './modules/operations/operations.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SURFACE_MODULES, SURFACE_ROUTES } from './surfaces/surfaces';
@@ -46,6 +47,7 @@ export class AppModule {
         AuthCoreModule,
         AuthModule,
         ApiKeysModule,
+        LifecycleModule,
         OperationsModule,
         HealthModule,
         ...SURFACE_MODULES,

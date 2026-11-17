@@ -17,6 +17,7 @@ import { SandboxProcessor } from '../modules/developer/sandbox/sandbox.processor
 import { ComplaintsModule } from '../modules/complaints/complaints.module';
 import { DisputesModule } from '../modules/disputes/disputes.module';
 import { KycModule } from '../modules/kyc/kyc.module';
+import { LifecycleModule } from '../modules/lifecycle/lifecycle.module';
 import { NotificationsModule } from '../modules/notifications/notifications.module';
 import {
   NotificationDeliverHandler,
@@ -38,6 +39,7 @@ import {
 } from '../modules/webhooks/webhook-fanout.handlers';
 import { WebhooksModule } from '../modules/webhooks/webhooks.module';
 import { AmlScreenProcessor } from './aml-screen.processor';
+import { DataLifecycleProcessor } from './data-lifecycle.processor';
 import { NotificationSendProcessor } from './notification-send.processor';
 import { ReportGenerateProcessor } from './report-generate.processor';
 import { RollupProcessor } from './rollup.processor';
@@ -57,6 +59,7 @@ import { SettlementRunProcessor } from './settlement-run.processor';
     DeveloperModule,
     DisputesModule,
     KycModule,
+    LifecycleModule,
     NotificationsModule,
     OperationsModule,
     OutboxModule,
@@ -70,6 +73,7 @@ import { SettlementRunProcessor } from './settlement-run.processor';
   providers: [
     OutboxDispatcher,
     AmlScreenProcessor,
+    DataLifecycleProcessor,
     OutboxDispatchProcessor,
     ReconciliationRunProcessor,
     SettlementRunProcessor,
@@ -108,6 +112,7 @@ import { SettlementRunProcessor } from './settlement-run.processor';
         ReportGenerateProcessor,
         RollupProcessor,
         SupportOpsProcessor,
+        DataLifecycleProcessor,
       ],
       useFactory: (...processors: QueueProcessor[]) => processors,
     },

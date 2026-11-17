@@ -71,3 +71,83 @@ Other numbers from the same runs:
 3. If `POST /v1/payments` or the ledger posting still miss their p99 on that hardware, profile before changing anything:
    a posting is one transaction with an idempotency row, the entry, 6 lines and 6 balance updates, and its p50 here was 7 ms.
    Do not relax a target or a financial rule to pass.
+
+## Phase 9: soak, production topology and the audit chain
+
+**No spec 9.1 latency or throughput target is verified, again.** The development machine (8 cores,
+8 GiB) had 14.2 to 14.4 GiB of its 15 GiB swap in use and about 15 MB of free memory on every run, with
+a browser and an editor holding most of the rest. The same soak, same code, same rates gave read p99
+of 89 ms, 5.3 s and 220 s on three runs. Numbers from this machine are not evidence for or against a
+target, and none is claimed. What the runs do establish is structural, and holds on any machine.
+
+### What was built
+
+- `test/load/soak.load-spec.ts` (`npm run build && npm run test:soak`): the **built** application runs as
+  two operating-system processes, an API and a worker with its own pools and event loop, against Postgres
+  and Redis containers, as in production. Three request streams run for `SOAK_MINUTES` (default 30): reads
+  (payment retrieval, balances, transaction list), new live payments, and the same payments sent again
+  under a fixed set of 25 `Idempotency-Key`s. A sampler (`test/load/sampler.ts`) records every 15 s, per
+  process: memory, CPU, file descriptors; database connections, active, idle-in-transaction, lock waits,
+  longest transaction, deadlocks, cache hit ratio, temp files; Redis memory, keys, clients, operations per
+  second, evictions; every queue's waiting, active, delayed and failed jobs; container CPU and memory.
+  Judged on the slope of the second half of the run, so warm-up is not a leak.
+- `test/load/generator.mjs` gained `keyPool` (replayed idempotency keys), `windowMs` (latency per window) and
+  a count of `Idempotency-Replayed` answers.
+- `test/load/audit-chain.load-spec.ts`: how much write throughput the audit hash chain permits.
+
+Not covered by the harness, and why: **gateway callbacks and the event consumer** (Phase 3 is not built;
+payment events were driven through `PaymentLifecycleService.apply`, see the chaos suite), **merchant
+payouts** (Phase 4 is not built; settlement payouts were exercised in the chaos suite against a fake
+gateway), and **webhook delivery throughput** (delivery is exercised for correctness under duplicates and
+Redis loss, not for rate).
+
+### Soak results
+
+Only a 3-minute smoke run was possible here. **The 30-minute soak required by spec 12 was not run**, because
+on this machine a longer run would only have lengthened a collapse. A smoke run proves the harness and the
+invariants; it cannot show a leak, which needs the second half of a long run.
+
+Passing smoke run (3 minutes; 80 reads, 20 new payments and 10 retried payments per second offered):
+
+| Property                                                    | Result                                                                                                                         |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Failed requests (reads 14,400; writes 3,600; retries 1,800) | 0; every read 200, every write 201                                                                                             |
+| Idempotent retries replayed from the stored response        | 1,800 of 1,800, no second payment                                                                                              |
+| Failed or stuck queue jobs after a 20 s drain               | 0 failed, 0 waiting                                                                                                            |
+| Deadlocks                                                   | 0                                                                                                                              |
+| Database connections                                        | peak 30 of 400 (about 7%); first 19, last 12                                                                                   |
+| Database cache hit ratio                                    | 99.97%                                                                                                                         |
+| Redis keys                                                  | grew 59 to 3,943, **all of the growth is `idem:*` markers with an expiry**; queue keys are fixed; none unbounded; no evictions |
+| Process memory (API, worker)                                | 25 to 204 MB peak, ended at 91 MB; 73 to 87 MB, ended at 44 MB. A 3-minute window cannot show a leak                           |
+| Ledger invariants after the run                             | all hold (`test/support/invariants.ts`)                                                                                        |
+
+Two defects surfaced only because the soak ran the real topology, and are listed in
+`PRODUCTION_READINESS.md`: a worker with no gateway configured fails the scheduled gateway-gap
+reconciliation run (correct, and fail-safe: it refuses to read "no operations" as "no gap"), and an
+exhausted connection pool answers `500`, not `503` with `Retry-After` (PERF-3).
+
+### The audit chain is the throughput ceiling (PERF-2)
+
+Under the soak, **76.7% of all database time was waiting on one row**, `audit_chain_head ... FOR UPDATE`
+(3,772 calls, mean 222 ms, worst 14.6 s). Every audited write, which is every state-changing request, takes that
+row lock and holds it until its transaction commits. `audit-chain.load-spec.ts` isolates it, so it is a
+property of the design and not of the machine's load:
+
+| Trailing work in the transaction after the audit row | Workers | Audited writes per second (two runs)         |
+| ---------------------------------------------------- | ------- | -------------------------------------------- |
+| 5 ms                                                 | 8       | 99 and 91                                    |
+| 5 ms                                                 | 32      | 87 and 85 (more workers, no more throughput) |
+| 20 ms                                                | 8       | 36 and 30                                    |
+
+The ceiling is about `1 / (trailing work + commit time)` for the entire platform. The documented rule
+("write the audit row last") keeps trailing work small, which is why the shipped paths are not worse. The
+spec 9.1 targets (`POST /v1/payments` under 80 ms excluding the gateway, a 6-line posting under 25 ms) are not
+reachable at the same time as a high write rate unless this changes. This needs an architecture decision;
+see `SECURITY.md` PERF-2.
+
+### To turn this into a result
+
+1. A quiet machine, or CI, with at least 16 GiB and Docker given 4 GiB; 2 vCPU for the API as in spec 9.1.
+2. `npm run build`, then `SOAK_MINUTES=30 npm run test:soak` three times, and `npm run test:load` three times;
+   keep each `test/load/results/*.json`.
+3. Judge latency only from runs where swap is idle. Do not relax a target or a financial control to pass.

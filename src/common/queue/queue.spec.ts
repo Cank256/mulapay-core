@@ -18,6 +18,8 @@ describe('queue definitions', () => {
       'reconciliation-run': 2,
       // Phase 8 addition: spec 8.9 lists no queue for the minute sweeps of support and operations.
       'support-ops': 1,
+      // Phase 9 addition: partition automation and retention (spec 5.1, 11), one job at a time.
+      'data-lifecycle': 1,
     });
   });
 
