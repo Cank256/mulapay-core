@@ -137,11 +137,16 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       `src/common/telemetry/metrics.ts` (no `core_gateway_*` and no `core_payment_initiations_total`), the
       `gateway_events` and `gateway_requests` tables, `npm run gateway:verify`. `npm ci --ignore-scripts` on a clean
       `git archive` of HEAD succeeded (exit 0).
-- [ ] **P3-02 BUILD. Gateway client.** Typed client with timeouts, retries (`retryDelayMs`), the circuit breaker, and
+- [x] **P3-02 BUILD. Gateway client.** Typed client with timeouts, retries (`retryDelayMs`), the circuit breaker, and
       a result type for every outcome. Core never retries a 504 and never changes the `externalId`.
       Must call `assertGatewayEligible(environment)` (`src/modules/developer/sandbox/domain/gateway-boundary.ts`)
       before every request (P5-04). It must implement `GatewayOperationsPort` (Phase 6) so the existing adapter and
       the full client do not diverge.
+      _Result:_ `GatewayOperationsClient` implements retry logic with exponential backoff (`retryDelayMs`, 1s base
+      doubling to 16s max plus up to 500ms jitter) for 429 and 5xx (excluding 504); integrates `RedisCircuitBreaker`
+      (checks `allow` before call, records result after); never retries 504; uses deterministic `externalId` scheme;
+      calls `assertGatewayEligible` first; implements `GatewayOperationsPort`. `RedisCircuitBreaker` added to
+      `GatewayOperationsModule`. Uses `GATEWAY_MAX_RETRIES` from config (fixes P9-GW-3).
 - [ ] **P3-03 TEST. Unit tests** for `money.ts` (every supported currency, both directions, precision loss, overflow),
       `circuit-breaker.ts` (every transition; a spec exists, check coverage) and `retryDelayMs`.
 - [ ] **P3-04 BUILD. Integration module.** Register the client, breaker and capabilities in a Nest module.
@@ -966,8 +971,10 @@ Write the tests first: they pin what `verify` must keep proving. Do not weaken a
       core_gateway_auth_rejections_total rises. The sweep still re-drives the payout once per
       SETTLEMENT_RELEASE_RETRY_SECONDS with the same externalId; the hold stays. Tests: phase6-jobs.spec.ts and
       the 401, 403, 404 and 429 cases in settlement.int-spec.ts (which passed with aml-controls.int-spec.ts).
-- [ ] **P9-GW-3 FIX.** `GATEWAY_MAX_RETRIES` is validated and read by nothing. Implement it in the client (P3-02) or
+- [x] **P9-GW-3 FIX.** `GATEWAY_MAX_RETRIES` is validated and read by nothing. Implement it in the client (P3-02) or
       remove it (schema and `.env.example` together).
+      _Result:_ Implemented in `GatewayOperationsClient.callWithRetry`; retries 429 and 5xx (except 504) up to the
+      configured limit.
 - [ ] **P9-OBS-1 BUILD.** Missing spec 10 metrics: `core_payment_initiations_total`, `core_ledger_entries_total` (add
       after commit, not inside a transaction), `core_merchant_available_balance_minor`,
       `core_gateway_request_duration_seconds`, `core_gateway_event_lag_seconds`,

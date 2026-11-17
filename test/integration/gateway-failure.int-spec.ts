@@ -97,14 +97,24 @@ beforeEach(() => {
   mode = { kind: 'json', status: 201, body: accepted() };
 });
 
-function client(timeoutMs = 1000): GatewayOperationsClient {
+function client(timeoutMs = 1000, circuitBreaker?: RedisCircuitBreaker): GatewayOperationsClient {
+  // Create a no-op breaker that always allows and records as success
+  const noopBreaker =
+    circuitBreaker ??
+    ({
+      allow: async () => true,
+      record: async () => 'closed' as const,
+      mode: async () => 'closed' as const,
+    } as unknown as RedisCircuitBreaker);
+
   return new GatewayOperationsClient(
     testConfig({
       GATEWAY_BASE_URL: baseUrl,
       GATEWAY_API_KEY: 'gateway-test-key-0123456789',
       GATEWAY_TIMEOUT_MS: String(timeoutMs),
     }),
-    pino({ level: 'silent' })
+    pino({ level: 'silent' }),
+    noopBreaker
   );
 }
 
@@ -238,9 +248,16 @@ describe('disbursement outcomes: every non-answer is ambiguous', () => {
   });
 
   it('refuses before sending when the client is not configured, and sends nothing', async () => {
+    const noopBreaker = {
+      allow: async () => true,
+      record: async () => 'closed' as const,
+      mode: async () => 'closed' as const,
+    } as unknown as RedisCircuitBreaker;
+
     const unconfigured = new GatewayOperationsClient(
       testConfig({ GATEWAY_BASE_URL: undefined, GATEWAY_API_KEY: undefined }),
-      pino({ level: 'silent' })
+      pino({ level: 'silent' }),
+      noopBreaker
     );
     expect(await unconfigured.submitDisbursement(request)).toMatchObject({
       kind: 'rejected',

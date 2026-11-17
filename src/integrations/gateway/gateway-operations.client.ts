@@ -1,11 +1,12 @@
 /**
- * HTTP adapter for `GatewayOperationsPort`, over undici, with the API key and timeouts from
- * configuration (`GATEWAY_BASE_URL`, `GATEWAY_API_KEY`, `GATEWAY_TIMEOUT_MS`).
+ * HTTP adapter for `GatewayOperationsPort`, over undici, with the API key, timeouts and
+ * retries from configuration (`GATEWAY_BASE_URL`, `GATEWAY_API_KEY`, `GATEWAY_TIMEOUT_MS`,
+ * `GATEWAY_MAX_RETRIES`).
  *
- * One attempt per call: retry policy belongs to the caller (a BullMQ job reuses the same
- * `externalId`), so a retry can never become a second payout. A transport error or a
- * timeout is `ambiguous` for a disbursement, exactly like a 504 (spec 3.5). Request and
- * response bodies are never logged.
+ * Retries 429 and 5xx (except 504) with exponential backoff up to `GATEWAY_MAX_RETRIES`.
+ * A 504, transport error or timeout is `ambiguous` for a disbursement (spec 3.5). The
+ * circuit breaker is checked before every call and updated after every result. Request
+ * and response bodies are never logged.
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { request } from 'undici';
@@ -16,6 +17,7 @@ import { APP_CONFIG, ROOT_LOGGER } from '../../common/tokens';
 import type { AppConfig } from '../../config/configuration';
 import { assertGatewayEligible } from '../../modules/developer/sandbox/domain/gateway-boundary';
 import type { PaymentProvider } from '../../modules/payments/domain/payment-event';
+import type { RedisCircuitBreaker } from './circuit-breaker';
 import {
   type BalanceAccountType,
   type DisbursementRequest,
@@ -29,6 +31,18 @@ import {
   type OperationPage,
 } from './gateway-operations.port';
 import { toGatewayAmount, toMinor } from './money';
+
+/**
+ * Exponential backoff with jitter for gateway retries (spec 3.5): base 1s, doubling per
+ * attempt, capped at 16s, plus up to 500ms jitter. Returns milliseconds to wait.
+ */
+export function retryDelayMs(attempt: number): number {
+  const base = 1000;
+  const maxDelay = 16000;
+  const jitter = Math.random() * 500;
+  const exponential = Math.min(base * 2 ** attempt, maxDelay);
+  return exponential + jitter;
+}
 
 const STATUSES: readonly string[] = [
   'pending',
@@ -103,7 +117,8 @@ export function balanceToMinor(amount: string, currency: string): bigint {
 export class GatewayOperationsClient implements GatewayOperationsPort {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
-    @Inject(ROOT_LOGGER) private readonly logger: Logger
+    @Inject(ROOT_LOGGER) private readonly logger: Logger,
+    private readonly breaker: RedisCircuitBreaker
   ) {}
 
   async submitDisbursement(req: DisbursementRequest): Promise<DisbursementResult> {
@@ -111,6 +126,14 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
     if (!this.configured() || !isSupportedCurrency(req.currency)) {
       return { kind: 'rejected', reason: 'provider_unavailable', httpStatus: 0 };
     }
+
+    // Check circuit breaker before attempting the call
+    const allowed = await this.breaker.allow(req.providerId, 'disbursement');
+    if (!allowed) {
+      this.logger.warn({ providerId: req.providerId }, 'circuit breaker open for disbursement');
+      return { kind: 'rejected', reason: 'provider_unavailable', httpStatus: 0 };
+    }
+
     const body = JSON.stringify({
       amount: toGatewayAmount(req.amountMinor, req.currency),
       currency: req.currency,
@@ -118,16 +141,35 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
       payee: req.payee,
       metadata: req.metadata,
     });
+
     let reply: Reply;
     try {
-      reply = await this.call('POST', `/api/v1/payment/${req.providerId}/disbursement`, body);
+      reply = await this.callWithRetry(
+        'POST',
+        `/api/v1/payment/${req.providerId}/disbursement`,
+        body,
+        req.providerId,
+        'disbursement'
+      );
     } catch (error) {
       // A timeout or a dropped connection: the gateway may have the operation (spec 3.5).
       this.logger.warn({ err: toLoggableError(error) }, 'gateway disbursement call failed');
+      await this.breaker.record(req.providerId, 'disbursement', 'failure');
       return { kind: 'ambiguous', referenceId: null, httpStatus: null };
     }
+
     const data = record(record(reply.body)?.data);
     const details = record(record(record(reply.body)?.error)?.details);
+
+    // Determine if this was a success or failure for the circuit breaker
+    const isSuccess = reply.status === 200 || reply.status === 201;
+    const isAmbiguous = reply.status >= 500;
+    await this.breaker.record(
+      req.providerId,
+      'disbursement',
+      isSuccess ? 'success' : isAmbiguous ? 'failure' : 'success'
+    );
+
     switch (reply.status) {
       case 200:
       case 201: {
@@ -252,6 +294,67 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
 
   private configured(): boolean {
     return Boolean(this.config.GATEWAY_BASE_URL && this.config.GATEWAY_API_KEY);
+  }
+
+  /**
+   * Wraps `call` with retry logic. Retries 429 and 5xx (except 504) up to `GATEWAY_MAX_RETRIES`
+   * with exponential backoff (spec 3.5). A 504 is never retried because the outcome is ambiguous.
+   */
+  private async callWithRetry(
+    method: 'GET' | 'POST',
+    path: string,
+    body: string | undefined,
+    providerId: string,
+    operation: string
+  ): Promise<Reply> {
+    const maxRetries = this.config.GATEWAY_MAX_RETRIES;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      try {
+        const reply = await this.call(method, path, body);
+
+        // Don't retry on these status codes
+        if (
+          reply.status < 429 ||
+          reply.status === 504 ||
+          (reply.status > 429 && reply.status < 500)
+        ) {
+          return reply;
+        }
+
+        // Retry on 429 and 5xx (except 504)
+        if (reply.status === 429 || reply.status >= 500) {
+          if (attempt < maxRetries) {
+            const delayMs = retryDelayMs(attempt);
+            this.logger.info(
+              { providerId, operation, attempt, status: reply.status, delayMs },
+              'retrying gateway call after error'
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            continue;
+          }
+          // Exhausted retries
+          return reply;
+        }
+
+        return reply;
+      } catch (error) {
+        if (attempt < maxRetries) {
+          const delayMs = retryDelayMs(attempt);
+          this.logger.info(
+            { providerId, operation, attempt, err: toLoggableError(error), delayMs },
+            'retrying gateway call after transport error'
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+          continue;
+        }
+        // Exhausted retries, rethrow
+        throw error;
+      }
+    }
+
+    // Should never reach here due to the loop logic, but TypeScript needs a return
+    throw new Error('gateway call failed after retries');
   }
 
   private async call(method: 'GET' | 'POST', path: string, body?: string): Promise<Reply> {
