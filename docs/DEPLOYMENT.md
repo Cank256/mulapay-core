@@ -47,6 +47,16 @@ when any of these hold: `TRUST_PROXY` empty; `REDIS_URL` without a password;
 missing `GATEWAY_BASE_URL`, `GATEWAY_API_KEY`, `JWT_*`, `DATA_ENCRYPTION_KEY` or `PII_HMAC_PEPPER`;
 `S3_BUCKET_DOCUMENTS` without `S3_SERVER_SIDE_ENCRYPTION`.
 
+Two settings are optional in the schema but change behaviour, so check them for every environment:
+
+- **Sanctions screening** works only when both `SANCTIONS_PROVIDER` and `SANCTIONS_API_KEY` are set. Without
+  them every screening attempt fails with `ScreeningUnavailableError` (fail closed), so no subject is cleared by
+  screening. The schema does not require them in production, so a missing pair shows up as failing screening
+  jobs, not as a boot error. `SANCTIONS_PROVIDER=complyadvantage` is accepted by the schema but has no adapter.
+- **A worker without `GATEWAY_BASE_URL`** shows a failed `reconciliation.gateway-gap` job every five minutes,
+  because the gap run has no gateway to ask. Production refuses to boot without `GATEWAY_BASE_URL`, so this
+  occurs only in development and staging. Set the variable, or expect and ignore that job there.
+
 Secrets come from the secret manager, not from the image or the compose file.
 
 | Area           | Setting                                                        | Production guidance                                                                                   |

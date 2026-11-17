@@ -352,8 +352,11 @@ Committed as `27d47a0`. Last run: 85 files, 1,261 tests. Exit criterion met for 
 
 - [ ] **P5-S1 Shared NAT.** The failed-auth limiter (per IP, per /64) can block clients behind one address. Tune
       `RATE_LIMIT_AUTH_FAILURE_PER_MIN` or key it differently.
-- [ ] **P5-S2 Stale cached API keys.** SQL-side changes leave a key valid up to 60 s (negative cache 30 s). Document in
+- [x] **P5-S2 Stale cached API keys.** SQL-side changes leave a key valid up to 60 s (negative cache 30 s). Document in
       the incident runbook (`OPERATIONS.md`) or add a database notification to evict.
+      _Result:_ Documented in OPERATIONS.md 'Compromised API key': a SQL-side change leaves a cached key valid for
+      up to 60 s (KEY_CACHE_TTL_SECONDS) and a missing key cached as missing for 30 s (KEY_NEGATIVE_TTL_SECONDS);
+      application changes evict at once. No database notification was added.
 - [ ] **P5-S3 Redis outage.** Writes get 503, reads fail open (rate limits skipped). Decide if fail-open reads are
       acceptable. Add a test for the chosen behaviour.
 - [x] **P5-S4 `TRUST_PROXY`** must be correct in production. Add a deployment check (`DEPLOYMENT.md` plus a
@@ -555,6 +558,10 @@ Migration `0007_compliance.sql`.
 - [ ] **P7-C2 Review and enable the eight seeded AML rules per currency.** All are disabled, so nothing is monitored
       until then. Name an owner and a date. **Add a startup or readiness warning when no rule is enabled** (the
       risk list notes there is no signal today).
+      _Result:_ The signal part is built (progress note, not a tick: Compliance still has to review and enable the
+      rules and name an owner and date). core_aml_rules_enabled counts rules enabled and in effect (alert at 0)
+      and the api process logs a warning at boot when it is 0. Tests: aml-monitoring-coverage.service.spec.ts and
+      an integration case in aml-monitoring.int-spec.ts.
 - [ ] **P7-C3 Review KYC requirement seeds** per country and business type for every country served.
 
 ### Decisions
@@ -646,9 +653,11 @@ Migration `0007_compliance.sql`.
       `payment-lifecycle.service.ts` (queues monitoring in the same transaction), `payments.module.ts`,
       `settlement-release.service.ts`, `settlement.module.ts`, surface modules, `db/schema/index.ts`, `AGENTS.md`.
       Tests changed: `admin.int-spec`, `ledger-schema.int-spec`, `queue.spec`.
-- [ ] **P7-R2 Production env:** `PII_HMAC_PEPPER` required in production; `S3_SERVER_SIDE_ENCRYPTION` required when
+- [x] **P7-R2 Production env:** `PII_HMAC_PEPPER` required in production; `S3_SERVER_SIDE_ENCRYPTION` required when
       `S3_BUCKET_DOCUMENTS` is set; screening works only with `SANCTIONS_PROVIDER` and `SANCTIONS_API_KEY`. Add to
       `DEPLOYMENT.md` if missing.
+      _Result:_ PII_HMAC_PEPPER and S3_SERVER_SIDE_ENCRYPTION were already in DEPLOYMENT.md; the sanctions
+      provider and key requirement was missing and is now added.
 - [ ] **P7-R3 Commit split.** Phase 7 was not re-run after the split from Phase 6. Run the full suite on `c84f877`
       (or rely on P9's later run).
 - [ ] **P7-R4 Flaky:** `sandbox.int-spec` (delivery processor), `webhook-delivery.int-spec` (secret rotation timeout,
@@ -954,8 +963,10 @@ Write the tests first: they pin what `verify` must keep proving. Do not weaken a
       and merchant payout load (after section 3).
 - [ ] **P9-V10** Replace the starting-point resource limits in `DEPLOYMENT.md` with measured values.
 - [ ] **P9-V11 `gateway:verify`** (spec section 13) is P3-12.
-- [ ] **P9-V12** A worker started without a gateway shows a failed gateway-gap reconciliation job every five minutes.
+- [x] **P9-V12** A worker started without a gateway shows a failed gateway-gap reconciliation job every five minutes.
       Document it or require the gateway for worker start in production.
+      _Result:_ Documented in DEPLOYMENT.md (Configuration). Production already refuses to boot without
+      GATEWAY_BASE_URL, so the failing job occurs only outside production.
 - [ ] **P9-V13 DECIDE. Retention periods not in the spec:** idempotency keys 7 days after expiry, published outbox
       rows 14 days. Confirm. Add the `gateway_events` 1-year policy row with the Phase 3 migration (P3-06).
 - [x] **P9-V14 FIX. Outbox purge** is bounded by an id range that assumes UUID v7 time-ordered ids; if ids stop being

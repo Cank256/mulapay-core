@@ -468,7 +468,10 @@ POST /v1/webhook-endpoints/{ref}/rotate-secret
 
 **Never** change `api_keys`, `merchants.status` or `webhook_endpoints` by hand in production
 without evicting the cache (`ApiKeyCache.evict`/`evictMerchant`): a cached key keeps its old
-state for up to 60 seconds.
+state for up to 60 seconds (`KEY_CACHE_TTL_SECONDS`). The reverse also holds: a key id that was
+looked up and not found is cached as missing for 30 seconds (`KEY_NEGATIVE_TTL_SECONDS`), so a key
+inserted by hand may be refused for that long. Changes made through the application evict the
+entry at once; only a change made in SQL waits for these windows.
 
 ## Queue depth
 
