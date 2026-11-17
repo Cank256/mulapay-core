@@ -32,6 +32,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "node -e \"console.error('Seed data (roles, currencies, chart of accounts) is applied by migrations. See docs/DATABASE.md.'); process.exit(1)\"",
     "db:studio": "drizzle-kit studio",
+    "gateway:verify": "tsx src/scripts/gateway-verify.ts",
     "openapi:export": "npm run build && node dist/scripts/openapi-export.js",
     "seed:admin": "npm run build && node dist/scripts/seed-admin.js"
   },

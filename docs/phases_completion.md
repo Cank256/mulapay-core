@@ -220,8 +220,11 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       Updated GatewayOperationsClient.call() and callWithRetry() to pass metadata and record each attempt
       (including retries). Recorder runs async (fire-and-forget) to avoid blocking gateway calls. Wired into
       GatewayOperationsModule. Updated contract and failure tests to mock the recorder.
-- [ ] **P3-12 BUILD. `npm run gateway:verify`** (connectivity, key validity, tenant id) and its `package.json` entry.
+- [x] **P3-12 BUILD. `npm run gateway:verify`** (connectivity, key validity, tenant id) and its `package.json` entry.
       Listed in spec section 13, absent today.
+      _Result:_ Created src/scripts/gateway-verify.ts that checks: GATEWAY_BASE_URL/GATEWAY_API_KEY configuration,
+      connectivity with getBalance call, API authentication (detects 401/403), general API access with listOperations.
+      Exits 0 on success, 1 on failure. Added `gateway:verify` script to package.json using tsx.
 - [ ] **P3-13 BUILD. Routing scope separation.** The `gateway-chase` queue is shared by sandbox steps (Phase 5) and the
       chase job (P4-09). Route both by job name in one processor, because each processor starts a worker on the whole
       queue (P5-05).
