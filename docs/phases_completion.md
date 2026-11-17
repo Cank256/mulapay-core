@@ -198,7 +198,7 @@ and reversal behaviour (`financial-system` rule). Payouts use holds before disbu
 - [ ] **P4-D3 DECIDE. Payout routes and request signatures** (spec 6.11). Phase 5 mandates signing for live keys with
       `payouts:write`. Decide whether test keys may skip it. _Default:_ live always signed.
 - [ ] **P4-D4 DECIDE. Payment expiry.** The sweep expires only `created` payments. Spec 6.1 lists `processing ->
-  expired`, left to the gateway `expired` event or the chase job. _Default:_ keep.
+expired`, left to the gateway `expired` event or the chase job. _Default:_ keep.
 - [ ] **P4-D5 DECIDE. Pinned provider** (`payment_method.provider`): honour it once routing exists. _Default:_ honour.
 - [ ] **P4-D6 DECIDE. Provider fee `P`** has no source (gateway events carry no fee). _Default:_ 0 until a source is
       defined. Decide the source or accept 0 for launch.
@@ -433,7 +433,7 @@ migration `0006_settlement_reconciliation.sql`.
 ### Decisions
 
 - [ ] **P6-D1 Settlement credits `1010:provider_float:{provider}`, not `1100:bank`.** Spec 5.5 says `DR 1200 / CR
-  1100:bank`; spec 6.9 routes the payout through the gateway. **This is the one departure from the spec's own
+1100:bank`; spec 6.9 routes the payout through the gateway. **This is the one departure from the spec's own
       posting text. It is an architectural conflict: stop and decide.** One line in
       `settlement/domain/settlement-posting.ts` reverts it.
 - [ ] **P6-D2 Reversals need approval,** not only write-offs (spec 6.6 and 11). Confirm.
@@ -606,7 +606,9 @@ Migration `0007_compliance.sql`.
 - [ ] **P7-06 BUILD. Retention and deletion** of KYC documents and personal data: a retention job and an erasure route
       for `kyc_documents`, `kyc_parties`, `merchant_profiles`. Add the rows to the Phase 9 retention table.
 - [ ] **P7-07 BUILD. `LEDGER.md`:** dispute posting patterns.
-- [ ] **P7-08 DOC. README** environment variable list against the 12 new variables.
+- [x] **P7-08 DOC. README** environment variable list against the 12 new variables.
+      _Result:_ README now carries a variable reference generated from .env.example; src/config/readme-env.spec.ts
+      fails when they diverge.
 - [ ] **P7-09 TEST. Restore the p99 assertion** for the pre-check (target 20 ms; only the median is asserted, under 10
       ms). Run it in the `load` project on quiet hardware, not in the parallel suite.
 - [ ] **P7-10 TEST. Raise `src/modules/kyc` branch coverage** (78%, 92.6% lines).
@@ -728,7 +730,8 @@ Committed as `682e149`. Last full run: 129 files, 1,721 tests with `--maxWorkers
 - [ ] **P8-11 BUILD. Public API groups** (same as P5-01): refunds, payouts, payout-batches, customers,
       payment-methods, settlements, `/v1/disputes`. "OpenAPI complete" holds only for routes that exist.
 - [ ] **P8-12 BUILD. Per-endpoint webhook ordering** (same as P5-D1).
-- [ ] **P8-13 DOC. README** environment variable list against the new variables.
+- [x] **P8-13 DOC. README** environment variable list against the new variables.
+      _Result:_ Same README reference and guard spec as P7-08.
 
 ### Verify
 
@@ -999,7 +1002,8 @@ Each task lists the phases it closes items for.
       section that `AGENTS.md` and `RECONCILIATION.md` refer to; `API_PUBLIC.md` lists `settlements` as not built
       though it is built; `GATEWAY_INTEGRATION.md` still says "Phase 0"; the top of `phases_summary.md` is stale
       (see "How to use this file"). Update `AGENTS.md` "Current phase" when Phases 3 and 4 land.
-- [ ] **X-DOC-2 DOC.** README environment variable lists for Phases 7 and 8 (P7-08, P8-13).
+- [x] **X-DOC-2 DOC.** README environment variable lists for Phases 7 and 8 (P7-08, P8-13).
+      _Result:_ Done through P7-08 and P8-13.
 - [ ] **X-DOC-3 DOC.** `LEDGER.md` (spec section 13): fee, refund, payout, settlement (P6-09) and dispute (P7-07)
       posting patterns.
 - [ ] **X-OPENAPI-1 DOC.** Regenerate `docs/openapi/{public,dashboard,admin}.json` after every route change (section
