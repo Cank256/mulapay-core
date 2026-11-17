@@ -54,6 +54,43 @@ export interface DisbursementRequest {
   };
 }
 
+export interface CollectionRequest {
+  readonly environment: 'test' | 'live';
+  readonly providerId: PaymentProvider;
+  /** `pay_{ULID}`: the same payment always has the same key (spec 3.4). */
+  readonly externalId: string;
+  readonly amountMinor: bigint;
+  readonly currency: string;
+  readonly payer: { readonly partyIdType: 'MSISDN' | 'EMAIL'; readonly partyId: string };
+  readonly metadata: {
+    readonly merchantId: string;
+    readonly environment: 'test' | 'live';
+    readonly coreTransactionId: string;
+  };
+}
+
+export type CollectionResult =
+  /** 201, or 200 for an `externalId` the gateway already knows. */
+  | {
+      readonly kind: 'accepted';
+      readonly duplicate: boolean;
+      readonly referenceId: string;
+      readonly status: GatewayStatus;
+    }
+  /** The gateway refused before creating an operation: no money moved. */
+  | {
+      readonly kind: 'rejected';
+      readonly reason: 'validation' | 'conflict' | 'unauthorized' | 'provider_unavailable';
+      readonly httpStatus: number;
+    }
+  | { readonly kind: 'rate_limited'; readonly retryAfterMs: number | null }
+  /** 504, a timeout, a 5xx or an unreadable answer: the outcome is unknown (spec 3.5). */
+  | {
+      readonly kind: 'ambiguous';
+      readonly referenceId: string | null;
+      readonly httpStatus: number | null;
+    };
+
 export type DisbursementResult =
   /** 201, or 200 for an `externalId` the gateway already knows. */
   | {
@@ -98,6 +135,8 @@ export type BalanceAccountType = 'collection' | 'disbursement';
 export interface GatewayOperationsPort {
   /** Sends a payout. Never throws for an outcome; throws only for a programming error. */
   submitDisbursement(request: DisbursementRequest): Promise<DisbursementResult>;
+  /** Sends a collection (payment). Never throws for an outcome; throws only for a programming error. */
+  submitCollection(request: CollectionRequest): Promise<CollectionResult>;
   findByExternalId(
     externalId: string,
     filter?: { providerId?: string; operationType?: GatewayOperationType }

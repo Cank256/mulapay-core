@@ -32,6 +32,7 @@ import type { PaymentProvider } from './domain/payment-event';
 import type { PaymentStatus } from './domain/payment-state-machine';
 import { PaymentCreator } from './payment-creator';
 import { PaymentLifecycleService } from './payment-lifecycle.service';
+import { PaymentGatewaySubmitter } from './payment-gateway-submitter.service';
 import { observePaymentEvent } from './payment-metrics';
 import { toPaymentView, type PaymentView } from './payment.views';
 import { PaymentsRepository, type PaymentDetail } from './payments.repository';
@@ -67,6 +68,7 @@ export class PaymentsService {
     private readonly transactions: TransactionsRepository,
     private readonly creator: PaymentCreator,
     private readonly lifecycle: PaymentLifecycleService,
+    private readonly submitter: PaymentGatewaySubmitter,
     private readonly idempotency: IdempotencyService,
     private readonly unitOfWork: UnitOfWork,
     private readonly audit: AuditService,
@@ -122,6 +124,31 @@ export class PaymentsService {
               environment: view.environment,
             },
           });
+
+          // Submit payment to gateway after transaction commits (P4-08)
+          // Only for live payments (test payments go to sandbox)
+          if (scope.environment === 'live' && detail.payment.channel === 'mobile_money') {
+            // Extract MSISDN from payment method (may be encrypted)
+            const msisdn = detail.payment.paymentMethod.msisdnEnc ?? null;
+            
+            // Fire and forget - errors handled by submitter service
+            this.submitter
+              .submit({
+                paymentId: detail.payment.id,
+                paymentRef: detail.payment.ref,
+                gatewayExternalId: detail.transaction.gatewayExternalId!,
+                amountMinor: detail.payment.amountMinor,
+                currency: detail.payment.currency,
+                msisdn,
+                merchantId: scope.merchantId,
+                environment: scope.environment,
+              })
+              .catch((error) => {
+                // Log but don't throw - payment is already created
+                // Chase job will pick it up if stuck
+                console.error('Payment gateway submission failed:', error);
+              });
+          }
         },
       };
     });

@@ -20,6 +20,8 @@ import type { PaymentProvider } from '../../modules/payments/domain/payment-even
 import type { RedisCircuitBreaker } from './circuit-breaker';
 import {
   type BalanceAccountType,
+  type CollectionRequest,
+  type CollectionResult,
   type DisbursementRequest,
   type DisbursementResult,
   type GatewayBalance,
@@ -177,6 +179,91 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
     await this.breaker.record(
       req.providerId,
       'disbursement',
+      isSuccess ? 'success' : isAmbiguous ? 'failure' : 'success'
+    );
+
+    switch (reply.status) {
+      case 200:
+      case 201: {
+        const referenceId = text(data?.referenceId);
+        const status = text(data?.status);
+        if (!referenceId || !status || !STATUSES.includes(status)) {
+          return { kind: 'ambiguous', referenceId: referenceId ?? null, httpStatus: reply.status };
+        }
+        return {
+          kind: 'accepted',
+          duplicate: reply.status === 200,
+          referenceId,
+          status: status as GatewayStatus,
+        };
+      }
+      case 400:
+        return { kind: 'rejected', reason: 'validation', httpStatus: 400 };
+      case 409:
+        return { kind: 'rejected', reason: 'conflict', httpStatus: 409 };
+      case 401:
+      case 403:
+        return { kind: 'rejected', reason: 'unauthorized', httpStatus: reply.status };
+      case 404:
+        return { kind: 'rejected', reason: 'provider_unavailable', httpStatus: 404 };
+      case 429:
+        return { kind: 'rate_limited', retryAfterMs: null };
+      default:
+        return {
+          kind: 'ambiguous',
+          referenceId: text(details?.referenceId) ?? null,
+          httpStatus: reply.status,
+        };
+    }
+  }
+
+  async submitCollection(req: CollectionRequest): Promise<CollectionResult> {
+    assertGatewayEligible(req.environment);
+    if (!this.configured() || !isSupportedCurrency(req.currency)) {
+      return { kind: 'rejected', reason: 'provider_unavailable', httpStatus: 0 };
+    }
+
+    // Check circuit breaker before attempting the call
+    const allowed = await this.breaker.allow(req.providerId, 'collection');
+    if (!allowed) {
+      this.logger.warn({ providerId: req.providerId }, 'circuit breaker open for collection');
+      return { kind: 'rejected', reason: 'provider_unavailable', httpStatus: 0 };
+    }
+
+    const body = JSON.stringify({
+      amount: toGatewayAmount(req.amountMinor, req.currency),
+      currency: req.currency,
+      externalId: req.externalId,
+      payer: req.payer,
+      metadata: req.metadata,
+    });
+
+    let reply: Reply;
+    try {
+      reply = await this.callWithRetry(
+        'POST',
+        `/api/v1/payment/${req.providerId}/collection`,
+        body,
+        req.providerId,
+        'collection',
+        req.externalId
+      );
+    } catch (error) {
+      // A timeout or a dropped connection: the gateway may have the operation (spec 3.5).
+      this.logger.warn({ err: toLoggableError(error) }, 'gateway collection call failed');
+      await this.breaker.record(req.providerId, 'collection', 'failure');
+      return { kind: 'ambiguous', referenceId: null, httpStatus: null };
+    }
+
+    const data = record(record(reply.body)?.data);
+    const details = record(record(record(reply.body)?.error)?.details);
+
+    // Determine if this was a success or failure for the circuit breaker
+    const isSuccess = reply.status === 200 || reply.status === 201;
+    const isAmbiguous = reply.status >= 500;
+    await this.breaker.record(
+      req.providerId,
+      'collection',
       isSuccess ? 'success' : isAmbiguous ? 'failure' : 'success'
     );
 
