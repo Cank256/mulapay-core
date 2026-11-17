@@ -1,5 +1,5 @@
 /**
- * Migration safety for Phase 9 (0009 and 0010): applied over a database that already holds data, as the
+ * Migration safety for Phase 9 and later (0009 to 0011): applied over a database that already holds data, as the
  * application role (no superuser), without touching existing rows, grants or triggers, and
  * safe to run twice. `mulapay_upgrade` is prepared by the global setup with migrations 0000 to 0008.
  */
@@ -66,7 +66,8 @@ describe('migrations 0009 and 0010 over existing data', () => {
       migrationsFolder: MIGRATIONS,
       logger: silent,
     });
-    expect(result.applied).toBe(2); // 0009 partitions and retention, 0010 the processing index
+    // 0009 partitions and retention, 0010 the processing index, 0011 API key kinds (P5-D9)
+    expect(result.applied).toBe(3);
 
     expect(await scalar(admin, 'select count(*) as v from core.api_request_logs')).toBe(before);
     expect(await scalar(admin, `select count(*) as v from core.idempotency_keys`)).toBe('1');

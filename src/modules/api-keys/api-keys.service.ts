@@ -32,13 +32,18 @@ import { toLoggableError } from '../../common/logging/redaction';
 import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { merchantAllowsLiveKeys } from '../merchants/domain/merchant-lifecycle';
 import { MerchantsRepository } from '../merchants/merchants.repository';
-import { generateApiKey } from './api-key-format';
+import { generateApiKey, type ApiKeyKind } from './api-key-format';
 import { toApiKeyView, type ApiKeyView, type CreatedApiKeyView } from './api-key.views';
 import { ApiKeysRepository, type ApiKeyRow } from './api-keys.repository';
 
 export const MAX_ROLL_GRACE_HOURS = 168;
 
 export interface CreateApiKeyInput {
+  /**
+   * `secret` today. A `publishable` key is refused until task P5-K4 decides what one may do:
+   * no route is client-safe, so issuing one would hand out a credential that opens nothing.
+   */
+  readonly type?: ApiKeyKind;
   readonly name: string;
   readonly environment: Environment;
   readonly scopes: readonly ApiKeyScope[];
@@ -94,6 +99,19 @@ export class ApiKeysService {
     actor: { userId: string }
   ): Promise<CreatedApiKeyView> {
     const now = this.clock.now();
+    if (input.type === 'publishable') {
+      throw new AppError('VALIDATION_FAILED', {
+        details: {
+          fields: [
+            {
+              path: 'type',
+              code: 'invalid_value',
+              message: 'publishable keys are not available yet',
+            },
+          ],
+        },
+      });
+    }
     if (input.expiresAt && input.expiresAt.getTime() <= now.getTime()) {
       throw new AppError('VALIDATION_FAILED', {
         details: {
@@ -230,7 +248,7 @@ export class ApiKeysService {
     rolledFromId: string | null
   ) {
     const now = this.clock.now();
-    const generated = generateApiKey(input.environment);
+    const generated = generateApiKey(input.environment, 'secret');
     const ref = publicId('apiKey', now);
     const scopes = [...new Set(input.scopes)];
     const signingRequired =

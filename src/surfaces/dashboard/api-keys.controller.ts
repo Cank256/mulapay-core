@@ -16,6 +16,8 @@ import { cidrSchema, idParamSchema, nameSchema } from '../shared/schemas';
 
 class CreateApiKeyDto extends createZodDto(
   z.strictObject({
+    /** Only `secret` until P5-K4 decides what a publishable key may do. */
+    type: z.literal('secret').default('secret'),
     name: nameSchema.max(100),
     environment: z.enum(['test', 'live']),
     scopes: z.array(z.enum(API_KEY_SCOPES)).min(1).max(API_KEY_SCOPES.length),

@@ -35,7 +35,8 @@ export interface CachedApiKey {
   readonly keyId: string;
   readonly name: string;
   readonly environment: Environment;
-  readonly secretHash: string;
+  /** Null for a publishable key (no secret part). */
+  readonly secretHash: string | null;
   readonly scopes: readonly string[];
   readonly ipAllowlist: readonly string[] | null;
   readonly expiresAt: string | null;
@@ -58,7 +59,7 @@ export interface KeyLookupSource {
     readonly keyId: string;
     readonly name: string;
     readonly environment: string;
-    readonly secretHash: string;
+    readonly secretHash: string | null;
     readonly scopes: string[];
     readonly ipAllowlist: string[] | null;
     readonly expiresAt: Date | null;

@@ -594,7 +594,7 @@ describe('API request logs', () => {
       method: 'GET',
       url: '/v1/payments',
       remoteAddress: '10.9.9.9',
-      headers: { authorization: `Bearer mp_test_${'a'.repeat(16)}_${'b'.repeat(64)}` },
+      headers: { authorization: `Bearer sk_test_${'a'.repeat(16)}_${'b'.repeat(64)}` },
     });
     expect(res.statusCode).toBe(401);
     await new Promise((resolve) => setTimeout(resolve, 100));

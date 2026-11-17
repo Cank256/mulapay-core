@@ -10,8 +10,9 @@ never from a web page or an app.
 
 ## Environments and keys
 
-A key is `mp_{live|test}_{keyId}_{secret}`: `keyId` is 16 characters, `secret` is 32 random
-bytes in hex. A **test** key works in the sandbox and never moves money; a **live** key needs
+A secret key is `sk_{live|test}_{keyId}_{secret}`: `keyId` is 16 characters, `secret` is 32 random
+bytes in hex. A publishable key is `pk_{live|test}_{keyId}`; none can be issued yet and none opens a route. These are
+MulaPay keys, not Stripe keys, even though the prefixes match. A **test** key works in the sandbox and never moves money; a **live** key needs
 an active merchant. Test and live data are separate: a test key cannot see live data and the
 other way round.
 

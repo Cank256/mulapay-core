@@ -1,8 +1,10 @@
 /**
  * API keys (spec section 5.2 developer platform and 6.11).
  *
- * The key is `mp_{live|test}_{keyId}_{secret}`. Only `key_id` and the SHA-256 of the
- * secret are stored; the full key is returned once, at creation.
+ * A secret key is `sk_{live|test}_{keyId}_{secret}`: only `key_id` and the SHA-256 of the secret
+ * are stored, and the full key is returned once. A publishable key is `pk_{live|test}_{keyId}`:
+ * it has no secret, so `secret_hash` is null and it can be shown again (P5-D9). The retired
+ * `mp_` prefix is still parsed for existing development keys (see api-key-format.ts).
  */
 import { sql } from 'drizzle-orm';
 import { boolean, check, cidr, index, integer, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
@@ -21,7 +23,12 @@ export const apiKeys = core.table(
       .references(() => merchants.id),
     environment: text('environment').notNull(),
     keyId: text('key_id').notNull(),
-    secretHash: text('secret_hash').notNull(),
+    /** `secret` or `publishable`. A publishable key carries no secret and no scopes beyond a client-safe set. */
+    kind: text('kind').notNull().default('secret'),
+    /** Null exactly when `kind = 'publishable'`. */
+    secretHash: text('secret_hash'),
+    /** Browser origins a publishable key may be used from; an IP allowlist means nothing there. */
+    allowedOrigins: text('allowed_origins').array(),
     name: text('name').notNull(),
     scopes: text('scopes').array().notNull(),
     ipAllowlist: cidr('ip_allowlist').array(),
@@ -50,6 +57,19 @@ export const apiKeys = core.table(
     check('api_keys_environment_check', sql`${t.environment} in ('test', 'live')`),
     check('api_keys_key_id_format_check', sql`${t.keyId} ~ '^[a-z0-9]{16}$'`),
     check('api_keys_secret_hash_format_check', sql`${t.secretHash} ~ '^[0-9a-f]{64}$'`),
+    check('api_keys_kind_check', sql`${t.kind} in ('secret', 'publishable')`),
+    check(
+      'api_keys_secret_presence_check',
+      sql`(${t.kind} = 'secret') = (${t.secretHash} is not null)`
+    ),
+    check(
+      'api_keys_publishable_unsigned_check',
+      sql`${t.kind} = 'secret' or (${t.signingSecretEnc} is null and not ${t.signingRequired})`
+    ),
+    check(
+      'api_keys_allowed_origins_check',
+      sql`${t.kind} = 'publishable' or ${t.allowedOrigins} is null`
+    ),
     check('api_keys_scopes_nonempty_check', sql`cardinality(${t.scopes}) > 0`),
     check(
       'api_keys_signing_check',

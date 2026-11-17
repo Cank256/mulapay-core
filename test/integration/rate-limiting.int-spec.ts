@@ -343,7 +343,7 @@ describe('failed authentications (per client)', () => {
     rawRequest(strict, {
       method: 'GET',
       url: '/v1/ping',
-      key: `mp_test_${'a'.repeat(16)}_${'b'.repeat(64)}`,
+      key: `sk_test_${'a'.repeat(16)}_${'b'.repeat(64)}`,
       remoteAddress: ip,
       headers,
     });

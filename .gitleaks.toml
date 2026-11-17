@@ -1,0 +1,30 @@
+# Secret scanning rules for MulaPay (P5-K7). Used with gitleaks (`gitleaks detect --config .gitleaks.toml`).
+# The default rules still apply: this file extends them.
+title = "MulaPay"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "mulapay-secret-api-key"
+description = "MulaPay secret API key (sk_live_ or sk_test_, 16-character key id, 64 hex secret)"
+regex = '''\bsk_(?:live|test)_[a-z0-9]{16}_[0-9a-f]{64}\b'''
+keywords = ["sk_live_", "sk_test_"]
+
+[[rules]]
+id = "mulapay-legacy-api-key"
+description = "Retired MulaPay API key form (mp_live_ or mp_test_)"
+regex = '''\bmp_(?:live|test)_[a-z0-9]{16}_[0-9a-f]{64}\b'''
+keywords = ["mp_live_", "mp_test_"]
+
+[[rules]]
+id = "mulapay-signing-secret"
+description = "MulaPay request signing secret"
+regex = '''\bmpsig_[0-9a-f]{64}\b'''
+keywords = ["mpsig_"]
+
+[[rules]]
+id = "mulapay-webhook-secret"
+description = "MulaPay webhook signing secret"
+regex = '''\bwhsec_[0-9a-f]{64}\b'''
+keywords = ["whsec_"]

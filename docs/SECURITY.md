@@ -8,7 +8,7 @@ sections 6.11, 8.3, 8.4, 8.5 and 11.
 
 | Surface         | Credential                                               | Accepted by                                  |
 | --------------- | -------------------------------------------------------- | -------------------------------------------- |
-| `/v1`           | `Authorization: Bearer mp_{live\|test}_{keyId}_{secret}` | `DbApiKeyAuthenticator`                      |
+| `/v1`           | `Authorization: Bearer sk_{live\|test}_{keyId}_{secret}` | `DbApiKeyAuthenticator`                      |
 | `/dashboard/v1` | `Authorization: Bearer <JWT aud=dashboard>`              | `AccessTokenService` + `DbPrincipalResolver` |
 | `/admin/v1`     | `Authorization: Bearer <JWT aud=admin, mfa=true>`        | same, plus the MFA claim check               |
 
@@ -132,7 +132,7 @@ merchant (unique index).
 
 ## API keys
 
-- `mp_{live|test}_{keyId}_{secret}`: `keyId` 16 chars `[a-z0-9]`, secret 32 random bytes
+- `sk_{live|test}_{keyId}_{secret}` (and the read-only legacy `mp_` form): `keyId` 16 chars `[a-z0-9]`, secret 32 random bytes
   (hex). Only `SHA-256(secret)` is stored; the full key is returned once, by create or roll.
 - Authentication (`DbApiKeyAuthenticator`): parse, find by `key_id` (Redis, then Postgres),
   `timingSafeEqual` on the hashes, refuse a prefix environment that differs from the stored

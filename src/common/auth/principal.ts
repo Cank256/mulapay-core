@@ -71,7 +71,7 @@ export interface PrincipalResolver {
   resolve(claims: AccessTokenClaims): Promise<UserPrincipal | null>;
 }
 
-/** Authenticates a raw `mp_...` key; null if it is unknown, revoked, expired or not allowed. */
+/** Authenticates a raw `sk_...` secret key; null if it is unknown, revoked, expired or not allowed. */
 export interface ApiKeyAuthenticator {
   authenticate(rawKey: string, clientIp: string): Promise<ApiKeyPrincipal | null>;
 }

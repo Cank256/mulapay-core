@@ -1,7 +1,7 @@
 /**
  * API key authentication for the `/v1` surface (spec 8.3, API key path).
  *
- * Parse `mp_{env}_{keyId}_{secret}`, find the key by `keyId` (Redis cache, then Postgres),
+ * Parse `sk_{env}_{keyId}_{secret}` (or the legacy `mp_` form), find the key by `keyId` (Redis cache, then Postgres),
  * compare SHA-256 of the secret with `crypto.timingSafeEqual`, and refuse revoked or
  * expired keys, keys whose prefix environment differs from the stored one, and clients
  * outside the key's IP allowlist. The client IP is `request.ip`, which Fastify derives from
@@ -45,8 +45,12 @@ export class DbApiKeyAuthenticator implements ApiKeyAuthenticator {
   async authenticate(rawKey: string, clientIp: string): Promise<ApiKeyPrincipal | null> {
     const parsed = parseApiKey(rawKey);
     if (!parsed) return null;
+    // A publishable key authenticates no route today: none is client-safe (P5-K4, P5-K5). It is
+    // refused exactly like a wrong key, so the response does not say which kind it was.
+    if (parsed.kind !== 'secret') return null;
     const key = await this.load(parsed.keyId);
-    if (!key) return null;
+    // A secret-shaped key whose id belongs to a publishable key has no hash to match.
+    if (!key?.secretHash) return null;
     const presented = Buffer.from(sha256Hex(parsed.secret), 'hex');
     const stored = Buffer.from(key.secretHash, 'hex');
     if (presented.length !== stored.length || !timingSafeEqual(presented, stored)) return null;

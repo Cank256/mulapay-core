@@ -319,7 +319,7 @@ describe('API keys', () => {
     });
     expect(res.statusCode).toBe(201);
     const { key, id, keyPrefix } = res.json().data;
-    expect(key).toMatch(/^mp_test_[a-z0-9]{16}_[0-9a-f]{64}$/);
+    expect(key).toMatch(/^sk_test_[a-z0-9]{16}_[0-9a-f]{64}$/);
     expect(key.startsWith(keyPrefix)).toBe(true);
     const listed = JSON.stringify((await owner.client.get('/dashboard/v1/api-keys')).json().data);
     expect(listed).toContain(id);
@@ -347,8 +347,8 @@ describe('API keys', () => {
     const wrongSecret = key.slice(0, -1) + (key.endsWith('0') ? '1' : '0');
     for (const token of [
       wrongSecret,
-      key.replace('mp_test_', 'mp_live_'),
-      'mp_test_aaaaaaaaaaaaaaaa_' + '0'.repeat(64),
+      key.replace('sk_test_', 'sk_live_'),
+      'sk_test_aaaaaaaaaaaaaaaa_' + '0'.repeat(64),
       owner.client.token ?? '',
     ]) {
       expect((await client.get('/v1/ping', { authorization: `Bearer ${token}` })).statusCode).toBe(
@@ -361,6 +361,37 @@ describe('API keys', () => {
     ).toBe(401);
   });
 
+  it('refuses to issue a publishable key until P5-K4 decides what one may do', async () => {
+    const res = await owner.client.post('/dashboard/v1/api-keys', {
+      type: 'publishable',
+      name: 'browser',
+      environment: 'test',
+      scopes: ['payments:read'],
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_FAILED');
+    const { Client: PgClient } = await import('pg');
+    const pg = new PgClient({ connectionString: inject('databaseUrls').superuser });
+    await pg.connect();
+    try {
+      const rows = await pg.query(
+        "select count(*)::int as n from core.api_keys where kind = 'publishable' and merchant_id = (select id from core.merchants where ref = $1)",
+        [owner.merchantId]
+      );
+      expect(rows.rows[0]?.n).toBe(0);
+    } finally {
+      await pg.end();
+    }
+    // The default type is a secret key, and the listing says so.
+    const created = await owner.client.post('/dashboard/v1/api-keys', {
+      type: 'secret',
+      name: 'typed',
+      environment: 'test',
+      scopes: ['payments:read'],
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().data.key).toMatch(/^sk_test_/);
+  });
   it('needs an active merchant for live keys', async () => {
     const live = { name: 'live', environment: 'live', scopes: ['payments:read'] };
     expect((await owner.client.post('/dashboard/v1/api-keys', live)).json().error.code).toBe(
@@ -369,7 +400,7 @@ describe('API keys', () => {
     const fresh = await registerMerchantUser(ctx, 'active');
     await activateMerchantDirectly(inject('databaseUrls').superuser, fresh.merchantId);
     const created = await fresh.client.post('/dashboard/v1/api-keys', live);
-    expect(created.json().data.key).toMatch(/^mp_live_/);
+    expect(created.json().data.key).toMatch(/^sk_live_/);
   });
 
   it('revokes immediately and refuses a second revoke', async () => {

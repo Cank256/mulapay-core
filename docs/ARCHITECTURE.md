@@ -488,8 +488,11 @@ easy to change.
   allowlist, and `GET /v1/ping`. Still Phase 5: the Redis key cache with negative caching
   and pub/sub eviction, the batched `last_used_at` flush, request signing, rate limits
   (`rate_limit_rpm` is not accepted until it is enforced), and scope checks on real routes.
-- **Key prefix.** Spec 4.2 says `sk_`; sections 2 and 6.11 say `mp_{live|test}_{keyId}_{secret}`.
-  The `mp_` format is used.
+- **Key prefix. Decided (P5-D9).** Spec 4.2 said `sk_`; sections 2, 6.11 and 8.3 said `mp_`. The owner
+  chose Stripe-style keys: secret `sk_{live|test}_{keyId}_{secret}` and publishable `pk_{live|test}_{keyId}`.
+  Migration 0011 adds `api_keys.kind`, a nullable `secret_hash` and `allowed_origins`. Publishable keys cannot be
+  issued until P5-K4 decides what one may do, and the authenticator refuses them on every route. The `mp_` form is
+  still parsed (never issued) until P5-K1 confirms no such key exists outside development.
 - **Not built (they need email delivery, Phase 8):** `forgot-password`, `reset-password`,
   `verify-email`. Until then registration does not verify the email,
   `EMAIL_ALREADY_REGISTERED` reveals that an email is registered, and an invitation's

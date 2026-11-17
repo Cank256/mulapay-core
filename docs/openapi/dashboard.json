@@ -12126,6 +12126,13 @@
       "CreateApiKeyDto": {
         "type": "object",
         "properties": {
+          "type": {
+            "default": "secret",
+            "type": "string",
+            "enum": [
+              "secret"
+            ]
+          },
           "name": {
             "type": "string",
             "minLength": 1,

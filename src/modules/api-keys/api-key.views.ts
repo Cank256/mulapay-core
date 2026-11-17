@@ -1,6 +1,6 @@
 /** API key response shapes. The secret hash, ciphertexts and internal ids are never exposed. */
 import { z } from 'zod';
-import { keyPrefix } from './api-key-format';
+import { keyPrefix, type ApiKeyKind } from './api-key-format';
 import type { ApiKeyRow } from './api-keys.repository';
 
 export const apiKeySchema = z.object({
@@ -38,7 +38,7 @@ export function toApiKeyView(row: ApiKeyRow, now: Date): ApiKeyView {
     id: row.ref,
     name: row.name,
     environment: row.environment as ApiKeyView['environment'],
-    keyPrefix: keyPrefix(row.environment, row.keyId),
+    keyPrefix: keyPrefix(row.kind as ApiKeyKind, row.environment, row.keyId),
     scopes: row.scopes,
     ipAllowlist: row.ipAllowlist ?? [],
     status,

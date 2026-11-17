@@ -388,18 +388,28 @@ removed; if any key exists outside development, add a dual-format parse window f
 - [ ] **P5-K1 VERIFY. Existing keys.** Query `core.api_keys` in every environment (dev, staging, any shared
       database). _Done when:_ you have the count per environment. If zero outside development, drop `mp_` with no
       compatibility parse; otherwise keep parsing `mp_` read-only until each key is rolled, then remove it.
-- [ ] **P5-K2 BUILD. Format and parsing.** `src/modules/api-keys/api-key-format.ts`: replace `KEY_PATTERN` with one
+      _Result:_ Cannot be answered from this checkout: it needs a query of core.api_keys in each environment.
+      Until it is, the mp_ prefix is still parsed (read only) so no existing key breaks. Remove LEGACY_PREFIX in
+      api-key-format.ts and the legacy test once the count is zero outside development.
+- [x] **P5-K2 BUILD. Format and parsing.** `src/modules/api-keys/api-key-format.ts`: replace `KEY_PATTERN` with one
       accepting `sk_{live|test}_{16}_{64 hex}` and `pk_{live|test}_{16}`; return `kind` (`secret` or `publishable`)
       with `environment` and `keyId`; `generateApiKey(kind, environment)`; `keyPrefix` returns `sk_test_{keyId}` or
       `pk_test_{keyId}`. Update `api-key-authenticator.service.ts`, `api-keys.service.ts`, `api-key.views.ts`, the
       OpenAPI `bearerFormat` in `src/common/openapi/public-api-document.ts`, and regenerate `docs/openapi/*.json`.
       The `mp_refresh` and `mp_csrf` cookie names are unrelated and stay.
-- [ ] **P5-K3 BUILD. Migration.** Add `api_keys.kind text not null default 'secret'` with a check
+      _Result:_ api-key-format.ts parses sk_ and pk_ (and the legacy mp_ read-only), returns kind, and generates
+      sk_ keys; the authenticator, views and OpenAPI bearerFormat follow; docs/openapi regenerated. The mp_ prefix
+      is still parsed: removing it needs the K1 answer.
+- [x] **P5-K3 BUILD. Migration.** Add `api_keys.kind text not null default 'secret'` with a check
       `kind in ('secret','publishable')`; make `secret_hash` nullable with a check that it is null exactly when
       `kind = 'publishable'` (keep the 64-hex format check when present); keep the `key_id` format check. Publishable
       keys also need an origin allowlist (`allowed_origins text[]`), because an IP allowlist is meaningless for a
       browser. Signing (`signing_secret_enc`, `signing_required`) must be null/false for `publishable`. Use
       `npm run db:generate` then `npm run db:migrate`.
+      _Result:_ Migration 0011_api_key_kinds: kind (default secret) with a check, secret_hash nullable exactly
+      when kind = publishable, allowed_origins only for publishable, no signing on a publishable key. Constraint
+      tests in api-key-security.int-spec.ts. Created with db:generate and applied by the integration global setup
+      and migration-safety.int-spec.ts.
 - [ ] **P5-K4 DECIDE. What a publishable key may do.** No `/v1` route is client-safe today, and the spec lists none.
       Checkout sessions already carry a `client_secret_hash`, which suggests the intended use: a browser or app
       completes or reads a checkout session with the publishable key plus that session's client secret. Proposed
@@ -408,6 +418,8 @@ removed; if any key exists outside development, add a dual-format parse window f
       fixed client-safe set; it is rate limited per IP and per key more tightly than a secret key; it needs a matching
       `Origin` for browser calls. Decide the exact route list. **Until this is answered, block creation of
       `publishable` keys** (the migration can ship; the issue route rejects the kind).
+      _Result:_ Not decided. The DTO accepts only type 'secret' and the service refuses 'publishable' (tested),
+      and the authenticator refuses pk_ keys on every route.
 - [ ] **P5-K5 BUILD. Enforcement and tests.** A `@PublishableKeyAllowed()` decorator on client-safe routes; the
       authenticator rejects a `pk_` key on every other route with the same 401 as a wrong key; a test walks every
       `/v1` route and fails if a route allowing `pk_` also allows a write that moves money. Update the tests that
@@ -415,15 +427,26 @@ removed; if any key exists outside development, add a dual-format parse window f
       `team-and-api-keys.int-spec.ts`, `rate-limiting.int-spec.ts`, `developer-api.int-spec.ts`. Keep the assertions:
       malformed, wrong environment, unknown key id, revoked, expired. Add: a `pk_` key presented where an `sk_` key is
       required, and a `sk_test_` key against live data.
-- [ ] **P5-K6 DOC. Amend the spec and the docs.** Edit `CORE_API_BUILD_PROMPT.md` at lines 89, 1011 and 1525 (and
+      _Result:_ Partly done. The authenticator refuses a pk_ key with the same 401 as a wrong key, tested in api-
+      key-security.int-spec.ts together with the pk_ form of a real key id; the tests that hard-coded mp_ now use
+      sk_. The @PublishableKeyAllowed decorator and the route-walking test wait for P5-K4 (no route is client-
+      safe).
+- [x] **P5-K6 DOC. Amend the spec and the docs.** Edit `CORE_API_BUILD_PROMPT.md` at lines 89, 1011 and 1525 (and
       the schema note for `api_keys`) to the new formats, with a dated note that the owner decided it; update
       `API_PUBLIC.md`, `SECURITY.md`, `README.md`, the dashboard key-creation route and its OpenAPI entry (a `type`
       of `secret` or `publishable`). Add `sk_` and `pk_` patterns to log redaction (P9-SEC-LOG).
+      _Result:_ Spec lines 89 (now the table row), the Keys paragraph of 6.11, 8.3 and the api_keys schema note
+      amended with a dated note; API_PUBLIC.md, SECURITY.md and ARCHITECTURE.md updated; README has no key format
+      text. The dashboard create-key OpenAPI entry carries type. Log redaction already covered sk_ (P9-SEC-LOG);
+      pk_ is an identifier and is deliberately not redacted.
 - [ ] **P5-K7 VERIFY. Secret scanning and tool confusion.** `sk_live_` and `pk_live_` are also Stripe's literal
       prefixes. Stripe's scanner pattern expects 24 or more alphanumeric characters straight after the prefix; our
       keys have 16 then an underscore, so they should not match. Confirm with a scanner (gitleaks or GitHub secret
       scanning) in both directions, and register a MulaPay-specific pattern (`sk_(live|test)_[a-z0-9]{16}_[0-9a-f]{64}`)
       so leaked keys are caught. Tell merchants in `API_PUBLIC.md` that these keys are not Stripe keys.
+      _Result:_ Partly done. .gitleaks.toml registers the MulaPay patterns (sk_, legacy mp_, mpsig_, whsec_).
+      Running gitleaks and GitHub secret scanning in both directions still has to be done where those tools run;
+      API_PUBLIC.md now says these are not Stripe keys.
 
 ### Review and process
 

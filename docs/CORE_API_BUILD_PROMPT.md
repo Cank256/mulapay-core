@@ -86,7 +86,7 @@ building rather than quietly substituting something else.
 | Queues | BullMQ, workers in a **separate process** from the API |
 | Money in the ledger | `bigint` minor units. Decimal strings only at the API edge |
 | Decimal math | `decimal.js` at conversion boundaries only. Never `number` for money |
-| Merchant auth | API key: `mp_{live\|test}_{keyId}_{secret}`, SHA-256 of the secret stored |
+| Merchant auth | API key: secret `sk_{live\|test}_{keyId}_{secret}` (SHA-256 of the secret stored) or publishable `pk_{live\|test}_{keyId}` (amended, P5-D9) |
 | Dashboard auth | Own JWT: Ed25519 access token (10 min) plus rotating refresh cookie |
 | Password hashing | `argon2id` (`argon2` package) |
 | MFA | TOTP (`otplib`), mandatory for all admin staff and for payout approval |
@@ -595,7 +595,9 @@ gateway_requests     transaction_id, provider, operation_type, external_id,
 **Developer platform**
 
 ```
-api_keys             ref, merchant_id, environment, key_id unique, secret_hash, name,
+api_keys             ref, merchant_id, environment, key_id unique,
+                     kind (secret|publishable), secret_hash (null for publishable),
+                     allowed_origins text[] (publishable only), name,
                      scopes text[], ip_allowlist cidr[], rate_limit_rpm,
                      last_used_at, expires_at, revoked_at, revoked_by, created_by
 webhook_endpoints    ref, merchant_id, environment, url, description,
@@ -1008,13 +1010,15 @@ admin-driven except `draft -> pending_kyc` (merchant submits KYC) and the automa
 
 ### 6.11 Developer API, API keys, webhooks
 
-**Keys.** `mp_{live|test}_{keyId}_{secret}`. `keyId` is 16 chars and indexed; `secret` is
+**Keys.** Secret `sk_{live|test}_{keyId}_{secret}` and publishable `pk_{live|test}_{keyId}`
+(amended, P5-D9; see the note at the end of this subsection). `keyId` is 16 chars and indexed; `secret` is
 32 random bytes, and only its SHA-256 is stored. The full key is shown once, at creation,
 and never again. Rotation creates a new key and schedules the old one for revocation after
 a grace period the merchant chooses (0 to 7 days). Scopes gate route groups
 (`payments:read`, `payments:write`, `payouts:write`, `balances:read`, ...). An optional
 `ip_allowlist` is checked against the client IP derived from trusted proxies only.
 
+_Amended 2026-11-17 on the owner's decision (P5-D9): the spec contradicted itself (`mp_` at 2, 6.11 and 8.3; `sk_` at 4.2). Keys are now Stripe-style, with the same 16-character `keyId`, so the Redis lookup `apikey:{keyId}`, the unique index and the timing-safe comparison are unchanged. A publishable key has no secret part, is stored as `kind = 'publishable'` with a null `secret_hash` and an origin allowlist, can be shown again, and may use only routes marked client-safe (none yet; P5-K4). These keys are not Stripe keys. The earlier `mp_` form is parsed read-only until P5-K1 confirms no such key exists outside development._
 **Request signing.** Optional per key, mandatory for `payouts:write` on live keys:
 
 ```
@@ -1522,7 +1526,7 @@ or the business key, never from a timestamp or a random value.
 
 ### 8.3 Authentication
 
-**API key path (hot).** Parse `mp_{env}_{keyId}_{secret}`. Look up by `keyId` in Redis
+**API key path (hot).** Parse `sk_{env}_{keyId}_{secret}` (a `pk_` key is refused on every route that is not client-safe). Look up by `keyId` in Redis
 (`apikey:{keyId}`, TTL 60s). On a miss, read the database and cache. Compare the stored
 SHA-256 against `sha256(secret)` with `crypto.timingSafeEqual`. Negative results are
 cached for 30 seconds against enumeration. `last_used_at` is written to a Redis set and

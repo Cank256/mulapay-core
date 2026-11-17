@@ -3,7 +3,7 @@
  * keys, the Redis cache and its invalidation, rotation, scopes on every route, IP allowlists
  * and trusted-proxy handling.
  */
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { ModulesContainer } from '@nestjs/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -36,10 +36,74 @@ afterAll(async () => {
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
-describe('key format and secrecy', () => {
-  it('issues mp_{env}_{keyId}_{secret}, shows it once, and stores only the SHA-256 of the secret', async () => {
+describe('key kinds are enforced by the database (P5-D9)', () => {
+  const insertRow = async (over: Record<string, string>) => {
     const issued = await issueKey(ctx, merchant.owner, { environment: 'test' });
-    const match = /^mp_test_([a-z0-9]{16})_([0-9a-f]{64})$/.exec(issued.key);
+    const [row] = await ctx.sql('select merchant_id from core.api_keys where ref = $1', [
+      issued.ref,
+    ]);
+    const id = randomUUID();
+    const values: Record<string, string> = {
+      id: `'${id}'`,
+      ref: `'key_${id}'`,
+      merchant_id: `'${String(row?.merchant_id)}'`,
+      environment: `'test'`,
+      key_id: `'${id.replace(/-/g, '').slice(0, 16)}'`,
+      kind: `'secret'`,
+      secret_hash: `'${'a'.repeat(64)}'`,
+      name: `'constraint probe'`,
+      scopes: `array['payments:read']`,
+      ...over,
+    };
+    return ctx.sql(
+      `insert into core.api_keys (${Object.keys(values).join(', ')}) values (${Object.values(values).join(', ')})`
+    );
+  };
+  it('accepts a secret key with a hash and a publishable key without one', async () => {
+    await insertRow({});
+    await insertRow({
+      kind: `'publishable'`,
+      secret_hash: 'null',
+      allowed_origins: `array['https://shop.example.com']`,
+    });
+  });
+  it.each([
+    ['a secret key without a hash', { secret_hash: 'null' }, 'api_keys_secret_presence_check'],
+    ['a publishable key with a hash', { kind: `'publishable'` }, 'api_keys_secret_presence_check'],
+    ['an unknown kind', { kind: `'restricted'` }, 'api_keys_kind_check'],
+    [
+      'a publishable key that must be signed',
+      {
+        kind: `'publishable'`,
+        secret_hash: 'null',
+        signing_required: 'true',
+        signing_secret_enc: `'x'`,
+      },
+      'api_keys_publishable_unsigned_check',
+    ],
+    [
+      'a publishable key holding a signing secret',
+      { kind: `'publishable'`, secret_hash: 'null', signing_secret_enc: `'x'` },
+      'api_keys_publishable_unsigned_check',
+    ],
+    [
+      'a secret key with an origin allowlist',
+      { allowed_origins: `array['https://a.example.com']` },
+      'api_keys_allowed_origins_check',
+    ],
+    [
+      'a secret hash that is not 64 hex characters',
+      { secret_hash: `'nothex'` },
+      'api_keys_secret_hash_format_check',
+    ],
+  ])('refuses %s', async (_label, over, constraint) => {
+    await expect(insertRow(over)).rejects.toThrow(constraint);
+  });
+});
+describe('key format and secrecy', () => {
+  it('issues sk_{env}_{keyId}_{secret}, shows it once, and stores only the SHA-256 of the secret', async () => {
+    const issued = await issueKey(ctx, merchant.owner, { environment: 'test' });
+    const match = /^sk_test_([a-z0-9]{16})_([0-9a-f]{64})$/.exec(issued.key);
     expect(match).not.toBeNull();
     const [, keyId, secret] = match as RegExpExecArray;
     const rows = await ctx.sql(
@@ -93,7 +157,7 @@ describe('invalid keys', () => {
     ['a lower-case bearer scheme', (key) => ({ authorization: `bearer ${key}` })],
     ['an empty token', () => ({ authorization: 'Bearer ' })],
     ['a token with spaces', (key) => ({ authorization: `Bearer ${key} extra` })],
-    ['a malformed key', () => ({ authorization: 'Bearer mp_test_short_secret' })],
+    ['a malformed key', () => ({ authorization: 'Bearer sk_test_short_secret' })],
     ['a key with a non-hex secret', (key) => ({ authorization: `Bearer ${key.slice(0, -4)}zzzz` })],
     [
       'an unknown key id',
@@ -105,9 +169,20 @@ describe('invalid keys', () => {
     ],
     [
       'a live prefix on a test key',
-      (key) => ({ authorization: `Bearer ${key.replace('mp_test_', 'mp_live_')}` }),
+      (key) => ({ authorization: `Bearer ${key.replace('sk_test_', 'sk_live_')}` }),
     ],
     ['a dashboard JWT', () => ({ authorization: `Bearer ${merchant.owner.client.token}` })],
+    // P5-D9/P5-K5: no route is client-safe yet, so the publishable form of a real key id opens nothing.
+    [
+      'the publishable form of a real key id',
+      (key) => ({
+        authorization: `Bearer ${key.replace(/^sk_(test|live)_([a-z0-9]{16}).*$/, 'pk_$1_$2')}`,
+      }),
+    ],
+    [
+      'a publishable key with a secret part appended',
+      (key) => ({ authorization: `Bearer ${key.replace(/^sk_/, 'pk_')}` }),
+    ],
   ];
   it.each(cases)('answers 401 UNAUTHORIZED to %s', async (_label, headers) => {
     const issued = await valid();
@@ -123,12 +198,23 @@ describe('invalid keys', () => {
     expect(res.json().error).not.toHaveProperty('details');
   });
 
+  it('keeps accepting the retired mp_ prefix for an issued key until P5-K1 removes it', async () => {
+    const issued = await issueKey(ctx, merchant.owner, { environment: 'test' });
+    const legacy = issued.key.replace(/^sk_/, 'mp_');
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: '/v1/ping',
+      remoteAddress: '10.2.2.4',
+      headers: { authorization: `Bearer ${legacy}` },
+    });
+    expect(res.statusCode).toBe(200);
+  });
   it('remembers an unknown key id for 30 seconds so guesses do not reach Postgres', async () => {
     const res = await ctx.app.inject({
       method: 'GET',
       url: '/v1/ping',
       remoteAddress: '10.2.2.3',
-      headers: { authorization: `Bearer mp_test_neverissued00001_${'a'.repeat(64)}` },
+      headers: { authorization: `Bearer sk_test_neverissued00001_${'a'.repeat(64)}` },
     });
     expect(res.statusCode).toBe(401);
     const redis = ctx.app.get(ApiKeyCache, { strict: false });

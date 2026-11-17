@@ -61,7 +61,7 @@ const DESCRIPTION = `
 Server-to-server API for merchants. Browsers are not supported and no CORS origin is allowed.
 
 ## Authentication
-Send a secret API key as \`Authorization: Bearer mp_{live|test}_{keyId}_{secret}\`. A \`test\` key
+Send a secret API key as \`Authorization: Bearer sk_{live|test}_{keyId}_{secret}\`. A \`test\` key
 works in the sandbox and never moves money; a \`live\` key moves real money. Each key carries
 scopes (for example \`payments:write\`); a route needs its scope, and a key without it gets 403.
 A key may have an IP allowlist; a request from another address is refused with 401.
@@ -259,7 +259,7 @@ export function enrichPublicDocument(doc: OpenAPIObject, merchantEventSchema: Js
     bearer: {
       type: 'http',
       scheme: 'bearer',
-      bearerFormat: 'mp_{live|test}_{keyId}_{secret}',
+      bearerFormat: 'sk_{live|test}_{keyId}_{secret}',
       description: 'A secret API key. Test keys use the sandbox; live keys move money.',
     },
   };
