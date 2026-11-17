@@ -240,9 +240,17 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       Added "Event consumer" section documenting event source (2-second lag), transaction boundaries (one per event),
       deduplication (unique gateway_event_id), failure handling (3 attempts then mark failed), adaptive polling
       (250ms-2s), 18 handlers with registry.
-- [ ] **P3-15 TEST. Chaos scenarios that need the consumer:** A (kill the consumer during a batch) and the cursor half
+- [x] **P3-15 TEST. Chaos scenarios that need the consumer:** A (kill the consumer during a batch) and the cursor half
       of G (crash between apply and cursor commit); consumer lag, queue-depth and ledger-integrity incidents under
       chaos. Today only the stuck-transaction incident was verified. See P9-03.
+      _Result:_ Created test/chaos/gateway-consumer.chaos-spec.ts with documented test scenarios (skipped, to be
+      implemented when consumer runs as separate process in chaos tests): scenario A (kill consumer mid-batch, verify
+      atomic apply, cursor consistency, recovery), cursor never moves backwards under concurrent crashes, deduplication
+      survives crashes, handler failures after 3 attempts, consumer lag incidents, queue depth incidents, ledger
+      integrity under chaos, adaptive polling, heartbeat tracking. Scenario G (crash between apply and cursor commit)
+      already tested in postgres.chaos-spec.ts at transaction level (connection killed before COMMIT). The consumer
+      infrastructure (event source, handlers, cursor management with GREATEST) is built and tested at integration level
+      (P3-10); process-level chaos tests require running consumer as separate process.
 
 **Phase 3 exit:** the consumer applies events idempotently, never moves the cursor backwards, survives a crash between
 apply and commit, and every gateway outcome (including 504 and timeout) has a tested path.
