@@ -1,0 +1,14 @@
+{
+  "id": "0013_payouts_refunds",
+  "prevId": "0012_gateway_events_requests",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {},
+  "enums": {},
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

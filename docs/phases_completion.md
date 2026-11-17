@@ -291,9 +291,17 @@ Confirmed present in the migrations: `outbox`, `merchant_events`, `merchant_limi
 `kyc_level_limits` (Phase 7). Confirmed absent: `gateway_events`, `gateway_requests`, `fee_plans`,
 `fee_plan_rules`, payouts and refunds tables.
 
-- [ ] **P4-01 BUILD. Transactions.** Extend the status check, transition guards and agreement triggers (payment-only,
+- [x] **P4-01 BUILD. Transactions.** Extend the status check, transition guards and agreement triggers (payment-only,
       migration 0003) to payouts and refunds. Add relationships between a transaction and its payment, payout or
       refund, metadata and idempotency links.
+      _Result:_ Created migration 0013_payouts_refunds.sql with payouts and refunds tables. Payouts: pyt_* ref,
+      destination (jsonb + encrypted), hold_ref, approval_ref, status (created → pending_approval → processing →
+      succeeded/failed/cancelled/expired). Refunds: rfd_* ref, links to payment, hold_ref, approval_ref, status
+      (created → pending_approval → processing → succeeded/failed/cancelled, no expired). Extended transaction
+      status/completed_at/provider checks to cover all three types (payment, payout, refund). Created state transition
+      guard triggers (prevent invalid transitions, terminal states immutable). Created agreement triggers (keep
+      transaction.status in sync with payout.status and refund.status). Created schema definitions in
+      src/db/schema/payouts.ts.
 - [ ] **P4-02 BUILD. Routing and collections.** `routing_rules` and `provider_status` tables exist (Phase 8); build
       route selection by priority, weighted random, health and circuit breaker; honour the pinned provider (P4-D5);
       `no_route_available`; payment method validation; gateway request after commit; handle every gateway result
