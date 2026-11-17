@@ -123,9 +123,12 @@ export class ReconciliationExceptionsService {
     return this.queries.userRefs(ids);
   }
 
-  /** The internal id of an active staff user, or a not-found error. */
+  /**
+   * The internal id of an active staff user who may work the queue (`reconciliation:read` or
+   * `reconciliation:work`), or a not-found error.
+   */
   async staffId(userRef: string): Promise<string> {
-    const id = await this.queries.staffIdByRef(userRef);
+    const id = await this.queries.exceptionAssigneeIdByRef(userRef);
     if (!id) throw new AppError('NOT_FOUND');
     return id;
   }

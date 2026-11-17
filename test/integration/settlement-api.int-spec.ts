@@ -459,6 +459,26 @@ describe('reconciliation over HTTP', () => {
         })
       ).statusCode
     ).toBe(404);
+    // P6-13: a staff user whose role has no reconciliation permission cannot be given the work.
+    const noAccess = await ops.client.post(`${admin}/reconciliation/exceptions/${ref}/assign`, {
+      assignee: agent.admin.userId,
+    });
+    expect(noAccess.statusCode).toBe(404);
+    expect(
+      (await ops.client.get(`${admin}/reconciliation/exceptions/${ref}`)).json().data.exception
+    ).toMatchObject({
+      assignedTo: ops.admin.userId,
+    });
+    // A read-only role (auditor) can be assigned: it holds reconciliation:read.
+    const auditor = await staffSession(ctx, 'auditor');
+    const readOnly = await ops.client.post(`${admin}/reconciliation/exceptions/${ref}/assign`, {
+      assignee: auditor.admin.userId,
+    });
+    expect(readOnly.statusCode).toBe(200);
+    expect(readOnly.json().data).toMatchObject({ assignedTo: auditor.admin.userId });
+    await ops.client.post(`${admin}/reconciliation/exceptions/${ref}/assign`, {
+      assignee: ops.admin.userId,
+    });
     const note = await ops.client.post(`${admin}/reconciliation/exceptions/${ref}/notes`, {
       body: 'Checked the provider portal',
     });

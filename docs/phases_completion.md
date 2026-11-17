@@ -496,8 +496,11 @@ migration `0006_settlement_reconciliation.sql`.
 - [ ] **P6-12 BUILD. Per-merchant settlement metrics and a batch-state dashboard.** Only five metrics exist
       (`core_settlement_batch_transitions_total`, `core_reconciliation_runs_total`,
       `core_reconciliation_exceptions_open`, `core_ledger_integrity_failures`, `core_suspense_balance_minor`).
-- [ ] **P6-13 TEST. Assignee check:** exceptions can be assigned to any active staff user. Require
+- [x] **P6-13 TEST. Assignee check:** exceptions can be assigned to any active staff user. Require
       `reconciliation:read` or `work` and test it.
+      _Result:_ Exception assignment now requires an active staff user whose role grants reconciliation:read or
+      reconciliation:work (ReconciliationQueriesRepository.exceptionAssigneeIdByRef); anyone else is 404.
+      settlement-api.int-spec.ts proves support_agent is refused and auditor (read only) is accepted.
 
 ### Verify
 

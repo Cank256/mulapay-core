@@ -359,6 +359,28 @@ export class ReconciliationQueriesRepository {
     return result.rows[0]?.id;
   }
 
+  /**
+   * The id of an active staff user who can work the exception queue: one with a role granting
+   * `reconciliation:read` or `reconciliation:work`. Anyone else is not found, so an exception
+   * is never parked with a person who cannot open it (P6-13).
+   */
+  async exceptionAssigneeIdByRef(
+    ref: string,
+    executor: Executor = this.db
+  ): Promise<string | undefined> {
+    const result = await executor.execute<{ id: string }>(sql`
+      select u.id
+        from core.users u
+       where u.ref = ${ref} and u.type = 'staff' and u.status = 'active'
+         and exists (
+           select 1
+             from core.staff_role_assignments a
+             join core.role_permissions rp on rp.role_key = a.role_key
+            where a.user_id = u.id
+              and rp.permission_key in ('reconciliation:read', 'reconciliation:work'))`);
+    return result.rows[0]?.id;
+  }
+
   /** Public refs of users, by internal id. */
   async userRefs(
     ids: readonly string[],
