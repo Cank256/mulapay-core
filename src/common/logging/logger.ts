@@ -13,7 +13,7 @@ import { isSpanContextValid, trace } from '@opentelemetry/api';
 import pino, { type DestinationStream, type Logger, type LoggerOptions } from 'pino';
 import { SERVICE_NAME, type AppConfig } from '../../config/configuration';
 import { requestContext } from '../context/request-context';
-import { redactDeep, toLoggableError } from './redaction';
+import { redactDeep, redactSecretText, toLoggableError } from './redaction';
 
 export type { Logger } from 'pino';
 
@@ -49,6 +49,15 @@ export function buildLoggerOptions(config: LoggerConfig): LoggerOptions {
     serializers: {
       err: toLoggableError,
       error: toLoggableError,
+    },
+    hooks: {
+      // The message and its format arguments are free text: scrub known secret formats.
+      logMethod(args, method) {
+        const scrubbed = args.map((arg) =>
+          typeof arg === 'string' ? redactSecretText(arg) : arg
+        ) as Parameters<typeof method>;
+        method.apply(this, scrubbed);
+      },
     },
   };
 }

@@ -8,6 +8,11 @@
  *
  * Invariant: no value under a sensitive key reaches a log line, at any nesting depth up to
  * MAX_DEPTH. Deeper values are replaced wholesale rather than written unchecked.
+ *
+ * Key names are not enough: a secret pasted into free text (`msg`, an error message, a value
+ * under an innocent key) has no sensitive key. `redactSecretText` therefore also matches the
+ * known secret formats by value (API secret keys, signing and webhook secrets, bearer tokens,
+ * JWTs, PEM private keys) in every string that reaches a log line.
  */
 
 export const REDACTED = '[REDACTED]';
@@ -67,6 +72,26 @@ export function isSensitiveKey(key: string): boolean {
   return sensitive;
 }
 
+/**
+ * Secret formats MulaPay itself issues or accepts, matched by value:
+ * - secret API keys: `mp_{live|test}_{16}_{64 hex}` (current) and `sk_{live|test}_{16}_{64 hex}`;
+ * - request signing secrets `mpsig_{64 hex}` and webhook secrets `whsec_{64 hex}`;
+ * - `Bearer` credentials, JWTs and PEM private keys.
+ * Publishable keys (`pk_`) are identifiers, not secrets, and are not matched.
+ */
+const SECRET_TEXT_PATTERNS: readonly RegExp[] = [
+  /\b(?:mp|sk)_(?:live|test)_[a-z0-9]{16}_[0-9a-f]{64}\b/gi,
+  /\b(?:mpsig|whsec)_[0-9a-f]{32,}\b/gi,
+  /\bBearer\s+[A-Za-z0-9\-._~+/]{8,}=*/gi,
+  /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+];
+/** Replaces every known secret format inside `text`. Other text is returned unchanged. */
+export function redactSecretText(text: string): string {
+  let out = text;
+  for (const pattern of SECRET_TEXT_PATTERNS) out = out.replace(pattern, REDACTED);
+  return out;
+}
 function isPlainObject(value: object): value is Record<string, unknown> {
   const proto = Object.getPrototypeOf(value) as unknown;
   return proto === Object.prototype || proto === null;
@@ -77,6 +102,7 @@ function isPlainObject(value: object): value is Record<string, unknown> {
  * Errors, class instances and buffers are not walked; log errors through `toLoggableError`.
  */
 export function redactDeep(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+  if (typeof value === 'string') return redactSecretText(value);
   if (value === null || typeof value !== 'object') return value;
   if (depth >= MAX_DEPTH) return '[Truncated]';
   if (seen.has(value)) return '[Circular]';
@@ -142,10 +168,14 @@ function scrubQueryText(message: unknown, stack: unknown): { message: unknown; s
 
 export function toLoggableError(error: unknown, depth = 0): Record<string, unknown> {
   if (error === null || typeof error !== 'object') {
-    return { message: String(error) };
+    return { message: redactSecretText(String(error)) };
   }
   const e = error as LooseError;
-  const { message, stack } = scrubQueryText(e.message, e.stack);
+  const scrubbed = scrubQueryText(e.message, e.stack);
+  const message =
+    typeof scrubbed.message === 'string' ? redactSecretText(scrubbed.message) : scrubbed.message;
+  const stack =
+    typeof scrubbed.stack === 'string' ? redactSecretText(scrubbed.stack) : scrubbed.stack;
   const safe: Record<string, unknown> = { name: e.name, message };
   if (typeof e.code === 'string' || typeof e.code === 'number') safe.code = e.code;
   const status = e.statusCode ?? e.status;

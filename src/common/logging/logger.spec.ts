@@ -44,6 +44,18 @@ describe('root logger', () => {
     expect(raw[0]).toContain(REDACTED);
   });
 
+  it('scrubs known secret formats from the message and its format arguments', () => {
+    const secret = `sk_live_abcdefghij012345_${'ab12cd34'.repeat(8)}`;
+    const { logger, raw } = captureLogs(config);
+    logger.info(`rejected key ${secret}`);
+    logger.warn({ attempt: 2 }, 'header was %s', `Bearer ${'x'.repeat(24)}`);
+    logger.error({ note: `signing with mpsig_${'cd'.repeat(32)}` }, 'failed');
+    const all = raw.join('\n');
+    expect(all).not.toContain(secret);
+    expect(all).not.toContain('x'.repeat(24));
+    expect(all).not.toContain('mpsig_');
+    expect(all).toContain(REDACTED);
+  });
   it('adds request context fields to every line', () => {
     const { logger, lines } = captureLogs(config);
     requestContext.run({ requestId: 'req-12345678', surface: 'public', merchantId: 'm_1' }, () => {

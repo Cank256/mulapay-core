@@ -3,6 +3,7 @@ import {
   REDACTED,
   isSensitiveKey,
   redactDeep,
+  redactSecretText,
   redactUrl,
   splitKeyWords,
   toLoggableError,
@@ -148,5 +149,60 @@ describe('toLoggableError', () => {
   it('handles non-errors and HTTP status fields', () => {
     expect(toLoggableError('boom')).toEqual({ message: 'boom' });
     expect(toLoggableError(Object.assign(new Error('x'), { statusCode: 413 })).status).toBe(413);
+  });
+});
+
+const HEX64 = 'a1b2c3d4'.repeat(8);
+const SECRET_KEYS = [
+  `mp_live_abcdefghij012345_${HEX64}`,
+  `mp_test_abcdefghij012345_${HEX64}`,
+  `sk_live_abcdefghij012345_${HEX64}`,
+  `sk_test_abcdefghij012345_${HEX64}`,
+  `mpsig_${HEX64}`,
+  `whsec_${HEX64}`,
+];
+const JWT = 'eyJhbGciOiJFZERTQSJ9.eyJzdWIiOiJ1c3JfMSJ9.c2lnbmF0dXJlLXZhbHVl';
+describe('redactSecretText', () => {
+  it.each(SECRET_KEYS)('redacts %s inside free text', (secret) => {
+    const out = redactSecretText(`call failed for key ${secret}, retrying`);
+    expect(out).toBe(`call failed for key ${REDACTED}, retrying`);
+  });
+  it('redacts bearer credentials, JWTs and PEM private keys', () => {
+    expect(redactSecretText('Authorization: Bearer abc123DEF456ghi789')).toBe(
+      `Authorization: ${REDACTED}`
+    );
+    expect(redactSecretText(`token=${JWT}&x=1`)).toBe(`token=${REDACTED}&x=1`);
+    const pem = '-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIA\n-----END PRIVATE KEY-----';
+    expect(redactSecretText(`key ${pem} end`)).toBe(`key ${REDACTED} end`);
+    expect(redactSecretText('-----BEGIN PRIVATE KEY-----\ntruncated')).toBe(REDACTED);
+  });
+  it('leaves publishable keys, ordinary ids and short look-alikes alone', () => {
+    const text = 'pk_live_abcdefghij012345 usr_01HZ merchant mp_refresh sk_test_short whsec_abc';
+    expect(redactSecretText(text)).toBe(text);
+  });
+  it('redacts the same secret twice in one string', () => {
+    const secret = SECRET_KEYS[0] as string;
+    expect(redactSecretText(`${secret} ${secret}`)).toBe(`${REDACTED} ${REDACTED}`);
+  });
+});
+describe('value redaction through redactDeep and toLoggableError', () => {
+  it('scrubs a secret under an innocent key, in arrays and nested objects', () => {
+    const secret = SECRET_KEYS[2] as string;
+    const out = redactDeep({
+      note: `used ${secret}`,
+      list: [`x ${JWT}`, 1, null],
+      nested: { detail: { text: `Bearer abcdefgh12345678` } },
+    });
+    const text = JSON.stringify(out);
+    expect(text).not.toContain(secret);
+    expect(text).not.toContain('eyJ');
+    expect(text).not.toContain('abcdefgh12345678');
+    expect(text).toContain(REDACTED);
+  });
+  it('scrubs a secret in an error message, stack and non-Error value', () => {
+    const secret = SECRET_KEYS[4] as string;
+    const safe = toLoggableError(new Error(`bad signature ${secret}`));
+    expect(JSON.stringify(safe)).not.toContain(secret);
+    expect(JSON.stringify(toLoggableError(`raw ${secret}`))).not.toContain(secret);
   });
 });

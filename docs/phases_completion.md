@@ -914,8 +914,12 @@ Write the tests first: they pin what `verify` must keep proving. Do not weaken a
       after commit, not inside a transaction), `core_merchant_available_balance_minor`,
       `core_gateway_request_duration_seconds`, `core_gateway_event_lag_seconds`,
       `core_gateway_events_processed_total` (the last three need the consumer).
-- [ ] **P9-SEC-LOG BUILD.** Log redaction matches key names, not values; a secret in free text is not scrubbed. Add
+- [x] **P9-SEC-LOG BUILD.** Log redaction matches key names, not values; a secret in free text is not scrubbed. Add
       value-pattern redaction for known secret formats (`sk_`, `mpsig_`, bearer tokens) and tests.
+      _Result:_ src/common/logging/redaction.ts gains redactSecretText (mp_/sk_ secret keys, mpsig_, whsec_,
+      Bearer credentials, JWTs, PEM private keys), applied to every string in redactDeep, to error messages and
+      stacks, and to the pino message and its format arguments through hooks.logMethod. pk_ keys are identifiers
+      and are left readable. Tests in redaction.spec.ts and logger.spec.ts.
 - [ ] **P9-SEC-RLS DECIDE.** No row-level security (spec does not ask; isolation is `merchantId` in every repository
       method). Adding it is an architecture change. _Default:_ no.
 - [ ] **P9-DEP-1 DOC.** Dev tooling has 29 moderate and 2 low vulnerabilities (not shipped; `npm audit` fixes are
