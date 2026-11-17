@@ -231,8 +231,15 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       _Result:_ Updated SandboxProcessor to explicitly route by job.name with clear structure: handles `sandbox.step`
       today, documented placeholder for `gateway.chase` job (P4-09). Updated comments to document the routing pattern.
       The processor is ready for the chase job to be added in Phase 4.
-- [ ] **P3-14 DOC. Update `GATEWAY_INTEGRATION.md`:** client, event consumer, failure handling, the currency
+- [x] **P3-14 DOC. Update `GATEWAY_INTEGRATION.md`:** client, event consumer, failure handling, the currency
       decision, the three closed "Resolve before Phase 3" rows.
+      _Result:_ Updated status to reflect Phase 3 completion. Closed three currency rows (MTN, Airtel,
+      Flutterwave) as "Accepted" with currency decision: follow gateway validator, not spec; validate with
+      isSupportedCurrency(). Added "Gateway operations client" section documenting retries (429/5xx except 504),
+      circuit breaker (5 failures, 15s reset), request recording (gateway_requests), timeout, verification command.
+      Added "Event consumer" section documenting event source (2-second lag), transaction boundaries (one per event),
+      deduplication (unique gateway_event_id), failure handling (3 attempts then mark failed), adaptive polling
+      (250ms-2s), 18 handlers with registry.
 - [ ] **P3-15 TEST. Chaos scenarios that need the consumer:** A (kill the consumer during a batch) and the cursor half
       of G (crash between apply and cursor commit); consumer lag, queue-depth and ledger-integrity incidents under
       chaos. Today only the stuck-transaction incident was verified. See P9-03.

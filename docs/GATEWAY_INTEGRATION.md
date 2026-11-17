@@ -1,10 +1,13 @@
 # Gateway integration
 
-Status: Phases 0 to 2 and 5 to 9 are built; Phases 3 and 4 are not. Core's gateway calls today are the
-readiness probe (`GET /api/v1/health/ready`, unauthenticated) in
-`src/integrations/gateway/gateway-health.client.ts` and the settlement and reconciliation
-operations client behind `GatewayOperationsPort` (`gateway-operations.client.ts`). The payment
-client, event consumer and their failure handling arrive in Phase 3 and will be documented here.
+Status: Phase 3 (gateway client, event source, consumer, handlers) is built. Phases 0 to 2 and 5 to 9
+are built; Phase 4 (money movement that uses the client and handlers) is not. Core's gateway operations
+client (`GatewayOperationsClient` behind `GatewayOperationsPort` in `gateway-operations.client.ts`)
+handles disbursements, lookups, lists and balance queries with retries, circuit breaker and request
+recording. The event consumer (`GatewayEventConsumer`) reads events from the gateway event stream with
+2-second lag, applies them idempotently through 18 handlers (3 operation types × 6 statuses), and
+advances the cursor with GREATEST (never backwards). The payment, collection and refund handlers complete
+in Phase 4.
 
 Sources: spec section 3 and `provider_gateway/docs/CORE_API_INTEGRATION.md`.
 
@@ -13,12 +16,59 @@ Sources: spec section 3 and `provider_gateway/docs/CORE_API_INTEGRATION.md`.
 Spec section 17 rule 3: for gateway behaviour, the gateway code wins, and conflicts are
 recorded here.
 
-| Topic                  | Spec says                                                       | Gateway says                                                                                                                                                                                      | Status                                           |
-| ---------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| MTN currencies         | UGX, GHS, XOF, XAF, ZMW (3.3)                                   | `config/provider-registry.ts` agrees with the spec; `utils/provider-validation.ts`, which rejects requests, allows UGX, EUR, GHS, ZMW, XOF, XAF (no conflict on what core sends, but EUR differs) | Resolve before Phase 3                           |
-| Airtel currencies      | UGX, KES, TZS, RWF, ZMW, MWK, NGN                               | Registry agrees; validator allows UGX, KES, TZS, RWF, ZMW, NGN, XOF, XAF, so **MWK is rejected**                                                                                                  | Resolve before Phase 3                           |
-| Flutterwave currencies | NGN, GHS, KES, UGX, TZS, ZAR, RWF, ZMW, XOF, XAF, USD, EUR, GBP | Validator allows NGN, GHS, KES, UGX, ZAR, TZS, USD, EUR, GBP, so **RWF, ZMW, XOF and XAF are rejected**                                                                                           | Resolve before Phase 3                           |
-| Error envelope         | `requestId` inside `error`, plus `docUrl` (8.1)                 | `requestId` and `timestamp` in `meta`                                                                                                                                                             | Core follows the spec; envelopes differ slightly |
+| Topic                  | Spec says                                                       | Gateway says                                                                                                                                                                                      | Status                  |
+| ---------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| MTN currencies         | UGX, GHS, XOF, XAF, ZMW (3.3)                                   | `config/provider-registry.ts` agrees with the spec; `utils/provider-validation.ts`, which rejects requests, allows UGX, EUR, GHS, ZMW, XOF, XAF (no conflict on what core sends, but EUR differs) | Accepted (P3-14)        |
+| Airtel currencies      | UGX, KES, TZS, RWF, ZMW, MWK, NGN                               | Registry agrees; validator allows UGX, KES, TZS, RWF, ZMW, NGN, XOF, XAF, so **MWK is rejected**                                                                                                  | Accepted (P3-14)        |
+| Flutterwave currencies | NGN, GHS, KES, UGX, TZS, ZAR, RWF, ZMW, XOF, XAF, USD, EUR, GBP | Validator allows NGN, GHS, KES, UGX, ZAR, TZS, USD, EUR, GBP, so **RWF, ZMW, XOF and XAF are rejected**                                                                                           | Accepted (P3-14)        |
+| Error envelope         | `requestId` inside `error`, plus `docUrl` (8.1)                 | `requestId` and `timestamp` in `meta`                                                                                                                                                             | Core follows the spec   |
+
+**Currency decision (P3-14):** Core's supported currencies (`src/common/money/currency-codes.ts`) follow
+the gateway validator, not the spec. Mismatches (MWK, RWF, ZMW for some providers, XOF/XAF for others)
+are accepted as the gateway's current behaviour. Core validates currencies against `isSupportedCurrency()`
+before gateway calls and rejects with `provider_unavailable` if the currency is not supported.
+
+## Gateway operations client (Phase 3)
+
+`GatewayOperationsClient` (`src/integrations/gateway/gateway-operations.client.ts`) implements
+`GatewayOperationsPort` with:
+
+- **Retries:** 429 and 5xx (except 504) are retried up to `GATEWAY_MAX_RETRIES` (default 2) with
+  exponential backoff (1s base, doubling, capped at 16s, plus ≤500ms jitter). 504 is never retried
+  because the outcome is ambiguous (spec 3.5).
+- **Circuit breaker:** (`RedisCircuitBreaker`) checked before every call, updated after every result.
+  Opens after 5 consecutive failures, refuses calls, half-opens after `GATEWAY_CIRCUIT_RESET_MS` (15s),
+  closes after 3 successful probes. State shared across replicas via Redis. Independent per
+  (provider, operation). Fails open when Redis is unreachable.
+- **Request recording:** Every HTTP call (including retries) is recorded in `gateway_requests` with
+  http_status, latency_ms, error_code, attempt number. Runs async (fire-and-forget) via
+  `GatewayRequestRecorder`. Used for reconciliation, debugging and metrics.
+- **Timeout:** `GATEWAY_TIMEOUT_MS` (default 30s) applies to headers, body and total request time.
+- **Verification:** `npm run gateway:verify` checks connectivity, API key validity and general access.
+
+The client never logs request or response bodies (spec 3.5).
+
+## Event consumer (Phase 3)
+
+`GatewayEventConsumer` (`src/consumers/gateway-events/gateway-event.consumer.ts`) reads events from
+the gateway event stream and applies them to payments/payouts/refunds:
+
+- **Event source:** `GatewayEventSource` (database or HTTP) reads `public.operation_events` with
+  mandatory 2-second lag to avoid reading uncommitted events. Database source is primary (lower latency),
+  HTTP source (`GET /api/v1/events`) is fallback for deployments without direct DB access.
+- **Transaction boundaries:** One transaction per event: insert into `gateway_events`, call handler,
+  advance cursor (spec 10.2). The cursor uses `GREATEST(position, new_id)` to never move backwards.
+- **Deduplication:** `gateway_events.gateway_event_id` is unique; duplicate events are skipped with
+  `ON CONFLICT DO NOTHING`, cursor still advances.
+- **Failure handling:** After 3 failed attempts, mark event `failed`, advance cursor, log error.
+  Head-of-line blocking is worse than a flagged exception. Reconciliation exception and sev2 incident
+  deferred to handler implementation (P4).
+- **Adaptive polling:** 250ms when events are flowing, 2s when idle. Heartbeat updates
+  `consumer_cursors.heartbeat_at` every loop (fixes `never_started` cursor route).
+- **Handlers:** 18 handlers (3 operation types × 6 statuses) registered in `GatewayEventHandlerRegistry`.
+  Collection handlers reference `PaymentLifecycleService.apply` (complete in P4). Disbursement handlers
+  check `po_` prefix for settlement payouts that call `SettlementOutcomeService.apply` (P6-01). Refund
+  handlers complete in P4-12. All handlers return boolean (true = applied, false = skipped).
 
 ## Applying gateway events to payments (built ahead of Phase 3)
 
