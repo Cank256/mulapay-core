@@ -356,12 +356,17 @@ Committed as `27d47a0`. Last run: 85 files, 1,261 tests. Exit criterion met for 
       the incident runbook (`OPERATIONS.md`) or add a database notification to evict.
 - [ ] **P5-S3 Redis outage.** Writes get 503, reads fail open (rate limits skipped). Decide if fail-open reads are
       acceptable. Add a test for the chosen behaviour.
-- [ ] **P5-S4 `TRUST_PROXY`** must be correct in production. Add a deployment check (`DEPLOYMENT.md` plus a
+- [x] **P5-S4 `TRUST_PROXY`** must be correct in production. Add a deployment check (`DEPLOYMENT.md` plus a
       startup assertion or readiness check).
+      _Result:_ Both parts exist: env.schema.ts refuses to boot in production with TRUST_PROXY empty (covered in
+      env.schema.spec.ts) and DEPLOYMENT.md lists it among the production refusals.
 - [ ] **P5-S5 Single `DATA_ENCRYPTION_KEY`** encrypts signing and webhook secrets. Closed by P9-D2 (ENC-1).
-- [ ] **P5-S6 Partitions and retention** for `api_request_logs` and `webhook_deliveries` (about 4 months of partitions,
+- [x] **P5-S6 Partitions and retention** for `api_request_logs` and `webhook_deliveries` (about 4 months of partitions,
       90-day retention). Check that Phase 9 migration `0009_hardening_partitions_retention.sql` covers these two
       tables. _Done when:_ a test or a query proves partitions exist beyond four months and retention runs.
+      _Result:_ Migration 0009 policies cover api_request_logs and webhook_deliveries (90 days).
+      test/integration/data-lifecycle.int-spec.ts proves the current month plus three ahead are created, retention
+      drops partitions at the boundary, and a webhook partition with a pending delivery is kept.
 - [ ] **P5-S7 Personal data in request logs** (client IP, user agent). Decide the retention and the privacy basis.
 - [ ] **P5-S8 Delivery response excerpts** are stored 90 days and may contain echoed secrets or PII. Shorten or
       redact.
@@ -723,8 +728,11 @@ Committed as `682e149`. Last full run: 129 files, 1,721 tests with `--maxWorkers
 - [ ] **P8-07 BUILD. `xlsx` and `pdf` report formats** (or document them as out of scope).
 - [ ] **P8-08 BUILD. Redis pub/sub invalidation** of the feature-flag cache (today bounded by a 2-second in-process
       cache).
-- [ ] **P8-09 BUILD. Partition automation and retention for `notification_deliveries`** (180-day). Phase 9 migration
+- [x] **P8-09 BUILD. Partition automation and retention for `notification_deliveries`** (180-day). Phase 9 migration
       0009 may cover this: verify; rows after four months land in the default partition.
+      _Result:_ Covered by migration 0009 (notification_deliveries, 180 days) and the data-lifecycle spec test
+      'applies 180 days to notification deliveries'; partition_status reports months ahead and default-partition
+      rows.
 - [ ] **P8-10 BUILD. Retention and erasure** for complaints (customer contact), notification addresses and report
       files beyond the 7-day expiry.
 - [ ] **P8-11 BUILD. Public API groups** (same as P5-01): refunds, payouts, payout-batches, customers,
@@ -790,7 +798,8 @@ review"), `LOAD_RESULTS.md`, `docs/query-plans/README.md`.
 - [ ] **P9-01 VERIFY. Full suite on a machine with free memory:** `npx vitest run --coverage --maxWorkers=1`. The last
       complete run (1,844 passed, 3 expected fail) predates fixes DB-3 and DB-4.
 - [ ] **P9-02 VERIFY. `npm run build && npm run test:chaos`.** The last whole-chaos run predates DB-3 and DB-4.
-- [ ] **P9-03 VERIFY. `npx eslint . --max-warnings 0`.** Lint was not re-run after the last edits.
+- [x] **P9-03 VERIFY. `npx eslint . --max-warnings 0`.** Lint was not re-run after the last edits.
+      _Result:_ npx eslint . --max-warnings 0 passes at HEAD 7d33989 with no output.
 - [ ] **P9-04 TEST. Chaos scenarios that could not run** (see P3-15): A, G (cursor half), consumer lag, queue depth
       and ledger integrity incidents.
 
