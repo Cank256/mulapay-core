@@ -160,10 +160,16 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       `GatewayOperationsClient` (via `GATEWAY_OPERATIONS` token); exports both for use by other modules. Provider
       capabilities are pure functions/constants exported directly from `provider-capabilities.ts` (no DI needed).
       Module is imported and used by `ReconciliationModule`, `SettlementModule`, and `OperationsModule`.
-- [ ] **P3-05 TEST. Gateway contract tests** against a mocked gateway using the real response shapes from
+- [x] **P3-05 TEST. Gateway contract tests** against a mocked gateway using the real response shapes from
       `provider_gateway/src/schemas/payment.ts` and `routes/payment.ts`: 201, 200 duplicate, 400, 401/403, 404, 409,
       429, 504, 5xx, connection refused, timeout. Assert no retry on 504 and a stable `externalId`. Extend
       `test/support/fake-gateway.ts` (readiness only today) or reuse `fake-gateway-ops.ts`; keep one fake.
+      _Result:_ Added `test/integration/gateway-contract.int-spec.ts` with 26 tests using `fake-gateway-ops.ts`
+      (speaks real gateway schemas). Tests cover: all status codes (201, 200, 400, 401, 403, 404, 409, 429, 504,
+      500, 502, 503), dropped connections, externalId stability across retries, and critically **asserts 504 is
+      never retried** (exactly 1 attempt). Also tests all query operations (findByExternalId, listOperations,
+      getBalance) with success and failure cases, and terminal status handling. `fake-gateway.ts` kept for health
+      checks only.
 - [ ] **P3-06 BUILD. Migration and tables:** `gateway_events` (unique `gateway_event_id`, `apply_status` that allows
       "not applied yet", `apply_error`, `attempts`), `gateway_requests` (spec 5.2). **Do not create
       `consumer_cursors`: migration 0008 already did.** Adopt it, and add the retention policy row for
