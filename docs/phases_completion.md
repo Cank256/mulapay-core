@@ -147,8 +147,14 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       (checks `allow` before call, records result after); never retries 504; uses deterministic `externalId` scheme;
       calls `assertGatewayEligible` first; implements `GatewayOperationsPort`. `RedisCircuitBreaker` added to
       `GatewayOperationsModule`. Uses `GATEWAY_MAX_RETRIES` from config (fixes P9-GW-3).
-- [ ] **P3-03 TEST. Unit tests** for `money.ts` (every supported currency, both directions, precision loss, overflow),
+- [x] **P3-03 TEST. Unit tests** for `money.ts` (every supported currency, both directions, precision loss, overflow),
       `circuit-breaker.ts` (every transition; a spec exists, check coverage) and `retryDelayMs`.
+      _Result:_ `money.spec.ts` added with 87 tests covering all 17 supported currencies in both directions (toMinor
+      and toGatewayAmount), precision loss detection, overflow at 11-digit gateway limit, malformed inputs, zero and
+      negative handling, round-trip verification, and numeric comparison. `gateway-operations.client.spec.ts` extended
+      with 6 tests for `retryDelayMs` covering exponential backoff (1s base doubling to 16s cap), jitter (0-500ms),
+      and formula verification. `circuit-breaker.spec.ts` already has 9 tests covering all state transitions per spec
+      6.2 (closed → open on 5 failures, half-open after reset, closed after 3 successes, window expiry).
 - [ ] **P3-04 BUILD. Integration module.** Register the client, breaker and capabilities in a Nest module.
 - [ ] **P3-05 TEST. Gateway contract tests** against a mocked gateway using the real response shapes from
       `provider_gateway/src/schemas/payment.ts` and `routes/payment.ts`: 201, 200 duplicate, 400, 401/403, 404, 409,
