@@ -14,6 +14,12 @@ One image, three processes, chosen by `APP_ROLE` (spec 4.1).
 | `worker`   | `dist/main.js` | 2 or more | none    | BullMQ processors and all schedules; safe to run several               |
 | `consumer` | `dist/main.js` | exactly 1 | none    | holds a Postgres advisory lock and exits if it cannot; **idles today** |
 
+**Probes.** The api serves `/v1/health` (liveness) and `/v1/health/ready` on `PORT`. The worker and consumer
+serve `/health` and `/health/ready` on `HEALTH_PORT` (default 4001, bound to `HOST`): readiness checks the
+read-write database and Redis. Use readiness for traffic and rollout decisions. The image `HEALTHCHECK`
+(`node dist/scripts/healthcheck.js`) tests liveness only, so a short Redis or database outage does not restart a
+container. The listeners are unauthenticated and return only a status word.
+
 The consumer applies gateway events (Phase 3). That code is not built (`PRODUCTION_READINESS.md`),
 so the consumer process only holds its lock. Deploy it so the singleton and its alerts are in place,
 but do not rely on it for payment outcomes.

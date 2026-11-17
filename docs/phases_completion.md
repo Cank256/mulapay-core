@@ -921,7 +921,12 @@ Write the tests first: they pin what `verify` must keep proving. Do not weaken a
       and statement timeout (also through drizzle causes, three levels) to 503 SERVICE_UNAVAILABLE with Retry-
       After 5. The existing catalogue code is used; no new code was needed. Tests: error-mapper.spec.ts and a new
       global-exception.filter.spec.ts.
-- [ ] **P9-RDY-1 BUILD.** Health or readiness endpoint for the worker and consumer; a `HEALTHCHECK` in the image.
+- [x] **P9-RDY-1 BUILD.** Health or readiness endpoint for the worker and consumer; a `HEALTHCHECK` in the image.
+      _Result:_ New HEALTH_PORT (default 4001). src/bootstrap/health-server.ts serves /health and /health/ready
+      (database_rw and Redis) from the worker and consumer; src/scripts/healthcheck.ts and a Dockerfile
+      HEALTHCHECK test liveness. Tests: health-server.spec.ts, healthcheck.spec.ts and test/chaos/process-
+      health.chaos-spec.ts (4 passed against the built processes). The image itself was not rebuilt here, so run
+      the Trivy and image build in CI.
 - [x] **P9-GW-2 FIX.** A payout answered 401 or 403 is retried up to 8 times (same key, financially safe). Spec 3.5
       says page and do not loop. Stop retrying on 401/403 and raise an alert.
       _Result:_ SettlementGatewayAuthRejected (a SettlementSubmitRetry) is thrown on 401 and 403; the settlement-

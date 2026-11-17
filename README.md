@@ -82,13 +82,14 @@ Generated from `.env.example`; a unit test fails when a variable there is missin
 
 **Process**
 
-| Variable      | Example value | Meaning                                                               |
-| ------------- | ------------- | --------------------------------------------------------------------- |
-| `NODE_ENV`    | `development` | development \| test \| production                                     |
-| `APP_ROLE`    | `api`         | api \| worker \| consumer                                             |
-| `PORT`        | `4000`        | HTTP port (api role only)                                             |
-| `HOST`        | `0.0.0.0`     | HTTP bind address                                                     |
-| `TRUST_PROXY` | unset         | comma-separated proxy IPs/CIDRs; required in production, no wildcards |
+| Variable      | Example value | Meaning                                                                   |
+| ------------- | ------------- | ------------------------------------------------------------------------- |
+| `NODE_ENV`    | `development` | development \| test \| production                                         |
+| `APP_ROLE`    | `api`         | api \| worker \| consumer                                                 |
+| `PORT`        | `4000`        | HTTP port (api role only)                                                 |
+| `HEALTH_PORT` | `4001`        | health listener of the worker and consumer roles (/health, /health/ready) |
+| `HOST`        | `0.0.0.0`     | HTTP bind address                                                         |
+| `TRUST_PROXY` | unset         | comma-separated proxy IPs/CIDRs; required in production, no wildcards     |
 
 **Database**
 

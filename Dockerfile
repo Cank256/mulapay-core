@@ -6,8 +6,9 @@
 #            Run with a read-only root filesystem (compose `read_only: true`, k8s
 #            `readOnlyRootFilesystem: true`). The process writes only to stdout.
 #
-# No HEALTHCHECK: only the api role serves HTTP. Probe /v1/health and /v1/health/ready
-# from the orchestrator for api containers.
+# HEALTHCHECK runs `dist/scripts/healthcheck.js` (liveness): the api role probes /v1/health on
+# PORT, the worker and consumer probe /health on HEALTH_PORT. The orchestrator should still probe
+# readiness (/v1/health/ready, /health/ready) for traffic and restart decisions.
 
 ARG NODE_IMAGE=node:22-bookworm-slim
 
@@ -48,5 +49,7 @@ COPY --from=build /app/dist ./dist
 COPY package.json ./
 USER nonroot
 EXPOSE 4000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["/nodejs/bin/node", "dist/scripts/healthcheck.js"]
 # The distroless entrypoint is node; migrations: `docker run ... dist/db/migrate.js`
 CMD ["dist/main.js"]

@@ -2,6 +2,12 @@
 import './common/telemetry/register';
 import { NestFactory } from '@nestjs/core';
 import { runProcess } from './bootstrap/process';
+import { startHealthServer } from './bootstrap/health-server';
+import { DB_POOLS } from './common/db/tokens';
+import type { DatabasePools } from './common/db/pools';
+import { REDIS } from './common/redis/redis.module';
+import type { Redis } from 'ioredis';
+
 import { tryAcquireSingletonLock } from './common/db/advisory-lock';
 import { NestPinoLogger } from './common/logging/nest-logger';
 import { ConsumerModule } from './consumer.module';
@@ -37,6 +43,23 @@ runProcess('consumer', async ({ config, logger }) => {
     abortOnError: false,
   });
 
+  await startHealthServer({
+    port: config.HEALTH_PORT,
+    host: config.HOST,
+    logger,
+    probes: [
+      {
+        name: 'database_rw',
+        run: async () => {
+          await app.get<DatabasePools>(DB_POOLS, { strict: false }).rw.query('select 1');
+        },
+      },
+      {
+        name: 'redis',
+        run: async () => (await app.get<Redis>(REDIS, { strict: false }).ping()) === 'PONG',
+      },
+    ],
+  });
   const shutdown = (signal: NodeJS.Signals) => {
     logger.info({ signal }, 'consumer shutting down');
     void app

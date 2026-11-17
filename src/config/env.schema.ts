@@ -117,6 +117,7 @@ export const envSchema = z
     NODE_ENV: withDefault(z.enum(['development', 'test', 'production']), 'development'),
     APP_ROLE: withDefault(z.enum(['api', 'worker', 'consumer']), 'api'),
     PORT: integer(4000, 1, 65535),
+    HEALTH_PORT: integer(4001, 1, 65535),
     HOST: withDefault(z.string().min(1), '0.0.0.0'),
     TRUST_PROXY: csv(trustedProxy),
 
