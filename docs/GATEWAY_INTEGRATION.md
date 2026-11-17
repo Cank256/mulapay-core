@@ -1,9 +1,10 @@
 # Gateway integration
 
-Status: Phase 0. Core's only gateway call so far is the readiness probe
-(`GET /api/v1/health/ready`, unauthenticated) in
-`src/integrations/gateway/gateway-health.client.ts`. The client, event consumer and
-failure handling arrive in Phase 3 and will be documented here.
+Status: Phases 0 to 2 and 5 to 9 are built; Phases 3 and 4 are not. Core's gateway calls today are the
+readiness probe (`GET /api/v1/health/ready`, unauthenticated) in
+`src/integrations/gateway/gateway-health.client.ts` and the settlement and reconciliation
+operations client behind `GatewayOperationsPort` (`gateway-operations.client.ts`). The payment
+client, event consumer and their failure handling arrive in Phase 3 and will be documented here.
 
 Sources: spec section 3 and `provider_gateway/docs/CORE_API_INTEGRATION.md`.
 

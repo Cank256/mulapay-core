@@ -998,10 +998,13 @@ Each task lists the phases it closes items for.
 
 ### Documentation
 
-- [ ] **X-DOC-1 DOC. Refresh the stale docs:** `ARCHITECTURE.md` is missing the "Phase 6 decisions to confirm"
+- [x] **X-DOC-1 DOC. Refresh the stale docs:** `ARCHITECTURE.md` is missing the "Phase 6 decisions to confirm"
       section that `AGENTS.md` and `RECONCILIATION.md` refer to; `API_PUBLIC.md` lists `settlements` as not built
       though it is built; `GATEWAY_INTEGRATION.md` still says "Phase 0"; the top of `phases_summary.md` is stale
       (see "How to use this file"). Update `AGENTS.md` "Current phase" when Phases 3 and 4 land.
+      _Result:_ ARCHITECTURE.md gained 'Phase 6 decisions to confirm'; API_PUBLIC.md marks settlements built (read
+      only); GATEWAY_INTEGRATION.md status line updated; phases_summary.md carries a stale-sections banner. The
+      AGENTS.md 'Current phase' update waits for Phases 3 and 4.
 - [x] **X-DOC-2 DOC.** README environment variable lists for Phases 7 and 8 (P7-08, P8-13).
       _Result:_ Done through P7-08 and P8-13.
 - [ ] **X-DOC-3 DOC.** `LEDGER.md` (spec section 13): fee, refund, payout, settlement (P6-09) and dispute (P7-07)

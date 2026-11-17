@@ -675,6 +675,46 @@ every path except the provider. See `modules/developer/sandbox`.
   `created_at`, so a repeated fan-out produces the same `(dedupe_key, created_at)`.
 - Query plans for the new hot queries are in [query-plans/phase5.txt](query-plans/phase5.txt).
 
+## Phase 6 decisions to confirm
+
+Choices made where the spec conflicts with itself, with the request, or is silent. Settlement and
+reconciliation design is in [RECONCILIATION.md](RECONCILIATION.md). Decision IDs match
+`phases_completion.md` (P6-D1 to P6-D13).
+
+- **Settlement credits `1010:provider_float:{provider}`, not `1100:bank` (P6-D1). Open
+  architectural conflict.** Spec 5.5 posts the confirmation as `DR 1200 / CR 1100:bank`. Spec 6.9
+  routes the payout through the gateway, so the cash that leaves is the provider float, and the
+  daily balance proof compares that account with the gateway balance. This is the one departure
+  from the spec's own posting text. One line in `settlement/domain/settlement-posting.ts` reverts
+  it. Not to be changed silently either way.
+- **Reversals need approval, not only write-offs (P6-D2).** Spec 6.6 and 11 require approval for
+  every manual reversal, so `corrected_with_reversal` goes through the same maker-checker.
+- **Any ledger integrity finding opens a sev1, including a non-empty suspense account (P6-D3).**
+  `SUSPENSE_ALERT_HOURS` (spec 6.14 and 10) is not used by this incident, so a suspense balance
+  cleared within the hour still opens one. Phase 8's drift monitor defers to it. Decide which
+  spec rule wins and whether a grace period applies.
+- **`reserved` stays 0 in the merchant balance and `available` is unchanged (P6-D4, P4-D8).** The
+  settlement entry already moves the reserve out of the payable account, so subtracting reserves
+  as well would count them twice.
+- **The settlement payout is a `transactions` row of type `settlement`**, with gateway key
+  `po_{ULID}` (P6-D5), because the `payouts` table belongs to Phase 4.
+- **Balance proof mapping (P6-D6).** Clearing is compared with the gateway `collection` balance and
+  float with its `disbursement` balance. The gateway reports two accounts; the spec says "the sum".
+- **Release is asynchronous (P6-D7).** The route answers with the batch `releasing`; a worker
+  sends the payout after commit.
+- **A completed settlement run is final for its period (P6-D8).** A batch cancelled afterwards is
+  settled by the next period's run.
+- **Merchant events (P6-D9).** `settlement.created` on submit for approval, `settlement.paid` on
+  pay. `balance.updated` is not emitted for settlements.
+- **New queue `reconciliation-run`, concurrency 2 (P6-D10).** Spec 8.9 lists nine queues and none
+  for scheduled reconciliation. `settlement-run` retries payout submission 8 times.
+- **New direct dependency `cron-parser` ^4.9.0 (P6-D11).** Already installed through BullMQ.
+- **Permission names (P6-D12).** `settlement:{read,prepare,approve,release}`,
+  `reconciliation:{read,work,approve}` and merchant `settlements:read`. `manage` is avoided because
+  CASL treats it as every action. Only `super_admin` approves; `operations` prepares and releases;
+  `auditor`, `compliance` and `support_agent` read (migration 0006).
+- **Exceptions are addressed by `rce_` ref and staff by `usr_` ref (P6-D13).** The spec writes `:id`.
+
 ## Compliance (Phase 7)
 
 KYC, AML and disputes (spec 6.13, 6.14). Three modules, none of which owns financial truth: a

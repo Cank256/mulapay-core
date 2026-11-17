@@ -1,5 +1,10 @@
 # Phases summary
 
+> **Stale in part.** The sections "Where the repository stands" and "Uncommitted and unverified work" describe the
+> repository before Phases 5 to 9 were committed. Phases 0 to 2 and 5 to 9 are committed; the Gateway drafts
+> named below as uncommitted are not in the tree except `money.ts`, `provider-capabilities.ts` and
+> `circuit-breaker.ts`. Current status and open work are in [phases_completion.md](phases_completion.md).
+
 Status of the build against spec section 14, and everything that is unresolved.
 
 **Everything in "Outstanding under Phase 4" below belongs to Phase 4 (Money Movement).** That

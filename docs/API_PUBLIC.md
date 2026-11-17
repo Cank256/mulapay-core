@@ -209,7 +209,7 @@ never in it. Poll it no more than once a minute, or use your webhook alerts.
 | `payment-methods`                                                | **not built**: needs routing (Phase 4)                              |
 | `refunds`, `payouts`, `payout-batches`                           | **not built**: money movement (Phase 4)                             |
 | `customers`                                                      | **not built**: table and PII handling belong to Phase 4             |
-| `settlements`                                                    | **not built**: Phase 6                                              |
+| `settlements`                                                    | built, read only (Phase 6)                                          |
 | `disputes`                                                       | **not built** on `/v1`: Phase 7 has dashboard and admin routes only |
 
 Their scopes exist, and the signing and rate rules for `payouts:write` are enforced by the same
