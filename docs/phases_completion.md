@@ -373,8 +373,12 @@ Committed as `27d47a0`. Last run: 85 files, 1,261 tests. Exit criterion met for 
 - [ ] **P5-S7 Personal data in request logs** (client IP, user agent). Decide the retention and the privacy basis.
 - [ ] **P5-S8 Delivery response excerpts** are stored 90 days and may contain echoed secrets or PII. Shorten or
       redact.
-- [ ] **P5-S9 Webhook secret rotation** sends two `v1` signatures during the grace period. Confirm the grace limit
+- [x] **P5-S9 Webhook secret rotation** sends two `v1` signatures during the grace period. Confirm the grace limit
       and that it cannot be extended indefinitely; add a test.
+      _Result:_ Confirmed in code: graceHours is validated 0 to 72 (default 24); a rotation keeps at most one
+      previous secret, and it is the secret being replaced, so chaining rotations retires the older one at once
+      and no secret signs longer than 72 hours after it stopped being current. Two tests added to webhook-
+      endpoints.int-spec.ts (passes with the other 37).
 
 ### API key format change (from P5-D9)
 

@@ -327,6 +327,49 @@ describe('secret rotation', () => {
   });
 });
 
+describe('secret rotation cannot extend a retired secret (P5-S9)', () => {
+  const HOUR = 3_600_000;
+  const secretsAt = async (ref: string, at: Date) => {
+    const row = await ctx.sql('select id from core.webhook_endpoints where ref = $1', [ref]);
+    const found = await ctx.endpointsRepository.findById(row[0]?.id as string);
+    return found ? ctx.endpoints.signingSecrets(found, at) : [];
+  };
+  it('keeps at most one previous secret, so chained rotations drop the oldest at once', async () => {
+    const created = (await register()).json().data;
+    const rotate = async (graceHours: number) =>
+      (
+        await key.client.post(`/v1/webhook-endpoints/${created.id}/rotate-secret`, { graceHours })
+      ).json().data.secret as string;
+    const first = created.secret as string;
+    const second = await rotate(72);
+    const third = await rotate(72);
+    const now = ctx.clock.now();
+    // The first secret was retired by the second rotation, well inside its 72-hour grace.
+    expect(await secretsAt(created.id, now)).toEqual([third, second]);
+    expect(await secretsAt(created.id, now)).not.toContain(first);
+    // The previous secret stops signing at the grace limit, however many rotations came before.
+    expect(await secretsAt(created.id, new Date(now.getTime() + 71 * HOUR))).toEqual([
+      third,
+      second,
+    ]);
+    expect(await secretsAt(created.id, new Date(now.getTime() + 73 * HOUR))).toEqual([third]);
+  });
+  it('a rotation with no grace ends the previous secret even if one was still running', async () => {
+    const created = (await register()).json().data;
+    const second = (
+      await key.client.post(`/v1/webhook-endpoints/${created.id}/rotate-secret`, {
+        graceHours: 72,
+      })
+    ).json().data.secret as string;
+    const third = (
+      await key.client.post(`/v1/webhook-endpoints/${created.id}/rotate-secret`, {
+        graceHours: 0,
+      })
+    ).json().data.secret as string;
+    expect(await secretsAt(created.id, ctx.clock.now())).toEqual([third]);
+    expect(second).not.toBe(third);
+  });
+});
 describe('authorization', () => {
   it('needs webhooks:read to read and webhooks:write to change', async () => {
     const reader = await issueKey(ctx, merchant.owner, {
