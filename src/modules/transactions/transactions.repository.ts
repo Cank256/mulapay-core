@@ -126,6 +126,24 @@ export class TransactionsRepository {
     return row?.transaction;
   }
 
+  /**
+   * One transaction by gateway external ID and type, or undefined. Used by event handlers
+   * to find the payment/payout/refund associated with a gateway event (P4-09).
+   */
+  async findByGatewayExternalId(
+    gatewayExternalId: string,
+    type: 'payment' | 'payout' | 'refund',
+    executor: Executor = this.db
+  ): Promise<TransactionRow | undefined> {
+    const [row] = await executor
+      .select()
+      .from(transactions)
+      .where(and(eq(transactions.gatewayExternalId, gatewayExternalId), eq(transactions.type, type)))
+      .limit(1);
+
+    return row;
+  }
+
   /** Newest first, keyset on `(created_at, ref)`; returns `limit + 1` rows. */
   list(filter: TransactionListFilter, executor: Executor = this.db): Promise<TransactionRow[]> {
     const { scope } = filter;

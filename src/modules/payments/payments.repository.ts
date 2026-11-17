@@ -100,6 +100,22 @@ export class PaymentsRepository {
     return row;
   }
 
+  /**
+   * Find payment by transaction ID. Used by event handlers to locate the payment for a
+   * gateway event (P4-09).
+   */
+  async findByTransactionId(
+    transactionId: string,
+    executor: Executor = this.db
+  ): Promise<PaymentRow | undefined> {
+    const [row] = await executor
+      .select()
+      .from(payments)
+      .where(eq(payments.transactionId, transactionId))
+      .limit(1);
+    return row;
+  }
+
   /** Locks one payment row. Lock order across the domain: session, payment, transaction. */
   async lockById(tx: Executor, id: string): Promise<PaymentRow | undefined> {
     const [row] = await tx.select().from(payments).where(eq(payments.id, id)).for('update');

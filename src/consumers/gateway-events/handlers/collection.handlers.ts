@@ -2,10 +2,16 @@
  * Collection event handlers (6 combinations): apply payment lifecycle transitions. Built on
  * `PaymentLifecycleService.apply` (Phase 2). Each handler is idempotent.
  */
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import type { Logger } from 'pino';
+import { ROOT_LOGGER } from '../../../common/tokens';
 import type { Transaction } from '../../../common/db/database.types';
 import type { GatewayEvent } from '../../../integrations/gateway/gateway-event-source.port';
 import type { EventHandler } from '../handler.port';
+import { TransactionsRepository } from '../../../modules/transactions/transactions.repository';
+import { PaymentsRepository } from '../../../modules/payments/payments.repository';
+import { PaymentLifecycleService } from '../../../modules/payments/payment-lifecycle.service';
+import { isPaymentProvider } from '../../../modules/payments/domain/payment-event';
 
 /**
  * Collection pending: payment is processing at the provider. Core does nothing (payment is
@@ -13,9 +19,47 @@ import type { EventHandler } from '../handler.port';
  */
 @Injectable()
 export class CollectionPendingHandler implements EventHandler {
-  async handle(_tx: Transaction, _event: GatewayEvent): Promise<boolean> {
-    // Payment is already in processing; this is a no-op confirmation
-    // TODO P4: verify transaction exists and is in processing state
+  constructor(
+    private readonly transactions: TransactionsRepository,
+    private readonly payments: PaymentsRepository,
+    private readonly lifecycle: PaymentLifecycleService,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
+  ) {}
+
+  async handle(tx: Transaction, event: GatewayEvent): Promise<boolean> {
+    // Find transaction by gateway external ID
+    const transaction = await this.transactions.findByGatewayExternalId(
+      event.externalId,
+      'payment',
+      tx
+    );
+
+    if (!transaction) {
+      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection event');
+      return true; // Event for unknown transaction, ignore
+    }
+
+    // Find payment by transaction ID
+    const payment = await this.payments.findByTransactionId(transaction.id, tx);
+    if (!payment) {
+      this.logger.error({ transactionId: transaction.id }, 'payment row missing for transaction');
+      return true;
+    }
+
+    // Apply processing event (idempotent, will be no-op if already processing)
+    await this.lifecycle.apply(tx, payment.id, {
+      eventKey: event.eventId,
+      source: 'gateway_event',
+      occurredAt: event.occurredAt,
+      signal: { kind: 'processing', outcomeUnknown: false },
+      identifiers: {
+        provider: isPaymentProvider(event.providerId) ? event.providerId : undefined,
+        operationId: event.operationId ?? undefined,
+        referenceId: event.referenceId ?? undefined,
+        providerTransactionId: event.providerTransactionId ?? undefined,
+      },
+    });
+
     return true;
   }
 }
@@ -26,8 +70,45 @@ export class CollectionPendingHandler implements EventHandler {
  */
 @Injectable()
 export class CollectionUnknownHandler implements EventHandler {
-  async handle(_tx: Transaction, _event: GatewayEvent): Promise<boolean> {
-    // TODO P4: mark transaction with outcome_unknown flag
+  constructor(
+    private readonly transactions: TransactionsRepository,
+    private readonly payments: PaymentsRepository,
+    private readonly lifecycle: PaymentLifecycleService,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
+  ) {}
+
+  async handle(tx: Transaction, event: GatewayEvent): Promise<boolean> {
+    const transaction = await this.transactions.findByGatewayExternalId(
+      event.externalId,
+      'payment',
+      tx
+    );
+
+    if (!transaction) {
+      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection unknown');
+      return true;
+    }
+
+    const payment = await this.payments.findByTransactionId(transaction.id, tx);
+    if (!payment) {
+      this.logger.error({ transactionId: transaction.id }, 'payment row missing for transaction');
+      return true;
+    }
+
+    // Mark as processing with outcome_unknown flag
+    await this.lifecycle.apply(tx, payment.id, {
+      eventKey: event.eventId,
+      source: 'gateway_event',
+      occurredAt: event.occurredAt,
+      signal: { kind: 'processing', outcomeUnknown: true },
+      identifiers: {
+        provider: isPaymentProvider(event.providerId) ? event.providerId : undefined,
+        operationId: event.operationId ?? undefined,
+        referenceId: event.referenceId ?? undefined,
+        providerTransactionId: event.providerTransactionId ?? undefined,
+      },
+    });
+
     return true;
   }
 }
@@ -38,9 +119,53 @@ export class CollectionUnknownHandler implements EventHandler {
  */
 @Injectable()
 export class CollectionSuccessfulHandler implements EventHandler {
-  async handle(_tx: Transaction, _event: GatewayEvent): Promise<boolean> {
-    // TODO P4: call PaymentLifecycleService.apply with 'succeeded' transition
-    // Must be idempotent: check if ledger entry already exists
+  constructor(
+    private readonly transactions: TransactionsRepository,
+    private readonly payments: PaymentsRepository,
+    private readonly lifecycle: PaymentLifecycleService,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
+  ) {}
+
+  async handle(tx: Transaction, event: GatewayEvent): Promise<boolean> {
+    const transaction = await this.transactions.findByGatewayExternalId(
+      event.externalId,
+      'payment',
+      tx
+    );
+
+    if (!transaction) {
+      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection success');
+      return true;
+    }
+
+    const payment = await this.payments.findByTransactionId(transaction.id, tx);
+    if (!payment) {
+      this.logger.error({ transactionId: transaction.id }, 'payment row missing for transaction');
+      return true;
+    }
+
+    // Parse amount from string to bigint
+    const amountMinor = BigInt(event.amount);
+
+    // Apply succeeded transition (idempotent, posts ledger entry)
+    await this.lifecycle.apply(tx, payment.id, {
+      eventKey: event.eventId,
+      source: 'gateway_event',
+      occurredAt: event.occurredAt,
+      signal: {
+        kind: 'succeeded',
+        amountMinor,
+        currency: event.currency,
+        // feeMinor and providerFeeMinor will come from gateway later (P4-D6)
+      },
+      identifiers: {
+        provider: isPaymentProvider(event.providerId) ? event.providerId : undefined,
+        operationId: event.operationId ?? undefined,
+        referenceId: event.referenceId ?? undefined,
+        providerTransactionId: event.providerTransactionId ?? undefined,
+      },
+    });
+
     return true;
   }
 }
@@ -51,8 +176,49 @@ export class CollectionSuccessfulHandler implements EventHandler {
  */
 @Injectable()
 export class CollectionFailedHandler implements EventHandler {
-  async handle(_tx: Transaction, _event: GatewayEvent): Promise<boolean> {
-    // TODO P4: transition payment to failed state
+  constructor(
+    private readonly transactions: TransactionsRepository,
+    private readonly payments: PaymentsRepository,
+    private readonly lifecycle: PaymentLifecycleService,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
+  ) {}
+
+  async handle(tx: Transaction, event: GatewayEvent): Promise<boolean> {
+    const transaction = await this.transactions.findByGatewayExternalId(
+      event.externalId,
+      'payment',
+      tx
+    );
+
+    if (!transaction) {
+      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection failed');
+      return true;
+    }
+
+    const payment = await this.payments.findByTransactionId(transaction.id, tx);
+    if (!payment) {
+      this.logger.error({ transactionId: transaction.id }, 'payment row missing for transaction');
+      return true;
+    }
+
+    // Apply failed transition
+    await this.lifecycle.apply(tx, payment.id, {
+      eventKey: event.eventId,
+      source: 'gateway_event',
+      occurredAt: event.occurredAt,
+      signal: {
+        kind: 'failed',
+        failureCode: event.status, // Use status as failure code
+        failureReason: event.reason ?? undefined,
+      },
+      identifiers: {
+        provider: isPaymentProvider(event.providerId) ? event.providerId : undefined,
+        operationId: event.operationId ?? undefined,
+        referenceId: event.referenceId ?? undefined,
+        providerTransactionId: event.providerTransactionId ?? undefined,
+      },
+    });
+
     return true;
   }
 }
@@ -63,8 +229,49 @@ export class CollectionFailedHandler implements EventHandler {
  */
 @Injectable()
 export class CollectionExpiredHandler implements EventHandler {
-  async handle(_tx: Transaction, _event: GatewayEvent): Promise<boolean> {
-    // TODO P4: transition payment to expired state
+  constructor(
+    private readonly transactions: TransactionsRepository,
+    private readonly payments: PaymentsRepository,
+    private readonly lifecycle: PaymentLifecycleService,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
+  ) {}
+
+  async handle(tx: Transaction, event: GatewayEvent): Promise<boolean> {
+    const transaction = await this.transactions.findByGatewayExternalId(
+      event.externalId,
+      'payment',
+      tx
+    );
+
+    if (!transaction) {
+      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection expired');
+      return true;
+    }
+
+    const payment = await this.payments.findByTransactionId(transaction.id, tx);
+    if (!payment) {
+      this.logger.error({ transactionId: transaction.id }, 'payment row missing for transaction');
+      return true;
+    }
+
+    // Apply expired transition
+    await this.lifecycle.apply(tx, payment.id, {
+      eventKey: event.eventId,
+      source: 'gateway_event',
+      occurredAt: event.occurredAt,
+      signal: {
+        kind: 'expired',
+        failureCode: event.status,
+        failureReason: event.reason ?? undefined,
+      },
+      identifiers: {
+        provider: isPaymentProvider(event.providerId) ? event.providerId : undefined,
+        operationId: event.operationId ?? undefined,
+        referenceId: event.referenceId ?? undefined,
+        providerTransactionId: event.providerTransactionId ?? undefined,
+      },
+    });
+
     return true;
   }
 }
@@ -75,8 +282,49 @@ export class CollectionExpiredHandler implements EventHandler {
  */
 @Injectable()
 export class CollectionCancelledHandler implements EventHandler {
-  async handle(_tx: Transaction, _event: GatewayEvent): Promise<boolean> {
-    // TODO P4: transition payment to cancelled state
+  constructor(
+    private readonly transactions: TransactionsRepository,
+    private readonly payments: PaymentsRepository,
+    private readonly lifecycle: PaymentLifecycleService,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
+  ) {}
+
+  async handle(tx: Transaction, event: GatewayEvent): Promise<boolean> {
+    const transaction = await this.transactions.findByGatewayExternalId(
+      event.externalId,
+      'payment',
+      tx
+    );
+
+    if (!transaction) {
+      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection cancelled');
+      return true;
+    }
+
+    const payment = await this.payments.findByTransactionId(transaction.id, tx);
+    if (!payment) {
+      this.logger.error({ transactionId: transaction.id }, 'payment row missing for transaction');
+      return true;
+    }
+
+    // Apply cancelled transition
+    await this.lifecycle.apply(tx, payment.id, {
+      eventKey: event.eventId,
+      source: 'gateway_event',
+      occurredAt: event.occurredAt,
+      signal: {
+        kind: 'cancelled',
+        failureCode: event.status,
+        failureReason: event.reason ?? undefined,
+      },
+      identifiers: {
+        provider: isPaymentProvider(event.providerId) ? event.providerId : undefined,
+        operationId: event.operationId ?? undefined,
+        referenceId: event.referenceId ?? undefined,
+        providerTransactionId: event.providerTransactionId ?? undefined,
+      },
+    });
+
     return true;
   }
 }
