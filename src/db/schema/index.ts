@@ -24,3 +24,4 @@ export * from './support';
 export * from './notifications';
 export * from './reports';
 export * from './operations';
+export * from './gateway';

@@ -170,10 +170,15 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       never retried** (exactly 1 attempt). Also tests all query operations (findByExternalId, listOperations,
       getBalance) with success and failure cases, and terminal status handling. `fake-gateway.ts` kept for health
       checks only.
-- [ ] **P3-06 BUILD. Migration and tables:** `gateway_events` (unique `gateway_event_id`, `apply_status` that allows
+- [x] **P3-06 BUILD. Migration and tables:** `gateway_events` (unique `gateway_event_id`, `apply_status` that allows
       "not applied yet", `apply_error`, `attempts`), `gateway_requests` (spec 5.2). **Do not create
       `consumer_cursors`: migration 0008 already did.** Adopt it, and add the retention policy row for
       `gateway_events` (1 year) in the same migration (Phase 9 note).
+      _Result:_ Created migration `0012_gateway_events_requests.sql` and schema `src/db/schema/gateway.ts`.
+      `gateway_events` partitioned monthly by `created_at`, append-only, with indexes on gateway_id, external_id,
+      apply_status, occurred_at. `gateway_requests` append-only, with indexes on transaction_id, external_id,
+      created_at. Added retention policy for `gateway_events` (365 days) to `partition_policies`. Revoked DELETE/
+      TRUNCATE from application role. `consumer_cursors` already exists with 'gateway' cursor (0008).
 - [ ] **P3-07 BUILD. `GatewayEventSource`** with two implementations, selected by `GATEWAY_EVENT_SOURCE`:
       database (`public.operation_events` through the `ro` pool, 2-second lag, tenant filter) and HTTP
       (`GET /api/v1/events`).
