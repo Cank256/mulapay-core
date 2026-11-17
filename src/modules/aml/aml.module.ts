@@ -24,6 +24,7 @@ import { AmlFactsRepository } from './monitoring/aml-facts.repository';
 import { AmlMonitoringService } from './monitoring/aml-monitoring.service';
 import { AmlMonitoringTrigger, AmlTerminalHandler } from './monitoring/aml-monitoring.trigger';
 import { AmlPrecheckService } from './precheck/precheck.service';
+import { AmlMonitoringCoverageService } from './rules/aml-monitoring-coverage.service';
 import { AmlRulesRepository } from './rules/aml-rules.repository';
 import { AmlRulesService } from './rules/aml-rules.service';
 import { AmlScreeningsRepository } from './screening/aml-screenings.repository';
@@ -67,6 +68,7 @@ import { AmlScreeningService } from './screening/aml-screening.service';
     AmlPrecheckService,
     AmlRulesRepository,
     AmlRulesService,
+    AmlMonitoringCoverageService,
     AmlScreeningsRepository,
     AmlScreeningService,
   ],

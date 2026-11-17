@@ -146,6 +146,11 @@ export const reconciliationRunsTotal = new Counter({
   labelNames: ['kind', 'status'] as const,
   registers: [metricsRegistry],
 });
+export const amlRulesEnabled = new Gauge({
+  name: 'core_aml_rules_enabled',
+  help: 'AML monitoring rules that are enabled and in effect now (alert at 0: no transaction is monitored)',
+  registers: [metricsRegistry],
+});
 export const gatewayAuthRejectionsTotal = new Counter({
   name: 'core_gateway_auth_rejections_total',
   help: "Gateway answers of 401 or 403: core's key is bad or provider access is denied (spec 3.5: page on-call; alert above 0)",

@@ -1,6 +1,6 @@
 /** SQL for `core.aml_rules` and its append-only version history. */
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, lte, or, sql } from 'drizzle-orm';
 import type { Executor } from '../../../common/db/database.types';
 import { DB_RW } from '../../../common/db/tokens';
 import { amlRules, amlRuleVersions } from '../../../db/schema';
@@ -58,6 +58,20 @@ export class AmlRulesRepository {
     return tx.select().from(amlRules).where(eq(amlRules.enabled, true)).orderBy(asc(amlRules.code));
   }
 
+  /** Rules that are enabled and inside their effective window at `now`: what monitoring uses. */
+  async countInEffect(now: Date): Promise<number> {
+    const rows = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(amlRules)
+      .where(
+        and(
+          eq(amlRules.enabled, true),
+          lte(amlRules.effectiveFrom, now),
+          or(isNull(amlRules.effectiveTo), gt(amlRules.effectiveTo, now))
+        )
+      );
+    return rows[0]?.n ?? 0;
+  }
   async insertVersion(tx: Executor, values: typeof amlRuleVersions.$inferInsert): Promise<void> {
     await tx.insert(amlRuleVersions).values(values);
   }

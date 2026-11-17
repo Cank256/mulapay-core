@@ -15,6 +15,7 @@ import {
   AML_TERMINAL_OUTBOX_TYPE,
   AmlTerminalHandler,
 } from '../../src/modules/aml/monitoring/aml-monitoring.trigger';
+import { metricsRegistry } from '../../src/common/telemetry/metrics';
 import { HoldsService } from '../../src/modules/holds/holds.service';
 import { staffSession, type StaffSession } from '../support/identity';
 import { createPayment, event, applyEvent, sql, toProcessing } from '../support/payments';
@@ -471,6 +472,28 @@ describe('rule configuration', () => {
     expect(listed.find((r: { code: string }) => r.code === code)).toMatchObject({ version: 3 });
   });
 
+  it('counts only rules that are enabled and in effect now (P7-C2 coverage signal)', async () => {
+    // Other suites share this database, so compare against the count before each change.
+    const base = await ctx.coverage.refresh();
+    await makeRule('amount_threshold', { thresholdMinor: '1' });
+    expect(await ctx.coverage.refresh()).toBe(base + 1);
+    await makeRule(
+      'amount_threshold',
+      { thresholdMinor: '1' },
+      { effectiveFrom: new Date(ctx.clock.now().getTime() + 6 * HOUR) }
+    );
+    await makeRule(
+      'amount_threshold',
+      { thresholdMinor: '1' },
+      {
+        effectiveFrom: new Date(ctx.clock.now().getTime() - 2 * HOUR),
+        effectiveTo: new Date(ctx.clock.now().getTime() - HOUR),
+      }
+    );
+    expect(await ctx.coverage.refresh()).toBe(base + 1);
+    const metrics = await metricsRegistry.getSingleMetricAsString('core_aml_rules_enabled');
+    expect(metrics).toMatch(new RegExp(`^core_aml_rules_enabled\\{[^}]*\\} ${base + 1}$`, 'm'));
+  });
   it('honours effective dates, judged at the time the payment completed', async () => {
     const future = await makeRule(
       'amount_threshold',

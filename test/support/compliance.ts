@@ -24,6 +24,7 @@ import { MerchantLimitsService } from '../../src/modules/aml/limits/merchant-lim
 import { AmlMonitoringService } from '../../src/modules/aml/monitoring/aml-monitoring.service';
 import { AmlPrecheckService } from '../../src/modules/aml/precheck/precheck.service';
 import { PayoutControlService } from '../../src/modules/aml/block/payout-control.service';
+import { AmlMonitoringCoverageService } from '../../src/modules/aml/rules/aml-monitoring-coverage.service';
 import { AmlRulesService } from '../../src/modules/aml/rules/aml-rules.service';
 import { AmlScreeningService } from '../../src/modules/aml/screening/aml-screening.service';
 import { DisputesService } from '../../src/modules/disputes/disputes.service';
@@ -70,6 +71,7 @@ export interface ComplianceContext extends PaymentsContext {
   readonly cases: AmlCasesService;
   readonly str: AmlStrExportService;
   readonly rules: AmlRulesService;
+  readonly coverage: AmlMonitoringCoverageService;
   readonly blocklist: AmlBlocklistService;
   readonly blocks: AmlBlockService;
   readonly payoutControl: PayoutControlService;
@@ -106,6 +108,7 @@ export async function startComplianceContext(
     cases: get(AmlCasesService),
     str: get(AmlStrExportService),
     rules: get(AmlRulesService),
+    coverage: get(AmlMonitoringCoverageService),
     blocklist: get(AmlBlocklistService),
     blocks: get(AmlBlockService),
     payoutControl: get(PayoutControlService),
