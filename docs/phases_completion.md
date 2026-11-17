@@ -187,11 +187,18 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       mandatory 2-second lag and tenant_id filter) and `HttpGatewayEventSource` (calls `GET /api/v1/events` with lag
       parameter). `GatewayEventSourceModule` selects implementation via factory based on `GATEWAY_EVENT_SOURCE` config
       ('database' or 'http'). Both enforce spec 3.6 requirements: 2-second lag, ascending id order, dedupe on event_id.
-- [ ] **P3-08 BUILD. Consumer loop** in `src/consumers/gateway-events`: cursor read `FOR UPDATE`; event insert, handler
+- [x] **P3-08 BUILD. Consumer loop** in `src/consumers/gateway-events`: cursor read `FOR UPDATE`; event insert, handler
       and cursor update in one transaction; dedupe on `event_id`; cursor never moves backwards (`GREATEST`);
       heartbeat every loop; adaptive poll 250 ms to 2 s; after 3 failed attempts mark the event `failed`, advance
       the cursor and raise the exception. Wire it into `ConsumerModule` and `main.consumer.ts` (today it holds only
       the advisory lock). Heartbeat fixes the `never_started` cursor route (P8-05).
+      _Result:_ Created `GatewayEventConsumer` service with full consumer loop: reads cursor position, fetches events
+      from event source, processes each in one transaction (insert with ON CONFLICT DO NOTHING dedupe, handler
+      placeholder, cursor advance with GREATEST to never move backwards). Adaptive polling: 250ms when events flow,
+      2s when idle. Heartbeat updates `consumer_cursors.heartbeat_at` every loop. After 3 failed attempts: marks event
+      `apply_status='failed'`, advances cursor, logs error (TODO: raise reconciliation exception and sev2 incident in
+      P3-09). Wired into `ConsumerModule` and starts automatically on module init. `main.consumer.ts` already holds
+      advisory lock.
 - [ ] **P3-09 BUILD. Handlers for the 18 `(operation_type, status)` combinations**, each with its own test.
       Collection handlers (6) build on `PaymentLifecycleService.apply`. The 12 disbursement and refund handlers
       complete with P4-11 and P4-12. For `disbursement` events whose `externalId` starts `po_`, call
