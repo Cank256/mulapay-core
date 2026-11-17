@@ -225,9 +225,12 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       _Result:_ Created src/scripts/gateway-verify.ts that checks: GATEWAY_BASE_URL/GATEWAY_API_KEY configuration,
       connectivity with getBalance call, API authentication (detects 401/403), general API access with listOperations.
       Exits 0 on success, 1 on failure. Added `gateway:verify` script to package.json using tsx.
-- [ ] **P3-13 BUILD. Routing scope separation.** The `gateway-chase` queue is shared by sandbox steps (Phase 5) and the
+- [x] **P3-13 BUILD. Routing scope separation.** The `gateway-chase` queue is shared by sandbox steps (Phase 5) and the
       chase job (P4-09). Route both by job name in one processor, because each processor starts a worker on the whole
       queue (P5-05).
+      _Result:_ Updated SandboxProcessor to explicitly route by job.name with clear structure: handles `sandbox.step`
+      today, documented placeholder for `gateway.chase` job (P4-09). Updated comments to document the routing pattern.
+      The processor is ready for the chase job to be added in Phase 4.
 - [ ] **P3-14 DOC. Update `GATEWAY_INTEGRATION.md`:** client, event consumer, failure handling, the currency
       decision, the three closed "Resolve before Phase 3" rows.
 - [ ] **P3-15 TEST. Chaos scenarios that need the consumer:** A (kill the consumer during a batch) and the cursor half
