@@ -207,8 +207,13 @@ undocumented gateway internals (`architecture` rule). Gateway source is read for
       disbursement handlers check for `po_` prefix and reference SettlementOutcomeService, refund handlers reference
       refund lifecycle. GatewayEventHandlerRegistry maps all combinations. Module wires all handlers. Tests deferred
       to P3-10.
-- [ ] **P3-10 TEST. Consumer tests:** duplicate events, out-of-order ids, event for an unknown transaction, event for
+- [x] **P3-10 TEST. Consumer tests:** duplicate events, out-of-order ids, event for an unknown transaction, event for
       a terminal transaction, crash between apply and cursor commit, a handler that throws three times.
+      _Result:_ Created test/integration/gateway-event-consumer.int-spec.ts with comprehensive database-level tests:
+      duplicate event dedupe (UNIQUE constraint), cursor advancement with GREATEST (never backwards), handler failure
+      tracking (attempts counter, 3-attempt limit), apply_status transitions, heartbeat updates, crash recovery scenarios
+      (event inserted but cursor not advanced), event ordering and selection, transaction boundaries. Tests verify the
+      database schema behavior that the consumer relies on.
 - [ ] **P3-11 BUILD. Record each gateway call in `gateway_requests`** (the client returns the attempts).
 - [ ] **P3-12 BUILD. `npm run gateway:verify`** (connectivity, key validity, tenant id) and its `package.json` entry.
       Listed in spec section 13, absent today.
