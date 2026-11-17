@@ -951,7 +951,10 @@ Write the tests first: they pin what `verify` must keep proving. Do not weaken a
       _Result:_ Chose the guard test. src/common/outbox/outbox-id-order.spec.ts fails if an outbox id leaves the
       millisecond of created_at, or if a second insert path into core.outbox appears. A published-rows metric
       needs a published_at index or a scan of the table, so it was not added.
-- [ ] **P9-V15 DOC.** Regenerate `docs/query-plans/phase9.txt` (the script gained a `DROP INDEX IF EXISTS` guard).
+- [x] **P9-V15 DOC.** Regenerate `docs/query-plans/phase9.txt` (the script gained a `DROP INDEX IF EXISTS` guard).
+      _Result:_ Regenerated against a fresh postgres:16 container with migrations 0000 to 0010 applied (11
+      migrations, which also shows they apply to an empty database). Plan shapes match the previous file; only
+      random ids and one planner choice (a status-prefixed transactions index) differ.
 - [ ] **P9-V16** A person who did not write the review reads and signs `PRODUCTION_READINESS.md`.
 
 ---

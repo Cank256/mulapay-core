@@ -37,571 +37,572 @@ ANALYZE
 == A1 Balances: account balances by code (accounts_environment_code_key, then the balance pkey)
                                                                                          QUERY PLAN                                                                                          
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Nested Loop  (cost=0.69..31.31 rows=2 width=72) (actual time=1.460..1.905 rows=2 loops=1)
-   Buffers: shared hit=8 read=8
-   ->  Index Scan using accounts_environment_code_key on accounts a  (cost=0.41..14.70 rows=2 width=68) (actual time=1.140..1.581 rows=2 loops=1)
-         Index Cond: ((environment = 'live'::text) AND (code = ANY ('{2000:merchant_payable:mch_01M7JVF75XG2NE0X3E3GD6GV38,2010:merchant_reserve:mch_01M7JVF75XG2NE0X3E3GD6GV38}'::text[])))
-         Buffers: shared hit=4 read=6
-   ->  Index Scan using account_balances_account_id_currency_pk on account_balances b  (cost=0.28..8.30 rows=1 width=36) (actual time=0.158..0.159 rows=1 loops=2)
+ Nested Loop  (cost=0.56..31.06 rows=2 width=72) (actual time=0.557..0.817 rows=2 loops=1)
+   Buffers: shared hit=8 read=6
+   ->  Index Scan using accounts_environment_code_key on accounts a  (cost=0.28..14.45 rows=2 width=68) (actual time=0.489..0.741 rows=2 loops=1)
+         Index Cond: ((environment = 'live'::text) AND (code = ANY ('{2000:merchant_payable:mch_01M7KKW4HD5RTGX15R8T0B62EP,2010:merchant_reserve:mch_01M7KKW4HD5RTGX15R8T0B62EP}'::text[])))
+         Buffers: shared hit=4 read=4
+   ->  Index Scan using account_balances_account_id_currency_pk on account_balances b  (cost=0.28..8.30 rows=1 width=36) (actual time=0.032..0.033 rows=1 loops=2)
          Index Cond: (account_id = a.id)
          Buffers: shared hit=4 read=2
  Planning:
-   Buffers: shared hit=100 read=21
- Planning Time: 6.972 ms
- Execution Time: 1.949 ms
+   Buffers: shared hit=98 read=22
+ Planning Time: 22.980 ms
+ Execution Time: 1.048 ms
 (12 rows)
 
 == A2 Balances: held amount (holds_merchant_active_idx, partial on state = active)
                                                                      QUERY PLAN                                                                     
 ----------------------------------------------------------------------------------------------------------------------------------------------------
- Aggregate  (cost=8.31..8.32 rows=1 width=32) (actual time=0.033..0.033 rows=1 loops=1)
+ Aggregate  (cost=8.31..8.32 rows=1 width=32) (actual time=1.641..1.641 rows=1 loops=1)
    Buffers: shared read=2
-   ->  Index Scan using holds_merchant_active_idx on holds  (cost=0.28..8.30 rows=1 width=8) (actual time=0.027..0.027 rows=0 loops=1)
-         Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar))
+   ->  Index Scan using holds_merchant_active_idx on holds  (cost=0.28..8.30 rows=1 width=8) (actual time=1.632..1.632 rows=0 loops=1)
+         Index Cond: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar))
          Buffers: shared read=2
  Planning:
-   Buffers: shared hit=77 read=13
- Planning Time: 2.639 ms
- Execution Time: 0.252 ms
+   Buffers: shared hit=78 read=13
+ Planning Time: 9.501 ms
+ Execution Time: 2.818 ms
 (9 rows)
 
 == A3 Balances: pending amount (transactions_merchant_status_created_idx, 90-day bound)
                                                                                                                               QUERY PLAN                                                                                                                               
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Aggregate  (cost=30.19..30.20 rows=1 width=32) (actual time=0.206..0.207 rows=1 loops=1)
-   Buffers: shared read=12
-   ->  Append  (cost=0.42..30.17 rows=8 width=8) (actual time=0.204..0.205 rows=0 loops=1)
-         Buffers: shared read=12
-         ->  Index Scan using transactions_202608_merchant_id_environment_status_created__idx on transactions_202608 transactions_1  (cost=0.42..6.61 rows=1 width=8) (actual time=0.048..0.048 rows=0 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+ Aggregate  (cost=31.44..31.45 rows=1 width=32) (actual time=2.297..2.298 rows=1 loops=1)
+   Buffers: shared hit=4 read=6
+   ->  Append  (cost=0.13..31.42 rows=8 width=8) (actual time=2.294..2.295 rows=0 loops=1)
+         Buffers: shared hit=4 read=6
+         ->  Index Scan using transactions_202608_created_at_idx on transactions_202608 transactions_1  (cost=0.13..8.16 rows=1 width=8) (actual time=0.010..0.010 rows=0 loops=1)
+               Index Cond: (created_at >= (now() - '90 days'::interval))
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text))
+               Buffers: shared hit=2
+         ->  Index Scan using transactions_202609_merchant_id_environment_status_created__idx on transactions_202609 transactions_2  (cost=0.42..6.61 rows=1 width=8) (actual time=1.089..1.090 rows=0 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
                Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
                Buffers: shared read=3
-         ->  Index Scan using transactions_202609_merchant_id_environment_status_created__idx on transactions_202609 transactions_2  (cost=0.42..6.61 rows=1 width=8) (actual time=0.049..0.049 rows=0 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+         ->  Index Scan using transactions_202610_created_at_idx on transactions_202610 transactions_3  (cost=0.13..8.16 rows=1 width=8) (actual time=0.014..0.014 rows=0 loops=1)
+               Index Cond: (created_at >= (now() - '90 days'::interval))
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text))
+               Buffers: shared hit=2
+         ->  Index Scan using transactions_202611_merchant_id_environment_status_created__idx on transactions_202611 transactions_4  (cost=0.42..8.45 rows=1 width=8) (actual time=1.170..1.170 rows=0 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
                Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
                Buffers: shared read=3
-         ->  Index Scan using transactions_202610_merchant_id_environment_status_created__idx on transactions_202610 transactions_3  (cost=0.42..8.46 rows=1 width=8) (actual time=0.043..0.043 rows=0 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-               Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
-               Buffers: shared read=3
-         ->  Index Scan using transactions_202611_merchant_id_environment_status_created__idx on transactions_202611 transactions_4  (cost=0.42..8.45 rows=1 width=8) (actual time=0.057..0.057 rows=0 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-               Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
-               Buffers: shared read=3
-         ->  Seq Scan on transactions_202612 transactions_5  (cost=0.00..0.00 rows=1 width=8) (actual time=0.002..0.002 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-         ->  Seq Scan on transactions_202701 transactions_6  (cost=0.00..0.00 rows=1 width=8) (actual time=0.002..0.002 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-         ->  Seq Scan on transactions_202702 transactions_7  (cost=0.00..0.00 rows=1 width=8) (actual time=0.000..0.000 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-         ->  Seq Scan on transactions_default transactions_8  (cost=0.00..0.00 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+         ->  Seq Scan on transactions_202612 transactions_5  (cost=0.00..0.00 rows=1 width=8) (actual time=0.003..0.004 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+         ->  Seq Scan on transactions_202701 transactions_6  (cost=0.00..0.00 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+         ->  Seq Scan on transactions_202702 transactions_7  (cost=0.00..0.00 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+         ->  Seq Scan on transactions_default transactions_8  (cost=0.00..0.00 rows=1 width=8) (actual time=0.004..0.004 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
  Planning:
-   Buffers: shared hit=313 read=42
- Planning Time: 7.711 ms
- Execution Time: 0.312 ms
+   Buffers: shared hit=475 read=49
+ Planning Time: 19.670 ms
+ Execution Time: 2.649 ms
 (32 rows)
 
 == A4 Balances: the big merchant (30,000 transactions) must not be slower
                                                                                                                               QUERY PLAN                                                                                                                               
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Aggregate  (cost=59.06..59.07 rows=1 width=32) (actual time=0.195..0.196 rows=1 loops=1)
-   Buffers: shared hit=8 read=9
-   ->  Append  (cost=0.42..59.01 rows=18 width=8) (actual time=0.174..0.190 rows=15 loops=1)
-         Buffers: shared hit=8 read=9
-         ->  Index Scan using transactions_202608_merchant_id_environment_status_created__idx on transactions_202608 transactions_1  (cost=0.42..6.61 rows=1 width=8) (actual time=0.031..0.031 rows=0 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-               Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
-               Buffers: shared hit=2 read=1
-         ->  Index Scan using transactions_202609_merchant_id_environment_status_created__idx on transactions_202609 transactions_2  (cost=0.42..6.61 rows=1 width=8) (actual time=0.049..0.049 rows=0 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-               Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
-               Buffers: shared hit=1 read=2
-         ->  Index Scan using transactions_202610_merchant_id_environment_status_created__idx on transactions_202610 transactions_3  (cost=0.42..8.46 rows=1 width=8) (actual time=0.041..0.041 rows=0 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+ Aggregate  (cost=65.42..65.43 rows=1 width=32) (actual time=0.433..0.434 rows=1 loops=1)
+   Buffers: shared hit=6 read=5
+   ->  Append  (cost=0.13..65.37 rows=21 width=8) (actual time=0.423..0.430 rows=15 loops=1)
+         Buffers: shared hit=6 read=5
+         ->  Index Scan using transactions_202608_created_at_idx on transactions_202608 transactions_1  (cost=0.13..8.16 rows=1 width=8) (actual time=0.006..0.006 rows=0 loops=1)
+               Index Cond: (created_at >= (now() - '90 days'::interval))
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text))
+               Buffers: shared hit=2
+         ->  Index Scan using transactions_202609_merchant_id_environment_status_created__idx on transactions_202609 transactions_2  (cost=0.42..6.61 rows=1 width=8) (actual time=0.228..0.228 rows=0 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
                Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
                Buffers: shared hit=1 read=2
-         ->  Index Scan using transactions_202611_merchant_id_environment_status_created__idx on transactions_202611 transactions_4  (cost=0.42..37.25 rows=11 width=8) (actual time=0.052..0.063 rows=15 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+         ->  Index Scan using transactions_202610_created_at_idx on transactions_202610 transactions_3  (cost=0.13..8.16 rows=1 width=8) (actual time=0.008..0.008 rows=0 loops=1)
+               Index Cond: (created_at >= (now() - '90 days'::interval))
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text))
+               Buffers: shared hit=2
+         ->  Index Scan using transactions_202611_merchant_id_environment_status_created__idx on transactions_202611 transactions_4  (cost=0.42..42.34 rows=14 width=8) (actual time=0.180..0.183 rows=15 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
                Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
-               Buffers: shared hit=4 read=4
+               Buffers: shared hit=1 read=3
          ->  Seq Scan on transactions_202612 transactions_5  (cost=0.00..0.00 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-         ->  Seq Scan on transactions_202701 transactions_6  (cost=0.00..0.00 rows=1 width=8) (actual time=0.000..0.000 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+         ->  Seq Scan on transactions_202701 transactions_6  (cost=0.00..0.00 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
          ->  Seq Scan on transactions_202702 transactions_7  (cost=0.00..0.00 rows=1 width=8) (actual time=0.000..0.000 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
-         ->  Seq Scan on transactions_default transactions_8  (cost=0.00..0.00 rows=1 width=8) (actual time=0.000..0.000 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
+         ->  Seq Scan on transactions_default transactions_8  (cost=0.00..0.00 rows=1 width=8) (actual time=0.000..0.001 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '90 days'::interval)))
  Planning:
-   Buffers: shared hit=24
- Planning Time: 0.748 ms
- Execution Time: 0.233 ms
+   Buffers: shared hit=31
+ Planning Time: 0.992 ms
+ Execution Time: 0.479 ms
 (32 rows)
 
 == A5 Transactions list, first page, 600k rows (transactions_merchant_created_idx)
                                                                                                        QUERY PLAN                                                                                                        
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=2.35..35.66 rows=26 width=321) (actual time=0.235..0.456 rows=26 loops=1)
-   Buffers: shared hit=5 read=26
-   ->  Merge Append  (cost=2.35..38755.03 rows=30249 width=321) (actual time=0.234..0.453 rows=26 loops=1)
+ Limit  (cost=2.35..34.45 rows=26 width=321) (actual time=6.097..6.385 rows=26 loops=1)
+   Buffers: shared hit=1 read=26
+   ->  Merge Append  (cost=2.35..37886.43 rows=30684 width=321) (actual time=6.096..6.382 rows=26 loops=1)
          Sort Key: transactions.created_at DESC NULLS LAST, transactions.ref DESC NULLS LAST
-         Buffers: shared hit=5 read=26
+         Buffers: shared hit=1 read=26
          Subplans Removed: 4
-         ->  Index Scan using transactions_202608_merchant_id_environment_created_at_ref_idx on transactions_202608 transactions_1  (cost=0.42..1472.58 rows=1202 width=321) (actual time=0.058..0.058 rows=1 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+         ->  Index Scan using transactions_202608_merchant_id_environment_created_at_ref_idx on transactions_202608 transactions_1  (cost=0.42..1341.03 rows=1092 width=321) (actual time=2.438..2.438 rows=1 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
                Buffers: shared read=4
-         ->  Index Scan using transactions_202609_merchant_id_environment_created_at_ref_idx on transactions_202609 transactions_2  (cost=0.43..13497.10 rows=11071 width=321) (actual time=0.053..0.053 rows=1 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+         ->  Index Scan using transactions_202609_merchant_id_environment_created_at_ref_idx on transactions_202609 transactions_2  (cost=0.43..13759.53 rows=11378 width=321) (actual time=2.178..2.178 rows=1 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
                Buffers: shared read=4
-         ->  Index Scan using transactions_202610_merchant_id_environment_created_at_ref_idx on transactions_202610 transactions_3  (cost=0.43..14071.79 rows=11635 width=321) (actual time=0.065..0.065 rows=1 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+         ->  Index Scan using transactions_202610_merchant_id_environment_created_at_ref_idx on transactions_202610 transactions_3  (cost=0.43..14232.10 rows=11751 width=321) (actual time=0.120..0.120 rows=1 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
                Buffers: shared read=4
-         ->  Index Scan using transactions_202611_merchant_id_environment_created_at_ref_idx on transactions_202611 transactions_4  (cost=0.42..9075.83 rows=6337 width=321) (actual time=0.055..0.269 rows=26 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
-               Buffers: shared hit=5 read=14
+         ->  Index Scan using transactions_202611_merchant_id_environment_created_at_ref_idx on transactions_202611 transactions_4  (cost=0.42..7907.34 rows=6459 width=321) (actual time=1.351..1.629 rows=26 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '90 days'::interval)) AND (created_at <= now()))
+               Buffers: shared hit=1 read=14
  Planning:
-   Buffers: shared hit=365
- Planning Time: 1.472 ms
- Execution Time: 0.510 ms
+   Buffers: shared hit=372
+ Planning Time: 1.709 ms
+ Execution Time: 6.469 ms
 (22 rows)
 
 == A6 Dashboard overview: rollup series for one merchant, 30 days (daily_merchant_rollups unique index)
                                                                                             QUERY PLAN                                                                                             
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- GroupAggregate  (cost=0.43..125.68 rows=43 width=96) (actual time=0.062..0.105 rows=30 loops=1)
+ GroupAggregate  (cost=0.43..119.62 rows=44 width=96) (actual time=0.343..0.415 rows=30 loops=1)
    Group Key: date, currency
    Buffers: shared read=6
-   ->  Index Scan using daily_merchant_rollups_merchant_id_environment_date_currency_ch on daily_merchant_rollups  (cost=0.43..124.04 rows=59 width=28) (actual time=0.056..0.081 rows=60 loops=1)
-         Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (date >= ((now())::date - 29)) AND (date <= (now())::date))
+   ->  Index Scan using daily_merchant_rollups_merchant_id_environment_date_currency_ch on daily_merchant_rollups  (cost=0.43..117.95 rows=60 width=28) (actual time=0.320..0.371 rows=60 loops=1)
+         Index Cond: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (date >= ((now())::date - 29)) AND (date <= (now())::date))
          Buffers: shared read=6
  Planning:
-   Buffers: shared hit=67 read=6
- Planning Time: 1.000 ms
- Execution Time: 0.122 ms
+   Buffers: shared hit=66 read=6
+ Planning Time: 2.194 ms
+ Execution Time: 0.468 ms
 (10 rows)
 
 == A7 Rollup recompute: one UTC day of final transactions, all merchants (the nightly aggregation)
                                                                                                                                                              QUERY PLAN                                                                                                                                                              
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Finalize GroupAggregate  (cost=25564.35..25749.32 rows=1286 width=110) (actual time=338.617..459.548 rows=2000 loops=1)
+ Finalize GroupAggregate  (cost=25602.70..25787.66 rows=1285 width=110) (actual time=320.407..866.948 rows=2000 loops=1)
    Group Key: t.merchant_id, t.environment, t.currency, t.channel, (COALESCE(t.provider, 'none'::text))
-   Buffers: shared hit=117 read=9405 written=8339
-   ->  Gather Merge  (cost=25564.35..25711.69 rows=1078 width=110) (actual time=338.545..458.583 rows=2000 loops=1)
+   Buffers: shared hit=116 read=9462 written=853
+   ->  Gather Merge  (cost=25602.70..25750.04 rows=1078 width=110) (actual time=320.316..865.003 rows=2000 loops=1)
          Workers Planned: 2
          Workers Launched: 2
-         Buffers: shared hit=117 read=9405 written=8339
-         ->  Partial GroupAggregate  (cost=24564.33..24587.23 rows=539 width=110) (actual time=193.884..194.700 rows=667 loops=3)
+         Buffers: shared hit=116 read=9462 written=853
+         ->  Partial GroupAggregate  (cost=24602.68..24625.59 rows=539 width=110) (actual time=101.540..103.209 rows=667 loops=3)
                Group Key: t.merchant_id, t.environment, t.currency, t.channel, (COALESCE(t.provider, 'none'::text))
-               Buffers: shared hit=117 read=9405 written=8339
-               ->  Sort  (cost=24564.33..24565.67 rows=539 width=94) (actual time=193.859..193.949 rows=2501 loops=3)
+               Buffers: shared hit=116 read=9462 written=853
+               ->  Sort  (cost=24602.68..24604.03 rows=539 width=94) (actual time=101.501..101.685 rows=2501 loops=3)
                      Sort Key: t.merchant_id, t.environment, t.currency, t.channel, (COALESCE(t.provider, 'none'::text))
                      Sort Method: quicksort  Memory: 896kB
-                     Buffers: shared hit=117 read=9405 written=8339
+                     Buffers: shared hit=116 read=9462 written=853
                      Worker 0:  Sort Method: quicksort  Memory: 25kB
                      Worker 1:  Sort Method: quicksort  Memory: 25kB
-                     ->  Parallel Append  (cost=0.00..24539.87 rows=539 width=94) (actual time=81.908..192.165 rows=2501 loops=3)
-                           Buffers: shared hit=14 read=9404 written=8339
+                     ->  Parallel Append  (cost=0.00..24578.22 rows=539 width=94) (actual time=0.023..98.494 rows=2501 loops=3)
+                           Buffers: shared hit=13 read=9461 written=853
                            Subplans Removed: 6
-                           ->  Parallel Seq Scan on transactions_202610 t_1  (cost=0.00..11315.49 rows=299 width=94) (actual time=146.637..146.638 rows=0 loops=3)
+                           ->  Parallel Seq Scan on transactions_202610 t_1  (cost=0.00..11314.41 rows=283 width=94) (actual time=147.568..147.573 rows=0 loops=1)
                                  Filter: ((status = ANY ('{succeeded,failed,expired,cancelled}'::text[])) AND (created_at < (now())::date) AND (COALESCE(completed_at, updated_at) < (now())::date) AND (COALESCE(completed_at, updated_at) >= ((now())::date - 1)) AND (created_at >= (((now())::date - 1) - '35 days'::interval)))
-                                 Rows Removed by Filter: 77478
-                                 Buffers: shared hit=1 read=6230 written=5800
-                           ->  Parallel Seq Scan on transactions_202611 t_2  (cost=0.00..5784.85 rows=234 width=94) (actual time=0.030..135.763 rows=7503 loops=1)
+                                 Rows Removed by Filter: 232430
+                                 Buffers: shared hit=1 read=6229 written=29
+                           ->  Parallel Seq Scan on transactions_202611 t_2  (cost=0.00..5890.48 rows=250 width=94) (actual time=0.066..147.095 rows=7502 loops=1)
                                  Filter: ((status = ANY ('{succeeded,failed,expired,cancelled}'::text[])) AND (created_at < (now())::date) AND (COALESCE(completed_at, updated_at) < (now())::date) AND (COALESCE(completed_at, updated_at) >= ((now())::date - 1)) AND (created_at >= (((now())::date - 1) - '35 days'::interval)))
-                                 Rows Removed by Filter: 111256
-                                 Buffers: shared hit=13 read=3174 written=2539
+                                 Rows Removed by Filter: 113480
+                                 Buffers: shared hit=12 read=3232 written=824
  Planning:
-   Buffers: shared hit=66 read=1
- Planning Time: 1.320 ms
- Execution Time: 459.768 ms
+   Buffers: shared hit=71 read=1
+ Planning Time: 1.370 ms
+ Execution Time: 867.595 ms
 (31 rows)
 
 == A8 Settlement: period totals for one merchant (transactions_merchant_created_idx)
-                                                                                                              QUERY PLAN                                                                                                               
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Aggregate  (cost=4653.51..4653.52 rows=1 width=96) (actual time=8.686..8.687 rows=1 loops=1)
-   Buffers: shared hit=1771 read=53 written=53
-   ->  Append  (cost=0.42..4629.95 rows=1570 width=23) (actual time=1.548..8.394 rows=2596 loops=1)
-         Buffers: shared hit=1771 read=53 written=53
+                                                                                                                            QUERY PLAN                                                                                                                             
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=3871.14..3871.15 rows=1 width=96) (actual time=26.579..26.580 rows=1 loops=1)
+   Buffers: shared hit=1608 read=49
+   ->  Append  (cost=0.42..3848.27 rows=1524 width=23) (actual time=11.228..25.872 rows=2596 loops=1)
+         Buffers: shared hit=1608 read=49
          Subplans Removed: 7
-         ->  Bitmap Heap Scan on transactions_202611 transactions_1  (cost=1067.07..4596.68 rows=1563 width=23) (actual time=1.548..8.220 rows=2596 loops=1)
-               Recheck Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '10 days'::interval)) AND (created_at < (now() - '1 day'::interval)))
-               Filter: ((type = ANY ('{payment,refund}'::text[])) AND (currency = 'UGX'::bpchar) AND (status = 'succeeded'::text) AND (completed_at >= (now() - '9 days'::interval)) AND (completed_at < (now() - '1 day'::interval)))
-               Rows Removed by Filter: 871
-               Heap Blocks: exact=1769
-               Buffers: shared hit=1771 read=53 written=53
-               ->  Bitmap Index Scan on transactions_202611_merchant_id_environment_created_at_ref_idx  (cost=0.00..1066.68 rows=3617 width=0) (actual time=1.395..1.395 rows=3467 loops=1)
-                     Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (created_at >= (now() - '10 days'::interval)) AND (created_at < (now() - '1 day'::interval)))
-                     Buffers: shared hit=2 read=53 written=53
+         ->  Bitmap Heap Scan on transactions_202611 transactions_1  (cost=293.40..3815.22 rows=1517 width=23) (actual time=11.227..25.651 rows=2596 loops=1)
+               Recheck Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (status = 'succeeded'::text) AND (created_at >= (now() - '10 days'::interval)) AND (created_at < (now() - '1 day'::interval)))
+               Filter: ((type = ANY ('{payment,refund}'::text[])) AND (currency = 'UGX'::bpchar) AND (completed_at >= (now() - '9 days'::interval)) AND (completed_at < (now() - '1 day'::interval)))
+               Rows Removed by Filter: 528
+               Heap Blocks: exact=1606
+               Buffers: shared hit=1608 read=49
+               ->  Bitmap Index Scan on transactions_202611_merchant_id_environment_status_created__idx  (cost=0.00..293.02 rows=3234 width=0) (actual time=11.068..11.069 rows=3124 loops=1)
+                     Index Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (status = 'succeeded'::text) AND (created_at >= (now() - '10 days'::interval)) AND (created_at < (now() - '1 day'::interval)))
+                     Buffers: shared hit=2 read=49
  Planning:
-   Buffers: shared hit=24
- Planning Time: 1.805 ms
- Execution Time: 8.777 ms
+   Buffers: shared hit=31
+ Planning Time: 2.245 ms
+ Execution Time: 26.686 ms
 (18 rows)
 
 == A9 Settlement: active dispute and AML holds of a merchant (holds_merchant_active_idx)
                                                                      QUERY PLAN                                                                     
 ----------------------------------------------------------------------------------------------------------------------------------------------------
- Aggregate  (cost=8.32..8.33 rows=1 width=64) (actual time=0.010..0.010 rows=1 loops=1)
+ Aggregate  (cost=8.32..8.33 rows=1 width=64) (actual time=0.057..0.058 rows=1 loops=1)
    Buffers: shared hit=2
-   ->  Index Scan using holds_merchant_active_idx on holds  (cost=0.28..8.30 rows=1 width=15) (actual time=0.009..0.009 rows=0 loops=1)
-         Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar))
+   ->  Index Scan using holds_merchant_active_idx on holds  (cost=0.28..8.30 rows=1 width=15) (actual time=0.055..0.055 rows=0 loops=1)
+         Index Cond: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar))
          Buffers: shared hit=2
  Planning:
    Buffers: shared hit=5
- Planning Time: 0.191 ms
- Execution Time: 0.031 ms
+ Planning Time: 0.213 ms
+ Execution Time: 0.082 ms
 (9 rows)
 
 == A10 Hold expiry sweep (holds_expiry_idx, partial)
                                                               QUERY PLAN                                                              
 --------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.28..13.10 rows=200 width=24) (actual time=0.082..0.228 rows=200 loops=1)
-   Buffers: shared read=11 written=11
-   ->  Index Scan using holds_expiry_idx on holds  (cost=0.28..154.35 rows=2404 width=24) (actual time=0.082..0.215 rows=200 loops=1)
+ Limit  (cost=0.28..11.01 rows=200 width=24) (actual time=0.895..9.359 rows=200 loops=1)
+   Buffers: shared read=202 written=31
+   ->  Index Scan using holds_expiry_idx on holds  (cost=0.28..136.88 rows=2548 width=24) (actual time=0.894..9.328 rows=200 loops=1)
          Index Cond: (expires_at <= (now() + '02:00:00'::interval))
-         Buffers: shared read=11 written=11
+         Buffers: shared read=202 written=31
  Planning:
    Buffers: shared hit=8
- Planning Time: 0.079 ms
- Execution Time: 0.244 ms
+ Planning Time: 0.139 ms
+ Execution Time: 9.414 ms
 (9 rows)
 
 == A11 Reconciliation exception queue (reconciliation_exceptions_queue_idx, partial)
-                                                                           QUERY PLAN                                                                           
-----------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=1631.16..1631.29 rows=51 width=385) (actual time=20.316..20.331 rows=51 loops=1)
-   Buffers: shared hit=4 read=1366 written=1366
-   ->  Sort  (cost=1631.16..1637.43 rows=2507 width=385) (actual time=20.314..20.325 rows=51 loops=1)
+                                                                          QUERY PLAN                                                                           
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1570.26..1570.39 rows=51 width=385) (actual time=58.921..58.936 rows=51 loops=1)
+   Buffers: shared read=1370 written=1248
+   ->  Sort  (cost=1570.26..1576.57 rows=2522 width=385) (actual time=58.917..58.926 rows=51 loops=1)
          Sort Key: created_at DESC NULLS LAST, ref DESC NULLS LAST
          Sort Method: top-N heapsort  Memory: 38kB
-         Buffers: shared hit=4 read=1366 written=1366
-         ->  Bitmap Heap Scan on reconciliation_exceptions  (cost=137.44..1547.52 rows=2507 width=385) (actual time=0.507..19.562 rows=2500 loops=1)
+         Buffers: shared read=1370 written=1248
+         ->  Bitmap Heap Scan on reconciliation_exceptions  (cost=77.52..1486.12 rows=2522 width=385) (actual time=2.909..57.314 rows=2500 loops=1)
                Recheck Cond: (status = ANY ('{open,investigating}'::text[]))
                Heap Blocks: exact=1355
-               Buffers: shared hit=4 read=1366 written=1366
-               ->  Bitmap Index Scan on reconciliation_exceptions_queue_idx  (cost=0.00..136.81 rows=2507 width=0) (actual time=0.372..0.372 rows=2500 loops=1)
-                     Buffers: shared read=15 written=15
+               Buffers: shared read=1370 written=1248
+               ->  Bitmap Index Scan on reconciliation_exceptions_queue_idx  (cost=0.00..76.89 rows=2522 width=0) (actual time=2.142..2.142 rows=2500 loops=1)
+                     Buffers: shared read=15 written=13
  Planning:
    Buffers: shared hit=125 read=10 written=10
- Planning Time: 1.141 ms
- Execution Time: 20.398 ms
+ Planning Time: 5.301 ms
+ Execution Time: 59.285 ms
 (16 rows)
 
 == A11 again, warm cache (the first run above reads cold pages the bulk seed left behind)
-                                                                           QUERY PLAN                                                                           
-----------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=1631.16..1631.29 rows=51 width=385) (actual time=3.294..3.299 rows=51 loops=1)
+                                                                          QUERY PLAN                                                                           
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1570.26..1570.39 rows=51 width=385) (actual time=13.639..13.649 rows=51 loops=1)
    Buffers: shared hit=1370
-   ->  Sort  (cost=1631.16..1637.43 rows=2507 width=385) (actual time=3.293..3.295 rows=51 loops=1)
+   ->  Sort  (cost=1570.26..1576.57 rows=2522 width=385) (actual time=13.637..13.641 rows=51 loops=1)
          Sort Key: created_at DESC NULLS LAST, ref DESC NULLS LAST
          Sort Method: top-N heapsort  Memory: 38kB
          Buffers: shared hit=1370
-         ->  Bitmap Heap Scan on reconciliation_exceptions  (cost=137.44..1547.52 rows=2507 width=385) (actual time=0.310..2.809 rows=2500 loops=1)
+         ->  Bitmap Heap Scan on reconciliation_exceptions  (cost=77.52..1486.12 rows=2522 width=385) (actual time=0.887..11.696 rows=2500 loops=1)
                Recheck Cond: (status = ANY ('{open,investigating}'::text[]))
                Heap Blocks: exact=1355
                Buffers: shared hit=1370
-               ->  Bitmap Index Scan on reconciliation_exceptions_queue_idx  (cost=0.00..136.81 rows=2507 width=0) (actual time=0.209..0.209 rows=2500 loops=1)
+               ->  Bitmap Index Scan on reconciliation_exceptions_queue_idx  (cost=0.00..76.89 rows=2522 width=0) (actual time=0.473..0.473 rows=2500 loops=1)
                      Buffers: shared hit=15
  Planning:
    Buffers: shared hit=2
- Planning Time: 0.144 ms
- Execution Time: 3.343 ms
+ Planning Time: 1.205 ms
+ Execution Time: 14.308 ms
 (16 rows)
 
 == A12 Reconciliation: open exception by dedupe key (partial unique index)
                                                                                  QUERY PLAN                                                                                 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Update on reconciliation_exceptions  (cost=0.28..8.30 rows=0 width=0) (actual time=0.382..0.382 rows=0 loops=1)
-   Buffers: shared hit=13 read=11 dirtied=7 written=11
-   ->  Index Scan using reconciliation_exceptions_open_dedupe_key on reconciliation_exceptions  (cost=0.28..8.30 rows=1 width=18) (actual time=0.029..0.030 rows=1 loops=1)
+ Update on reconciliation_exceptions  (cost=0.28..8.30 rows=0 width=0) (actual time=2.269..2.270 rows=0 loops=1)
+   Buffers: shared hit=13 read=11 dirtied=7 written=7
+   ->  Index Scan using reconciliation_exceptions_open_dedupe_key on reconciliation_exceptions  (cost=0.28..8.30 rows=1 width=18) (actual time=0.391..0.397 rows=1 loops=1)
          Index Cond: (dedupe_key = 'dk-40'::text)
          Filter: (status = ANY ('{open,investigating}'::text[]))
          Buffers: shared hit=1 read=2 written=2
  Planning:
    Buffers: shared hit=2
- Planning Time: 0.080 ms
- Execution Time: 2.138 ms
+ Planning Time: 0.595 ms
+ Execution Time: 5.022 ms
 (10 rows)
 
 == A13 Reconciliation run by (kind, run key)
                                                                          QUERY PLAN                                                                          
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
- LockRows  (cost=0.28..8.31 rows=1 width=212) (actual time=0.079..0.080 rows=1 loops=1)
-   Buffers: shared hit=1 read=3 dirtied=1 written=3
-   ->  Index Scan using reconciliation_runs_run_key_key on reconciliation_runs  (cost=0.28..8.30 rows=1 width=212) (actual time=0.077..0.078 rows=1 loops=1)
+ LockRows  (cost=0.28..8.31 rows=1 width=212) (actual time=0.193..0.194 rows=1 loops=1)
+   Buffers: shared hit=1 read=3 dirtied=1 written=1
+   ->  Index Scan using reconciliation_runs_run_key_key on reconciliation_runs  (cost=0.28..8.30 rows=1 width=212) (actual time=0.181..0.182 rows=1 loops=1)
          Index Cond: ((kind = 'gateway_gap'::text) AND (run_key = 'rk-4000'::text))
-         Buffers: shared read=3 written=3
+         Buffers: shared read=3 written=1
  Planning:
-   Buffers: shared hit=97 read=7 written=7
- Planning Time: 0.723 ms
- Execution Time: 0.092 ms
+   Buffers: shared hit=99 read=5 written=4
+ Planning Time: 2.508 ms
+ Execution Time: 0.248 ms
 (9 rows)
 
 == A14 Notifications: unread count (notifications_unread_idx, partial)
                                                                  QUERY PLAN                                                                 
 --------------------------------------------------------------------------------------------------------------------------------------------
- Aggregate  (cost=16.12..16.13 rows=1 width=8) (actual time=0.258..0.258 rows=1 loops=1)
+ Aggregate  (cost=16.12..16.13 rows=1 width=8) (actual time=1.284..1.286 rows=1 loops=1)
    Buffers: shared hit=1 read=11 written=11
-   ->  Bitmap Heap Scan on notifications  (cost=4.31..16.11 rows=3 width=0) (actual time=0.055..0.254 rows=10 loops=1)
+   ->  Bitmap Heap Scan on notifications  (cost=4.31..16.11 rows=3 width=0) (actual time=0.909..1.278 rows=10 loops=1)
          Recheck Cond: ((recipient_id = '45c48cce-2e2d-7fbd-ea1a-fc51c7c6ad26'::uuid) AND (channel = 'in_app'::text) AND (read_at IS NULL))
          Heap Blocks: exact=10
          Buffers: shared hit=1 read=11 written=11
-         ->  Bitmap Index Scan on notifications_unread_idx  (cost=0.00..4.31 rows=3 width=0) (actual time=0.051..0.051 rows=10 loops=1)
+         ->  Bitmap Index Scan on notifications_unread_idx  (cost=0.00..4.31 rows=3 width=0) (actual time=0.903..0.903 rows=10 loops=1)
                Index Cond: (recipient_id = '45c48cce-2e2d-7fbd-ea1a-fc51c7c6ad26'::uuid)
                Buffers: shared read=2 written=2
- Planning Time: 0.041 ms
- Execution Time: 0.276 ms
+ Planning Time: 0.096 ms
+ Execution Time: 1.323 ms
 (11 rows)
 
 == A15 Notifications: inbox page (notifications_inbox_idx)
                                                                  QUERY PLAN                                                                  
 ---------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=35.67..35.69 rows=8 width=192) (actual time=0.071..0.073 rows=10 loops=1)
+ Limit  (cost=31.81..31.83 rows=7 width=192) (actual time=0.740..0.742 rows=10 loops=1)
    Buffers: shared hit=10 read=3 written=3
-   ->  Sort  (cost=35.67..35.69 rows=8 width=192) (actual time=0.071..0.072 rows=10 loops=1)
+   ->  Sort  (cost=31.81..31.83 rows=7 width=192) (actual time=0.739..0.740 rows=10 loops=1)
          Sort Key: created_at DESC, ref DESC
          Sort Method: quicksort  Memory: 27kB
          Buffers: shared hit=10 read=3 written=3
-         ->  Bitmap Heap Scan on notifications  (cost=4.48..35.55 rows=8 width=192) (actual time=0.060..0.064 rows=10 loops=1)
+         ->  Bitmap Heap Scan on notifications  (cost=4.47..31.72 rows=7 width=192) (actual time=0.678..0.723 rows=10 loops=1)
                Recheck Cond: ((recipient_id = '45c48cce-2e2d-7fbd-ea1a-fc51c7c6ad26'::uuid) AND (channel = 'in_app'::text))
                Heap Blocks: exact=10
                Buffers: shared hit=10 read=3 written=3
-               ->  Bitmap Index Scan on notifications_inbox_idx  (cost=0.00..4.48 rows=8 width=0) (actual time=0.058..0.059 rows=10 loops=1)
+               ->  Bitmap Index Scan on notifications_inbox_idx  (cost=0.00..4.47 rows=7 width=0) (actual time=0.673..0.673 rows=10 loops=1)
                      Index Cond: (recipient_id = '45c48cce-2e2d-7fbd-ea1a-fc51c7c6ad26'::uuid)
                      Buffers: shared read=3 written=3
  Planning:
    Buffers: shared hit=32
- Planning Time: 0.122 ms
- Execution Time: 0.086 ms
+ Planning Time: 0.449 ms
+ Execution Time: 0.779 ms
 (17 rows)
 
 == A16 Notifications: dedupe lookup (notifications_dedupe_idx)
                                                                                                         QUERY PLAN                                                                                                         
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.42..8.45 rows=1 width=16) (actual time=0.082..0.082 rows=0 loops=1)
+ Limit  (cost=0.42..8.45 rows=1 width=16) (actual time=0.250..0.251 rows=0 loops=1)
    Buffers: shared read=3 written=3
-   ->  Index Scan using notifications_dedupe_idx on notifications  (cost=0.42..8.45 rows=1 width=16) (actual time=0.081..0.081 rows=0 loops=1)
+   ->  Index Scan using notifications_dedupe_idx on notifications  (cost=0.42..8.45 rows=1 width=16) (actual time=0.250..0.250 rows=0 loops=1)
          Index Cond: ((recipient_id = '45c48cce-2e2d-7fbd-ea1a-fc51c7c6ad26'::uuid) AND (template_code = 'payment.succeeded'::text) AND (resource_key = 'res-1'::text) AND (created_at >= (now() - '00:05:00'::interval)))
          Buffers: shared read=3 written=3
- Planning Time: 0.034 ms
- Execution Time: 0.089 ms
+ Planning Time: 0.721 ms
+ Execution Time: 0.283 ms
 (7 rows)
 
 == A17 Notification delivery sweep: pending and overdue (per-partition partial indexes)
-                                                                                                                QUERY PLAN                                                                                                                
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=140.98..141.01 rows=14 width=34) (actual time=15.095..15.115 rows=200 loops=1)
-   Buffers: shared hit=340 read=836 written=725
-   ->  Sort  (cost=140.98..141.01 rows=14 width=34) (actual time=15.094..15.102 rows=200 loops=1)
+                                                                                                                 QUERY PLAN                                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=130.15..130.18 rows=14 width=34) (actual time=96.018..96.053 rows=200 loops=1)
+   Buffers: shared read=1183 written=823
+   ->  Sort  (cost=130.15..130.18 rows=14 width=34) (actual time=96.016..96.038 rows=200 loops=1)
          Sort Key: notification_deliveries.next_attempt_at
          Sort Method: top-N heapsort  Memory: 39kB
-         Buffers: shared hit=340 read=836 written=725
-         ->  Append  (cost=0.29..140.71 rows=14 width=34) (actual time=4.913..14.807 rows=744 loops=1)
-               Buffers: shared hit=340 read=836 written=725
+         Buffers: shared read=1183 written=823
+         ->  Append  (cost=0.29..129.88 rows=14 width=34) (actual time=39.506..94.555 rows=744 loops=1)
+               Buffers: shared read=1183 written=823
                Subplans Removed: 2
-               ->  Index Scan using notification_deliveries_202610_status_next_attempt_at_idx on notification_deliveries_202610 notification_deliveries_1  (cost=0.28..51.19 rows=4 width=34) (actual time=4.912..9.252 rows=354 loops=1)
+               ->  Index Scan using notification_deliveries_202610_status_next_attempt_at_idx on notification_deliveries_202610 notification_deliveries_1  (cost=0.28..51.24 rows=4 width=34) (actual time=39.504..58.578 rows=348 loops=1)
                      Index Cond: (next_attempt_at <= (now() - '00:01:00'::interval))
                      Filter: (created_at >= (now() - '30 days'::interval))
-                     Rows Removed by Filter: 422
-                     Buffers: shared hit=237 read=545 written=514
-               ->  Index Scan using notification_deliveries_202611_status_next_attempt_at_idx on notification_deliveries_202611 notification_deliveries_2  (cost=0.28..48.79 rows=4 width=34) (actual time=0.072..5.450 rows=390 loops=1)
+                     Rows Removed by Filter: 429
+                     Buffers: shared read=783 written=561
+               ->  Index Scan using notification_deliveries_202611_status_next_attempt_at_idx on notification_deliveries_202611 notification_deliveries_2  (cost=0.28..32.76 rows=4 width=34) (actual time=1.237..35.530 rows=396 loops=1)
                      Index Cond: (next_attempt_at <= (now() - '00:01:00'::interval))
                      Filter: (created_at >= (now() - '30 days'::interval))
-                     Buffers: shared hit=103 read=291 written=211
-               ->  Seq Scan on notification_deliveries_202612 notification_deliveries_3  (cost=0.00..0.00 rows=1 width=34) (actual time=0.007..0.007 rows=0 loops=1)
+                     Buffers: shared read=400 written=262
+               ->  Seq Scan on notification_deliveries_202612 notification_deliveries_3  (cost=0.00..0.00 rows=1 width=34) (actual time=0.013..0.018 rows=0 loops=1)
                      Filter: ((status = 'pending'::text) AND (created_at >= (now() - '30 days'::interval)) AND (next_attempt_at <= (now() - '00:01:00'::interval)))
-               ->  Seq Scan on notification_deliveries_202701 notification_deliveries_4  (cost=0.00..0.00 rows=1 width=34) (actual time=0.001..0.001 rows=0 loops=1)
+               ->  Seq Scan on notification_deliveries_202701 notification_deliveries_4  (cost=0.00..0.00 rows=1 width=34) (actual time=0.009..0.009 rows=0 loops=1)
                      Filter: ((status = 'pending'::text) AND (created_at >= (now() - '30 days'::interval)) AND (next_attempt_at <= (now() - '00:01:00'::interval)))
-               ->  Seq Scan on notification_deliveries_202702 notification_deliveries_5  (cost=0.00..0.00 rows=1 width=34) (actual time=0.001..0.001 rows=0 loops=1)
+               ->  Seq Scan on notification_deliveries_202702 notification_deliveries_5  (cost=0.00..0.00 rows=1 width=34) (actual time=0.007..0.007 rows=0 loops=1)
                      Filter: ((status = 'pending'::text) AND (created_at >= (now() - '30 days'::interval)) AND (next_attempt_at <= (now() - '00:01:00'::interval)))
-               ->  Seq Scan on notification_deliveries_default notification_deliveries_6  (cost=0.00..0.00 rows=1 width=34) (actual time=0.001..0.001 rows=0 loops=1)
+               ->  Seq Scan on notification_deliveries_default notification_deliveries_6  (cost=0.00..0.00 rows=1 width=34) (actual time=0.003..0.003 rows=0 loops=1)
                      Filter: ((status = 'pending'::text) AND (created_at >= (now() - '30 days'::interval)) AND (next_attempt_at <= (now() - '00:01:00'::interval)))
  Planning:
-   Buffers: shared hit=284 read=49 written=49
- Planning Time: 4.455 ms
- Execution Time: 15.209 ms
+   Buffers: shared hit=387 read=51 written=45
+ Planning Time: 24.577 ms
+ Execution Time: 96.401 ms
 (30 rows)
 
 == A18 AML velocity rebuild: live volume of one merchant in a window (transactions_merchant_status_created_idx)
                                                                                                                                                    QUERY PLAN                                                                                                                                                    
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Aggregate  (cost=946.07..946.08 rows=1 width=32) (actual time=0.928..0.928 rows=1 loops=1)
-   Buffers: shared hit=359 read=7
-   ->  Append  (cost=0.42..945.22 rows=338 width=8) (actual time=0.130..0.904 rows=315 loops=1)
-         Buffers: shared hit=359 read=7
+ Aggregate  (cost=897.59..897.60 rows=1 width=32) (actual time=28.288..28.289 rows=1 loops=1)
+   Buffers: shared hit=353 read=9 written=6
+   ->  Append  (cost=0.42..896.70 rows=357 width=8) (actual time=11.868..28.108 rows=315 loops=1)
+         Buffers: shared hit=353 read=9 written=6
          Subplans Removed: 3
-         ->  Index Scan using transactions_202611_merchant_id_environment_status_created__idx on transactions_202611 transactions_1  (cost=0.42..918.17 rows=331 width=8) (actual time=0.130..0.876 rows=315 loops=1)
-               Index Cond: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
+         ->  Index Scan using transactions_202611_merchant_id_environment_status_created__idx on transactions_202611 transactions_1  (cost=0.42..869.55 rows=350 width=8) (actual time=11.867..28.055 rows=315 loops=1)
+               Index Cond: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
                Filter: ((currency = 'UGX'::bpchar) AND (type = 'payment'::text))
                Rows Removed by Filter: 44
-               Buffers: shared hit=359 read=7
-         ->  Seq Scan on transactions_202612 transactions_2  (cost=0.00..0.00 rows=1 width=8) (actual time=0.002..0.002 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
-         ->  Seq Scan on transactions_202701 transactions_3  (cost=0.00..0.00 rows=1 width=8) (actual time=0.000..0.000 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
-         ->  Seq Scan on transactions_202702 transactions_4  (cost=0.00..0.00 rows=1 width=8) (actual time=0.000..0.000 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
-         ->  Seq Scan on transactions_default transactions_5  (cost=0.00..0.00 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=1)
-               Filter: ((merchant_id = '01a1e5b7-9c69-7e52-8d67-b87f19734a41'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
+               Buffers: shared hit=353 read=9 written=6
+         ->  Seq Scan on transactions_202612 transactions_2  (cost=0.00..0.00 rows=1 width=8) (actual time=0.006..0.006 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
+         ->  Seq Scan on transactions_202701 transactions_3  (cost=0.00..0.00 rows=1 width=8) (actual time=0.001..0.001 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
+         ->  Seq Scan on transactions_202702 transactions_4  (cost=0.00..0.00 rows=1 width=8) (actual time=0.004..0.004 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
+         ->  Seq Scan on transactions_default transactions_5  (cost=0.00..0.00 rows=1 width=8) (actual time=0.002..0.002 rows=0 loops=1)
+               Filter: ((merchant_id = '01a1e73e-121d-7736-9b93-f40596cf4f3c'::uuid) AND (environment = 'live'::text) AND (currency = 'UGX'::bpchar) AND (type = 'payment'::text) AND (status = ANY ('{created,requires_action,processing,succeeded}'::text[])) AND (created_at >= (now() - '1 day'::interval)))
  Planning:
-   Buffers: shared hit=24
- Planning Time: 1.075 ms
- Execution Time: 0.987 ms
+   Buffers: shared hit=31
+ Planning Time: 2.590 ms
+ Execution Time: 28.360 ms
 (22 rows)
 
 == A19 Suspense and negative-payable integrity: non-zero suspense balance
                                                                             QUERY PLAN                                                                             
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Nested Loop  (cost=0.56..28.02 rows=2 width=17) (actual time=0.280..0.280 rows=0 loops=1)
-   Buffers: shared hit=5 read=2
-   ->  Index Scan using accounts_purpose_idx on accounts a  (cost=0.28..11.40 rows=2 width=21) (actual time=0.271..0.272 rows=2 loops=1)
+ Nested Loop  (cost=0.56..28.02 rows=2 width=17) (actual time=0.091..0.091 rows=0 loops=1)
+   Buffers: shared hit=5 read=2 written=1
+   ->  Index Scan using accounts_purpose_idx on accounts a  (cost=0.28..11.40 rows=2 width=21) (actual time=0.075..0.075 rows=2 loops=1)
          Index Cond: (purpose = 'suspense'::text)
-         Buffers: shared hit=1 read=2
-   ->  Index Scan using account_balances_account_id_currency_pk on account_balances b  (cost=0.28..8.30 rows=1 width=36) (actual time=0.003..0.003 rows=0 loops=2)
+         Buffers: shared hit=1 read=2 written=1
+   ->  Index Scan using account_balances_account_id_currency_pk on account_balances b  (cost=0.28..8.30 rows=1 width=36) (actual time=0.006..0.006 rows=0 loops=2)
          Index Cond: (account_id = a.id)
          Filter: (posted_debits_minor <> posted_credits_minor)
          Buffers: shared hit=4
  Planning:
-   Buffers: shared hit=17
- Planning Time: 0.167 ms
- Execution Time: 0.295 ms
+   Buffers: shared hit=7 read=8 written=7
+ Planning Time: 20.018 ms
+ Execution Time: 0.119 ms
 (13 rows)
 
 
+DROP INDEX
 ########## PART B: stuck and stale transaction scans, before and after a candidate index ##########
 The three scans filter transactions on status = processing across all merchants. No existing
 index starts with status or serves them; each run reads every partition in its window.
 == B1 (before) Gateway-gap stale scan: processing payouts and refunds older than ten minutes
                                                                                                                                                   QUERY PLAN                                                                                                                                                  
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=18723.93..18723.95 rows=8 width=149) (actual time=13.103..13.105 rows=0 loops=1)
-   Buffers: shared hit=1161 read=192 written=186
-   ->  Sort  (cost=18723.93..18723.95 rows=8 width=149) (actual time=13.102..13.104 rows=0 loops=1)
+ Limit  (cost=18394.96..18394.98 rows=8 width=149) (actual time=142.865..142.867 rows=0 loops=1)
+   Buffers: shared hit=408 read=966 written=710
+   ->  Sort  (cost=18394.96..18394.98 rows=8 width=149) (actual time=142.864..142.865 rows=0 loops=1)
          Sort Key: (COALESCE(t.initiated_at, t.created_at)), t.ref
          Sort Method: quicksort  Memory: 25kB
-         Buffers: shared hit=1161 read=192 written=186
-         ->  Append  (cost=0.29..18723.81 rows=8 width=149) (actual time=13.093..13.095 rows=0 loops=1)
-               Buffers: shared hit=1161 read=192 written=186
+         Buffers: shared hit=408 read=966 written=710
+         ->  Append  (cost=0.29..18394.84 rows=8 width=149) (actual time=142.842..142.844 rows=0 loops=1)
+               Buffers: shared hit=408 read=966 written=710
                Subplans Removed: 2
-               ->  Bitmap Heap Scan on transactions_202610 t_1  (cost=602.52..7602.01 rows=1 width=149) (actual time=8.203..8.203 rows=0 loops=1)
+               ->  Bitmap Heap Scan on transactions_202610 t_1  (cost=609.32..7600.01 rows=1 width=149) (actual time=129.582..129.583 rows=0 loops=1)
                      Recheck Cond: (gateway_external_id IS NOT NULL)
                      Filter: ((type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
-                     Rows Removed by Filter: 23256
-                     Heap Blocks: exact=745
-                     Buffers: shared hit=745 read=120 written=114
-                     ->  Bitmap Index Scan on transactions_202610_gateway_external_id_idx  (cost=0.00..602.52 rows=23646 width=0) (actual time=2.579..2.579 rows=23256 loops=1)
-                           Buffers: shared read=120 written=114
-               ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=695.57..4267.89 rows=1 width=149) (actual time=4.876..4.876 rows=0 loops=1)
+                     Rows Removed by Filter: 23255
+                     Heap Blocks: exact=741
+                     Buffers: shared read=863 written=609
+                     ->  Bitmap Index Scan on transactions_202610_gateway_external_id_idx  (cost=0.00..609.32 rows=23406 width=0) (actual time=32.384..32.384 rows=23255 loops=1)
+                           Buffers: shared read=122 written=3
+               ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=350.86..4001.56 rows=1 width=149) (actual time=13.205..13.205 rows=0 loops=1)
                      Recheck Cond: (gateway_external_id IS NOT NULL)
                      Filter: ((type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
-                     Rows Removed by Filter: 12152
-                     Heap Blocks: exact=416
-                     Buffers: shared hit=416 read=72 written=72
-                     ->  Bitmap Index Scan on transactions_202611_gateway_external_id_idx  (cost=0.00..695.56 rows=11856 width=0) (actual time=1.957..1.957 rows=12152 loops=1)
-                           Buffers: shared read=72 written=72
-               ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=149) (actual time=0.005..0.005 rows=0 loops=1)
+                     Rows Removed by Filter: 12375
+                     Heap Blocks: exact=440
+                     Buffers: shared hit=408 read=103 written=101
+                     ->  Bitmap Index Scan on transactions_202611_gateway_external_id_idx  (cost=0.00..350.86 rows=12514 width=0) (actual time=6.054..6.054 rows=12375 loops=1)
+                           Buffers: shared read=71 written=69
+               ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=149) (actual time=0.024..0.024 rows=0 loops=1)
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
-               ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=149) (actual time=0.002..0.002 rows=0 loops=1)
+               ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=149) (actual time=0.003..0.003 rows=0 loops=1)
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
-               ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=149) (actual time=0.002..0.002 rows=0 loops=1)
+               ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=149) (actual time=0.008..0.008 rows=0 loops=1)
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
-               ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=149) (actual time=0.001..0.001 rows=0 loops=1)
+               ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=149) (actual time=0.009..0.009 rows=0 loops=1)
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
  Planning:
-   Buffers: shared hit=24
- Planning Time: 0.834 ms
- Execution Time: 13.168 ms
+   Buffers: shared hit=228
+ Planning Time: 4.413 ms
+ Execution Time: 143.103 ms
 (37 rows)
 
 == B2 (before) Stuck summary for the incident monitor and gauges
                                                                                               QUERY PLAN                                                                                              
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Finalize GroupAggregate  (cost=21296.87..21298.06 rows=3 width=24) (actual time=42.672..47.390 rows=0 loops=1)
+ Finalize GroupAggregate  (cost=21318.01..21319.29 rows=3 width=24) (actual time=112.161..122.750 rows=0 loops=1)
    Group Key: t.type
-   Buffers: shared hit=9494
-   ->  Gather Merge  (cost=21296.87..21297.99 rows=6 width=24) (actual time=42.671..47.388 rows=0 loops=1)
+   Buffers: shared hit=3843 read=5707 written=323
+   ->  Gather Merge  (cost=21318.01..21319.21 rows=6 width=24) (actual time=112.159..122.746 rows=0 loops=1)
          Workers Planned: 2
          Workers Launched: 2
-         Buffers: shared hit=9494
-         ->  Partial GroupAggregate  (cost=20296.85..20297.27 rows=3 width=24) (actual time=22.026..22.036 rows=0 loops=3)
+         Buffers: shared hit=3843 read=5707 written=323
+         ->  Partial GroupAggregate  (cost=20317.99..20318.50 rows=3 width=24) (actual time=63.898..63.909 rows=0 loops=3)
                Group Key: t.type
-               Buffers: shared hit=9494
-               ->  Sort  (cost=20296.85..20296.95 rows=39 width=24) (actual time=22.024..22.033 rows=0 loops=3)
+               Buffers: shared hit=3843 read=5707 written=323
+               ->  Sort  (cost=20317.99..20318.11 rows=48 width=24) (actual time=63.889..63.899 rows=0 loops=3)
                      Sort Key: t.type
                      Sort Method: quicksort  Memory: 25kB
-                     Buffers: shared hit=9494
+                     Buffers: shared hit=3843 read=5707 written=323
                      Worker 0:  Sort Method: quicksort  Memory: 25kB
                      Worker 1:  Sort Method: quicksort  Memory: 25kB
-                     ->  Parallel Append  (cost=0.00..20295.82 rows=39 width=24) (actual time=21.908..21.918 rows=0 loops=3)
-                           Buffers: shared hit=9418
+                     ->  Parallel Append  (cost=0.00..20316.65 rows=48 width=24) (actual time=63.685..63.695 rows=0 loops=3)
+                           Buffers: shared hit=3767 read=5707 written=323
                            Subplans Removed: 2
-                           ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=48) (actual time=0.017..0.018 rows=0 loops=1)
+                           ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=48) (actual time=0.038..0.038 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                           ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=48) (actual time=0.013..0.013 rows=0 loops=1)
+                           ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=48) (actual time=0.015..0.015 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                           ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=48) (actual time=0.021..0.021 rows=0 loops=1)
+                           ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=48) (actual time=0.011..0.012 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                           ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=48) (actual time=0.016..0.016 rows=0 loops=1)
+                           ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=48) (actual time=0.015..0.015 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                           ->  Parallel Seq Scan on transactions_202610 t_1  (cost=0.00..8894.31 rows=1 width=23) (actual time=15.377..15.377 rows=0 loops=3)
+                           ->  Parallel Seq Scan on transactions_202610 t_1  (cost=0.00..8893.26 rows=1 width=23) (actual time=33.907..33.908 rows=0 loops=3)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                                 Rows Removed by Filter: 77478
-                                 Buffers: shared hit=6231
-                           ->  Parallel Seq Scan on transactions_202611 t_2  (cost=0.00..4547.78 rows=32 width=23) (actual time=19.518..19.518 rows=0 loops=1)
+                                 Rows Removed by Filter: 77477
+                                 Buffers: shared hit=774 read=5456 written=79
+                           ->  Parallel Seq Scan on transactions_202611 t_2  (cost=0.00..4630.25 rows=41 width=23) (actual time=44.620..44.621 rows=0 loops=2)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                                 Rows Removed by Filter: 118759
-                                 Buffers: shared hit=3187
+                                 Rows Removed by Filter: 60491
+                                 Buffers: shared hit=2993 read=251 written=244
  Planning:
-   Buffers: shared hit=30
- Planning Time: 0.774 ms
- Execution Time: 47.448 ms
+   Buffers: shared hit=29 read=1 written=1
+ Planning Time: 3.733 ms
+ Execution Time: 122.895 ms
 (39 rows)
 
 == B3 (before) Stuck list, first page
                                                                                               QUERY PLAN                                                                                              
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=21376.84..21382.79 rows=51 width=63) (actual time=36.990..41.351 rows=0 loops=1)
-   Buffers: shared hit=9510
-   ->  Gather Merge  (cost=21376.84..21385.01 rows=70 width=63) (actual time=36.988..41.349 rows=0 loops=1)
+ Limit  (cost=21398.00..21403.95 rows=51 width=63) (actual time=46.238..53.116 rows=0 loops=1)
+   Buffers: shared hit=4206 read=5360 written=62
+   ->  Gather Merge  (cost=21398.00..21408.27 rows=88 width=63) (actual time=46.236..53.114 rows=0 loops=1)
          Workers Planned: 2
          Workers Launched: 2
-         Buffers: shared hit=9510
-         ->  Sort  (cost=20376.82..20376.91 rows=35 width=63) (actual time=23.110..23.114 rows=0 loops=3)
+         Buffers: shared hit=4206 read=5360 written=62
+         ->  Sort  (cost=20397.97..20398.08 rows=44 width=63) (actual time=24.810..24.813 rows=0 loops=3)
                Sort Key: (COALESCE(t.initiated_at, t.created_at)), t.ref
                Sort Method: quicksort  Memory: 25kB
-               Buffers: shared hit=9510
+               Buffers: shared hit=4206 read=5360 written=62
                Worker 0:  Sort Method: quicksort  Memory: 25kB
                Worker 1:  Sort Method: quicksort  Memory: 25kB
-               ->  Hash Join  (cost=80.00..20375.92 rows=35 width=63) (actual time=22.571..22.573 rows=0 loops=3)
+               ->  Hash Join  (cost=80.00..20396.77 rows=44 width=63) (actual time=24.685..24.688 rows=0 loops=3)
                      Hash Cond: (t.merchant_id = m.id)
-                     Buffers: shared hit=9418
-                     ->  Parallel Append  (cost=0.00..20295.82 rows=39 width=71) (actual time=22.569..22.571 rows=0 loops=3)
-                           Buffers: shared hit=9418
+                     Buffers: shared hit=4114 read=5360 written=62
+                     ->  Parallel Append  (cost=0.00..20316.65 rows=48 width=71) (actual time=24.682..24.684 rows=0 loops=3)
+                           Buffers: shared hit=4114 read=5360 written=62
                            Subplans Removed: 2
-                           ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=96) (actual time=0.014..0.014 rows=0 loops=1)
+                           ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=96) (actual time=0.009..0.009 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                           ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=96) (actual time=0.008..0.008 rows=0 loops=1)
+                           ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=96) (actual time=0.003..0.003 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                           ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=96) (actual time=0.008..0.008 rows=0 loops=1)
+                           ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=96) (actual time=0.003..0.003 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                           ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=96) (actual time=0.007..0.007 rows=0 loops=1)
+                           ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=96) (actual time=0.002..0.002 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                           ->  Parallel Seq Scan on transactions_202610 t_1  (cost=0.00..8894.31 rows=1 width=70) (actual time=15.205..15.205 rows=0 loops=3)
+                           ->  Parallel Seq Scan on transactions_202610 t_1  (cost=0.00..8893.26 rows=1 width=70) (actual time=16.135..16.135 rows=0 loops=3)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                                 Rows Removed by Filter: 77478
-                                 Buffers: shared hit=6231
-                           ->  Parallel Seq Scan on transactions_202611 t_2  (cost=0.00..4547.78 rows=32 width=70) (actual time=11.023..11.023 rows=0 loops=2)
+                                 Rows Removed by Filter: 77477
+                                 Buffers: shared hit=870 read=5360 written=62
+                           ->  Parallel Seq Scan on transactions_202611 t_2  (cost=0.00..4630.25 rows=41 width=70) (actual time=25.613..25.613 rows=0 loops=1)
                                  Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                                 Rows Removed by Filter: 59380
-                                 Buffers: shared hit=3187
+                                 Rows Removed by Filter: 120982
+                                 Buffers: shared hit=3244
                      ->  Hash  (cost=55.00..55.00 rows=2000 width=16) (never executed)
                            ->  Seq Scan on merchants m  (cost=0.00..55.00 rows=2000 width=16) (never executed)
  Planning:
-   Buffers: shared hit=70 read=11 written=11
- Planning Time: 3.217 ms
- Execution Time: 41.422 ms
+   Buffers: shared hit=69 read=12
+ Planning Time: 7.671 ms
+ Execution Time: 53.454 ms
 (40 rows)
 
 == candidate: CREATE INDEX transactions_processing_idx ON transactions (created_at) WHERE status = 'processing'
@@ -615,128 +616,128 @@ ANALYZE
 == B1 (after)
                                                                                                                                                   QUERY PLAN                                                                                                                                                  
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=837.93..837.95 rows=8 width=149) (actual time=0.657..0.658 rows=0 loops=1)
-   Buffers: shared hit=83 read=1
-   ->  Sort  (cost=837.93..837.95 rows=8 width=149) (actual time=0.656..0.657 rows=0 loops=1)
+ Limit  (cost=493.33..493.35 rows=8 width=149) (actual time=0.896..0.897 rows=0 loops=1)
+   Buffers: shared hit=82 read=1
+   ->  Sort  (cost=493.33..493.35 rows=8 width=149) (actual time=0.895..0.896 rows=0 loops=1)
          Sort Key: (COALESCE(t.initiated_at, t.created_at)), t.ref
          Sort Method: quicksort  Memory: 25kB
-         Buffers: shared hit=83 read=1
-         ->  Append  (cost=0.13..837.81 rows=8 width=149) (actual time=0.643..0.644 rows=0 loops=1)
-               Buffers: shared hit=83 read=1
+         Buffers: shared hit=82 read=1
+         ->  Append  (cost=0.13..493.21 rows=8 width=149) (actual time=0.881..0.882 rows=0 loops=1)
+               Buffers: shared hit=82 read=1
                Subplans Removed: 2
-               ->  Index Scan using transactions_202610_created_at_idx on transactions_202610 t_1  (cost=0.13..8.16 rows=1 width=149) (actual time=0.007..0.007 rows=0 loops=1)
+               ->  Index Scan using transactions_202610_created_at_idx on transactions_202610 t_1  (cost=0.13..8.16 rows=1 width=149) (actual time=0.007..0.008 rows=0 loops=1)
                      Index Cond: (created_at >= (now() - '30 days'::interval))
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
                      Buffers: shared hit=2
-               ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=708.25..813.29 rows=1 width=149) (actual time=0.631..0.631 rows=0 loops=1)
+               ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=359.98..468.69 rows=1 width=149) (actual time=0.866..0.866 rows=0 loops=1)
                      Recheck Cond: ((created_at >= (now() - '30 days'::interval)) AND (status = 'processing'::text) AND (gateway_external_id IS NOT NULL))
                      Filter: ((type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
                      Rows Removed by Filter: 300
                      Heap Blocks: exact=9
-                     Buffers: shared hit=81 read=1
-                     ->  BitmapAnd  (cost=708.25..708.25 rows=28 width=0) (actual time=0.572..0.573 rows=0 loops=1)
-                           Buffers: shared hit=72 read=1
-                           ->  Bitmap Index Scan on transactions_202611_created_at_idx  (cost=0.00..10.20 rows=273 width=0) (actual time=0.010..0.010 rows=300 loops=1)
+                     Buffers: shared hit=80 read=1
+                     ->  BitmapAnd  (cost=359.98..359.98 rows=29 width=0) (actual time=0.789..0.789 rows=0 loops=1)
+                           Buffers: shared hit=71 read=1
+                           ->  Bitmap Index Scan on transactions_202611_created_at_idx  (cost=0.00..10.33 rows=290 width=0) (actual time=0.140..0.140 rows=300 loops=1)
                                  Index Cond: (created_at >= (now() - '30 days'::interval))
                                  Buffers: shared read=1
-                           ->  Bitmap Index Scan on transactions_202611_gateway_external_id_idx  (cost=0.00..697.80 rows=12303 width=0) (actual time=0.556..0.556 rows=12152 loops=1)
-                                 Buffers: shared hit=72
-               ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=149) (actual time=0.002..0.002 rows=0 loops=1)
+                           ->  Bitmap Index Scan on transactions_202611_gateway_external_id_idx  (cost=0.00..349.40 rows=12223 width=0) (actual time=0.637..0.637 rows=12375 loops=1)
+                                 Buffers: shared hit=71
+               ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=149) (actual time=0.003..0.003 rows=0 loops=1)
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
-               ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=149) (actual time=0.001..0.001 rows=0 loops=1)
+               ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=149) (actual time=0.002..0.002 rows=0 loops=1)
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
-               ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=149) (actual time=0.000..0.000 rows=0 loops=1)
+               ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=149) (actual time=0.001..0.001 rows=0 loops=1)
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
                ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=149) (actual time=0.001..0.001 rows=0 loops=1)
                      Filter: ((gateway_external_id IS NOT NULL) AND (type = ANY ('{payout,refund}'::text[])) AND (environment = 'live'::text) AND (status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:10:00'::interval)))
  Planning:
-   Buffers: shared hit=284 read=11
- Planning Time: 2.241 ms
- Execution Time: 0.729 ms
+   Buffers: shared hit=281 read=11
+ Planning Time: 2.858 ms
+ Execution Time: 1.007 ms
 (38 rows)
 
 == B2 (after)
                                                                                         QUERY PLAN                                                                                        
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- GroupAggregate  (cost=868.56..869.57 rows=3 width=24) (actual time=0.085..0.087 rows=0 loops=1)
+ GroupAggregate  (cost=914.65..915.72 rows=3 width=24) (actual time=0.085..0.086 rows=0 loops=1)
    Group Key: t.type
    Buffers: shared hit=12
-   ->  Sort  (cost=868.56..868.81 rows=98 width=24) (actual time=0.084..0.086 rows=0 loops=1)
+   ->  Sort  (cost=914.65..914.91 rows=104 width=24) (actual time=0.084..0.085 rows=0 loops=1)
          Sort Key: t.type
          Sort Method: quicksort  Memory: 25kB
          Buffers: shared hit=12
-         ->  Append  (cost=0.13..865.32 rows=98 width=24) (actual time=0.077..0.079 rows=0 loops=1)
+         ->  Append  (cost=0.13..911.17 rows=104 width=24) (actual time=0.077..0.078 rows=0 loops=1)
                Buffers: shared hit=12
                Subplans Removed: 2
-               ->  Index Scan using transactions_202610_created_at_idx on transactions_202610 t_1  (cost=0.13..8.16 rows=1 width=23) (actual time=0.010..0.010 rows=0 loops=1)
+               ->  Index Scan using transactions_202610_created_at_idx on transactions_202610 t_1  (cost=0.13..8.15 rows=1 width=23) (actual time=0.006..0.006 rows=0 loops=1)
                      Index Cond: (created_at >= (now() - '30 days'::interval))
                      Filter: (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval))
                      Buffers: shared hit=2
-               ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=10.22..840.37 rows=91 width=23) (actual time=0.059..0.060 rows=0 loops=1)
+               ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=10.35..886.18 rows=97 width=23) (actual time=0.061..0.061 rows=0 loops=1)
                      Recheck Cond: ((created_at >= (now() - '30 days'::interval)) AND (status = 'processing'::text))
                      Filter: (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval))
                      Rows Removed by Filter: 300
                      Heap Blocks: exact=9
                      Buffers: shared hit=10
-                     ->  Bitmap Index Scan on transactions_202611_created_at_idx  (cost=0.00..10.20 rows=273 width=0) (actual time=0.008..0.008 rows=300 loops=1)
+                     ->  Bitmap Index Scan on transactions_202611_created_at_idx  (cost=0.00..10.33 rows=290 width=0) (actual time=0.007..0.007 rows=300 loops=1)
                            Index Cond: (created_at >= (now() - '30 days'::interval))
                            Buffers: shared hit=1
-               ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=48) (actual time=0.002..0.003 rows=0 loops=1)
+               ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=48) (actual time=0.003..0.003 rows=0 loops=1)
                      Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-               ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=48) (actual time=0.003..0.003 rows=0 loops=1)
+               ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=48) (actual time=0.002..0.002 rows=0 loops=1)
                      Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
                ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=48) (actual time=0.001..0.001 rows=0 loops=1)
                      Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-               ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=48) (actual time=0.001..0.001 rows=0 loops=1)
+               ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=48) (actual time=0.002..0.002 rows=0 loops=1)
                      Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
  Planning:
    Buffers: shared hit=35
- Planning Time: 1.095 ms
- Execution Time: 0.157 ms
+ Planning Time: 1.025 ms
+ Execution Time: 0.172 ms
 (35 rows)
 
 == B3 (after)
                                                                                            QUERY PLAN                                                                                           
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=948.82..948.95 rows=51 width=63) (actual time=0.072..0.074 rows=0 loops=1)
+ Limit  (cost=994.91..995.04 rows=51 width=63) (actual time=0.096..0.097 rows=0 loops=1)
    Buffers: shared hit=12
-   ->  Sort  (cost=948.82..949.07 rows=98 width=63) (actual time=0.072..0.073 rows=0 loops=1)
+   ->  Sort  (cost=994.91..995.17 rows=104 width=63) (actual time=0.095..0.096 rows=0 loops=1)
          Sort Key: (COALESCE(t.initiated_at, t.created_at)), t.ref
          Sort Method: quicksort  Memory: 25kB
          Buffers: shared hit=12
-         ->  Hash Join  (cost=80.13..945.58 rows=98 width=63) (actual time=0.063..0.064 rows=0 loops=1)
+         ->  Hash Join  (cost=80.13..991.44 rows=104 width=63) (actual time=0.086..0.087 rows=0 loops=1)
                Hash Cond: (t.merchant_id = m.id)
                Buffers: shared hit=12
-               ->  Append  (cost=0.13..865.32 rows=98 width=71) (actual time=0.063..0.063 rows=0 loops=1)
+               ->  Append  (cost=0.13..911.17 rows=104 width=71) (actual time=0.085..0.086 rows=0 loops=1)
                      Buffers: shared hit=12
                      Subplans Removed: 2
-                     ->  Index Scan using transactions_202610_created_at_idx on transactions_202610 t_1  (cost=0.13..8.16 rows=1 width=70) (actual time=0.007..0.007 rows=0 loops=1)
+                     ->  Index Scan using transactions_202610_created_at_idx on transactions_202610 t_1  (cost=0.13..8.15 rows=1 width=70) (actual time=0.009..0.009 rows=0 loops=1)
                            Index Cond: (created_at >= (now() - '30 days'::interval))
                            Filter: (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval))
                            Buffers: shared hit=2
-                     ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=10.22..840.37 rows=91 width=70) (actual time=0.052..0.052 rows=0 loops=1)
+                     ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=10.35..886.18 rows=97 width=70) (actual time=0.068..0.068 rows=0 loops=1)
                            Recheck Cond: ((created_at >= (now() - '30 days'::interval)) AND (status = 'processing'::text))
                            Filter: (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval))
                            Rows Removed by Filter: 300
                            Heap Blocks: exact=9
                            Buffers: shared hit=10
-                           ->  Bitmap Index Scan on transactions_202611_created_at_idx  (cost=0.00..10.20 rows=273 width=0) (actual time=0.006..0.006 rows=300 loops=1)
+                           ->  Bitmap Index Scan on transactions_202611_created_at_idx  (cost=0.00..10.33 rows=290 width=0) (actual time=0.017..0.018 rows=300 loops=1)
                                  Index Cond: (created_at >= (now() - '30 days'::interval))
                                  Buffers: shared hit=1
-                     ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=96) (actual time=0.001..0.001 rows=0 loops=1)
+                     ->  Seq Scan on transactions_202612 t_3  (cost=0.00..0.00 rows=1 width=96) (actual time=0.003..0.003 rows=0 loops=1)
                            Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
                      ->  Seq Scan on transactions_202701 t_4  (cost=0.00..0.00 rows=1 width=96) (actual time=0.001..0.001 rows=0 loops=1)
                            Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
-                     ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=96) (actual time=0.001..0.001 rows=0 loops=1)
+                     ->  Seq Scan on transactions_202702 t_5  (cost=0.00..0.00 rows=1 width=96) (actual time=0.002..0.002 rows=0 loops=1)
                            Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
                      ->  Seq Scan on transactions_default t_6  (cost=0.00..0.00 rows=1 width=96) (actual time=0.001..0.001 rows=0 loops=1)
                            Filter: ((status = 'processing'::text) AND (created_at >= (now() - '30 days'::interval)) AND (COALESCE(initiated_at, created_at) <= (now() - '00:15:00'::interval)))
                ->  Hash  (cost=55.00..55.00 rows=2000 width=16) (never executed)
                      ->  Seq Scan on merchants m  (cost=0.00..55.00 rows=2000 width=16) (never executed)
  Planning:
-   Buffers: shared hit=49
- Planning Time: 1.647 ms
- Execution Time: 0.129 ms
+   Buffers: shared hit=51
+ Planning Time: 8.355 ms
+ Execution Time: 0.190 ms
 (39 rows)
 
 
@@ -749,47 +750,47 @@ ANALYZE
 == A7 (after) Rollup recompute with transactions_final_day_idx
                                                                                                           QUERY PLAN                                                                                                          
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- GroupAggregate  (cost=7464.50..7519.24 rows=1288 width=110) (actual time=12.443..14.901 rows=2000 loops=1)
+ GroupAggregate  (cost=7466.37..7520.98 rows=1285 width=110) (actual time=10.778..13.283 rows=2000 loops=1)
    Group Key: t.merchant_id, t.environment, t.currency, t.channel, (COALESCE(t.provider, 'none'::text))
-   Buffers: shared hit=3072 read=27
-   ->  Sort  (cost=7464.50..7467.72 rows=1288 width=94) (actual time=12.381..12.658 rows=7503 loops=1)
+   Buffers: shared hit=3112 read=26
+   ->  Sort  (cost=7466.37..7469.58 rows=1285 width=94) (actual time=10.708..11.004 rows=7502 loops=1)
          Sort Key: t.merchant_id, t.environment, t.currency, t.channel, (COALESCE(t.provider, 'none'::text))
          Sort Method: quicksort  Memory: 896kB
-         Buffers: shared hit=3072 read=27
-         ->  Append  (cost=5.39..7397.97 rows=1288 width=94) (actual time=1.208..9.400 rows=7503 loops=1)
-               Buffers: shared hit=3072 read=27
+         Buffers: shared hit=3112 read=26
+         ->  Append  (cost=5.29..7400.01 rows=1285 width=94) (actual time=1.186..8.165 rows=7502 loops=1)
+               Buffers: shared hit=3112 read=26
                Subplans Removed: 6
-               ->  Bitmap Heap Scan on transactions_202610 t_1  (cost=23.19..2823.91 rows=721 width=94) (actual time=0.040..0.041 rows=0 loops=1)
+               ->  Bitmap Heap Scan on transactions_202610 t_1  (cost=23.18..2823.81 rows=680 width=94) (actual time=0.104..0.105 rows=0 loops=1)
                      Recheck Cond: ((COALESCE(completed_at, updated_at) >= ((now())::date - 1)) AND (COALESCE(completed_at, updated_at) < (now())::date) AND (status = ANY ('{succeeded,failed,expired,cancelled}'::text[])))
                      Filter: ((created_at < (now())::date) AND (created_at >= (((now())::date - 1) - '35 days'::interval)))
                      Buffers: shared read=3
-                     ->  Bitmap Index Scan on transactions_202610_coalesce_idx  (cost=0.00..23.01 rows=1058 width=0) (actual time=0.037..0.037 rows=0 loops=1)
+                     ->  Bitmap Index Scan on transactions_202610_coalesce_idx  (cost=0.00..23.01 rows=1058 width=0) (actual time=0.102..0.102 rows=0 loops=1)
                            Index Cond: ((COALESCE(completed_at, updated_at) >= ((now())::date - 1)) AND (COALESCE(completed_at, updated_at) < (now())::date))
                            Buffers: shared read=3
-               ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=14.49..1543.02 rows=561 width=94) (actual time=1.167..8.879 rows=7503 loops=1)
+               ->  Bitmap Heap Scan on transactions_202611 t_2  (cost=14.62..1573.36 rows=599 width=94) (actual time=1.081..7.626 rows=7502 loops=1)
                      Recheck Cond: ((COALESCE(completed_at, updated_at) >= ((now())::date - 1)) AND (COALESCE(completed_at, updated_at) < (now())::date) AND (status = ANY ('{succeeded,failed,expired,cancelled}'::text[])))
                      Filter: ((created_at < (now())::date) AND (created_at >= (((now())::date - 1) - '35 days'::interval)))
-                     Heap Blocks: exact=3072
-                     Buffers: shared hit=3072 read=24
-                     ->  Bitmap Index Scan on transactions_202611_coalesce_idx  (cost=0.00..14.35 rows=592 width=0) (actual time=0.904..0.905 rows=7503 loops=1)
+                     Heap Blocks: exact=3112
+                     Buffers: shared hit=3112 read=23
+                     ->  Bitmap Index Scan on transactions_202611_coalesce_idx  (cost=0.00..14.47 rows=604 width=0) (actual time=0.817..0.817 rows=7502 loops=1)
                            Index Cond: ((COALESCE(completed_at, updated_at) >= ((now())::date - 1)) AND (COALESCE(completed_at, updated_at) < (now())::date))
-                           Buffers: shared read=24
+                           Buffers: shared read=23
  Planning:
-   Buffers: shared hit=327 read=8
- Planning Time: 2.200 ms
- Execution Time: 15.110 ms
+   Buffers: shared hit=321 read=8
+ Planning Time: 3.292 ms
+ Execution Time: 13.666 ms
 (29 rows)
 
 == index sizes (all partitions)
               relname               |    size    
 ------------------------------------+------------
- transactions_202608_coalesce_idx   | 544 kB
+ transactions_202608_coalesce_idx   | 496 kB
  transactions_202608_created_at_idx | 8192 bytes
  transactions_202609_coalesce_idx   | 4960 kB
  transactions_202609_created_at_idx | 8192 bytes
  transactions_202610_coalesce_idx   | 5128 kB
  transactions_202610_created_at_idx | 8192 bytes
- transactions_202611_coalesce_idx   | 2624 kB
+ transactions_202611_coalesce_idx   | 2672 kB
  transactions_202611_created_at_idx | 16 kB
  transactions_202612_coalesce_idx   | 8192 bytes
  transactions_202612_created_at_idx | 8192 bytes
@@ -819,13 +820,13 @@ SAVEPOINT
 INSERT 0 50000
 UPDATE 50000
 UPDATE 50000
-WAL_BYTES 124436480
+WAL_BYTES 123994112
 ROLLBACK
 SAVEPOINT
 INSERT 0 50000
 UPDATE 50000
 UPDATE 50000
-WAL_BYTES 101572608
+WAL_BYTES 108010184
 ROLLBACK
 CREATE INDEX
 ANALYZE
@@ -834,13 +835,13 @@ SAVEPOINT
 INSERT 0 50000
 UPDATE 50000
 UPDATE 50000
-WAL_BYTES 97796096
+WAL_BYTES 104063848
 ROLLBACK
 SAVEPOINT
 INSERT 0 50000
 UPDATE 50000
 UPDATE 50000
-WAL_BYTES 113123328
+WAL_BYTES 162806936
 ROLLBACK
 DROP INDEX
 CREATE INDEX
@@ -850,159 +851,159 @@ SAVEPOINT
 INSERT 0 50000
 UPDATE 50000
 UPDATE 50000
-WAL_BYTES 154230784
+WAL_BYTES 116751240
 ROLLBACK
 SAVEPOINT
 INSERT 0 50000
 UPDATE 50000
 UPDATE 50000
-WAL_BYTES 118841344
+WAL_BYTES 104575856
 ROLLBACK
 
 ########## PART C: partition maintenance and retention (migration 0009, the lifecycle jobs) ##########
 == C1 Idempotency purge batch (idempotency_keys_expires_idx, SKIP LOCKED)
-                                                                                  QUERY PLAN                                                                                  
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- Delete on idempotency_keys k  (cost=2935.47..10711.05 rows=0 width=0) (actual time=20.258..20.259 rows=0 loops=1)
-   Buffers: shared hit=5510 read=525 dirtied=32
+                                                                                  QUERY PLAN                                                                                   
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Delete on idempotency_keys k  (cost=2905.28..10320.85 rows=0 width=0) (actual time=86.094..86.096 rows=0 loops=1)
+   Buffers: shared hit=5510 read=525 dirtied=32 written=326
    CTE doomed
-     ->  Limit  (cost=0.43..2935.05 rows=1000 width=30) (actual time=0.030..1.012 rows=1000 loops=1)
-           Buffers: shared hit=1004 read=31 dirtied=32
-           ->  LockRows  (cost=0.43..17910.41 rows=6103 width=30) (actual time=0.029..0.939 rows=1000 loops=1)
-                 Buffers: shared hit=1004 read=31 dirtied=32
-                 ->  Index Scan using idempotency_keys_expires_idx on idempotency_keys  (cost=0.43..17849.38 rows=6103 width=30) (actual time=0.011..0.484 rows=1000 loops=1)
+     ->  Limit  (cost=0.43..2904.85 rows=1000 width=30) (actual time=0.034..12.009 rows=1000 loops=1)
+           Buffers: shared hit=1004 read=31 dirtied=32 written=20
+           ->  LockRows  (cost=0.43..18161.81 rows=6253 width=30) (actual time=0.033..11.938 rows=1000 loops=1)
+                 Buffers: shared hit=1004 read=31 dirtied=32 written=20
+                 ->  Index Scan using idempotency_keys_expires_idx on idempotency_keys  (cost=0.43..18099.28 rows=6253 width=30) (actual time=0.015..11.551 rows=1000 loops=1)
                        Index Cond: (expires_at < (now() - '7 days'::interval))
-                       Buffers: shared hit=4 read=31
-   ->  Nested Loop  (cost=0.42..7776.00 rows=1000 width=46) (actual time=1.220..19.622 rows=1000 loops=1)
-         Buffers: shared hit=4510 read=525 dirtied=32
-         ->  CTE Scan on doomed  (cost=0.00..20.00 rows=1000 width=56) (actual time=0.819..2.127 rows=1000 loops=1)
-               Buffers: shared hit=1004 read=31 dirtied=32
-         ->  Index Scan using idempotency_keys_pkey on idempotency_keys k  (cost=0.42..7.76 rows=1 width=22) (actual time=0.017..0.017 rows=1 loops=1000)
+                       Buffers: shared hit=4 read=31 written=20
+   ->  Nested Loop  (cost=0.42..7416.00 rows=1000 width=46) (actual time=1.401..85.588 rows=1000 loops=1)
+         Buffers: shared hit=4510 read=525 dirtied=32 written=326
+         ->  CTE Scan on doomed  (cost=0.00..20.00 rows=1000 width=56) (actual time=0.794..13.192 rows=1000 loops=1)
+               Buffers: shared hit=1004 read=31 dirtied=32 written=20
+         ->  Index Scan using idempotency_keys_pkey on idempotency_keys k  (cost=0.42..7.40 rows=1 width=22) (actual time=0.072..0.072 rows=1 loops=1000)
                Index Cond: (id = doomed.id)
-               Buffers: shared hit=3506 read=494
+               Buffers: shared hit=3506 read=494 written=306
  Planning:
-   Buffers: shared hit=27 read=18
- Planning Time: 0.738 ms
- Execution Time: 21.185 ms
+   Buffers: shared hit=27 read=17 written=10
+ Planning Time: 5.497 ms
+ Execution Time: 87.000 ms
 (21 rows)
 
 == C2 Outbox purge batch: published rows older than 14 days, as a primary-key range (no new index)
                                                                      QUERY PLAN                                                                      
 -----------------------------------------------------------------------------------------------------------------------------------------------------
- Delete on outbox o  (cost=1157.22..8840.79 rows=0 width=0) (actual time=54.703..54.704 rows=0 loops=1)
-   Buffers: shared hit=6000 read=1007 dirtied=1000
+ Delete on outbox o  (cost=1065.12..8380.70 rows=0 width=0) (actual time=103.866..103.867 rows=0 loops=1)
+   Buffers: shared hit=6000 read=1007 dirtied=1000 written=932
    CTE doomed
-     ->  Limit  (cost=0.42..1156.79 rows=1000 width=22) (actual time=0.088..51.243 rows=1000 loops=1)
-           Buffers: shared hit=1000 read=1007 dirtied=1000
-           ->  LockRows  (cost=0.42..30056.81 rows=25992 width=22) (actual time=0.087..51.169 rows=1000 loops=1)
-                 Buffers: shared hit=1000 read=1007 dirtied=1000
-                 ->  Index Scan using outbox_pkey on outbox  (cost=0.42..29796.89 rows=25992 width=22) (actual time=0.070..26.331 rows=1000 loops=1)
-                       Index Cond: (id < '01a19d9e-8fa4-0000-0000-000000000000'::uuid)
+     ->  Limit  (cost=0.42..1064.70 rows=1000 width=22) (actual time=2.086..100.047 rows=1000 loops=1)
+           Buffers: shared hit=1000 read=1007 dirtied=1000 written=932
+           ->  LockRows  (cost=0.42..27804.63 rows=26125 width=22) (actual time=2.085..99.963 rows=1000 loops=1)
+                 Buffers: shared hit=1000 read=1007 dirtied=1000 written=932
+                 ->  Index Scan using outbox_pkey on outbox  (cost=0.42..27543.38 rows=26125 width=22) (actual time=2.078..94.529 rows=1000 loops=1)
+                       Index Cond: (id < '01a19f25-099f-0000-0000-000000000000'::uuid)
                        Filter: ((published_at IS NOT NULL) AND (published_at < (now() - '14 days'::interval)))
-                       Buffers: shared read=1007
-   ->  Nested Loop  (cost=0.42..7684.00 rows=1000 width=46) (actual time=0.108..53.963 rows=1000 loops=1)
-         Buffers: shared hit=5000 read=1007 dirtied=1000
-         ->  CTE Scan on doomed  (cost=0.00..20.00 rows=1000 width=56) (actual time=0.097..51.844 rows=1000 loops=1)
-               Buffers: shared hit=1000 read=1007 dirtied=1000
-         ->  Index Scan using outbox_pkey on outbox o  (cost=0.42..7.66 rows=1 width=22) (actual time=0.002..0.002 rows=1 loops=1000)
+                       Buffers: shared read=1007 written=932
+   ->  Nested Loop  (cost=0.42..7316.00 rows=1000 width=46) (actual time=2.116..103.068 rows=1000 loops=1)
+         Buffers: shared hit=5000 read=1007 dirtied=1000 written=932
+         ->  CTE Scan on doomed  (cost=0.00..20.00 rows=1000 width=56) (actual time=2.091..101.048 rows=1000 loops=1)
+               Buffers: shared hit=1000 read=1007 dirtied=1000 written=932
+         ->  Index Scan using outbox_pkey on outbox o  (cost=0.42..7.30 rows=1 width=22) (actual time=0.001..0.001 rows=1 loops=1000)
                Index Cond: (id = doomed.id)
                Buffers: shared hit=4000
  Planning:
-   Buffers: shared hit=23 read=9
- Planning Time: 2.823 ms
- Execution Time: 54.841 ms
+   Buffers: shared hit=23 read=9 written=7
+ Planning Time: 3.623 ms
+ Execution Time: 103.991 ms
 (22 rows)
 
 == C2b Steady state: after the backlog is gone, the next run finds nothing. With the id bound:
 DELETE 89000
-                                                                     QUERY PLAN                                                                      
------------------------------------------------------------------------------------------------------------------------------------------------------
- Delete on outbox o  (cost=1157.22..8840.79 rows=0 width=0) (actual time=102.666..102.674 rows=0 loops=1)
-   Buffers: shared hit=90005 read=556 written=408
+                                                                    QUERY PLAN                                                                     
+---------------------------------------------------------------------------------------------------------------------------------------------------
+ Delete on outbox o  (cost=1065.12..8380.70 rows=0 width=0) (actual time=71.086..71.094 rows=0 loops=1)
+   Buffers: shared hit=89370 read=1191 written=914
    CTE doomed
-     ->  Limit  (cost=0.42..1156.79 rows=1000 width=22) (actual time=102.662..102.665 rows=0 loops=1)
-           Buffers: shared hit=90005 read=556 written=408
-           ->  LockRows  (cost=0.42..30056.81 rows=25992 width=22) (actual time=102.661..102.664 rows=0 loops=1)
-                 Buffers: shared hit=90005 read=556 written=408
-                 ->  Index Scan using outbox_pkey on outbox  (cost=0.42..29796.89 rows=25992 width=22) (actual time=102.660..102.663 rows=0 loops=1)
-                       Index Cond: (id < '01a19d9e-8fa4-0000-0000-000000000000'::uuid)
+     ->  Limit  (cost=0.42..1064.70 rows=1000 width=22) (actual time=71.079..71.083 rows=0 loops=1)
+           Buffers: shared hit=89370 read=1191 written=914
+           ->  LockRows  (cost=0.42..27804.63 rows=26125 width=22) (actual time=71.078..71.082 rows=0 loops=1)
+                 Buffers: shared hit=89370 read=1191 written=914
+                 ->  Index Scan using outbox_pkey on outbox  (cost=0.42..27543.38 rows=26125 width=22) (actual time=71.074..71.078 rows=0 loops=1)
+                       Index Cond: (id < '01a19f25-099f-0000-0000-000000000000'::uuid)
                        Filter: ((published_at IS NOT NULL) AND (published_at < (now() - '14 days'::interval)))
-                       Buffers: shared hit=90005 read=556 written=408
-   ->  Nested Loop  (cost=0.42..7684.00 rows=1000 width=46) (actual time=102.665..102.670 rows=0 loops=1)
-         Buffers: shared hit=90005 read=556 written=408
-         ->  CTE Scan on doomed  (cost=0.00..20.00 rows=1000 width=56) (actual time=102.664..102.666 rows=0 loops=1)
-               Buffers: shared hit=90005 read=556 written=408
-         ->  Index Scan using outbox_pkey on outbox o  (cost=0.42..7.66 rows=1 width=22) (never executed)
+                       Buffers: shared hit=89370 read=1191 written=914
+   ->  Nested Loop  (cost=0.42..7316.00 rows=1000 width=46) (actual time=71.084..71.088 rows=0 loops=1)
+         Buffers: shared hit=89370 read=1191 written=914
+         ->  CTE Scan on doomed  (cost=0.00..20.00 rows=1000 width=56) (actual time=71.084..71.087 rows=0 loops=1)
+               Buffers: shared hit=89370 read=1191 written=914
+         ->  Index Scan using outbox_pkey on outbox o  (cost=0.42..7.30 rows=1 width=22) (never executed)
                Index Cond: (id = doomed.id)
- Planning Time: 0.173 ms
- Execution Time: 102.723 ms
+ Planning Time: 0.607 ms
+ Execution Time: 71.168 ms
 (19 rows)
 
 == C2c Steady state without the id bound (the naive form): it reads the whole primary key to learn there is nothing to do
                                                                      QUERY PLAN                                                                      
 -----------------------------------------------------------------------------------------------------------------------------------------------------
- Delete on outbox o  (cost=522.68..8206.26 rows=0 width=0) (actual time=146.609..146.610 rows=0 loops=1)
-   Buffers: shared hit=300561 read=1337
+ Delete on outbox o  (cost=433.92..7749.50 rows=0 width=0) (actual time=210.522..210.523 rows=0 loops=1)
+   Buffers: shared hit=300561 read=1337 written=937
    CTE doomed
-     ->  Limit  (cost=0.42..522.26 rows=1000 width=22) (actual time=146.607..146.607 rows=0 loops=1)
-           Buffers: shared hit=300561 read=1337
-           ->  LockRows  (cost=0.42..45979.52 rows=88110 width=22) (actual time=146.606..146.606 rows=0 loops=1)
-                 Buffers: shared hit=300561 read=1337
-                 ->  Index Scan using outbox_pkey on outbox  (cost=0.42..45098.42 rows=88110 width=22) (actual time=146.605..146.605 rows=0 loops=1)
+     ->  Limit  (cost=0.42..433.50 rows=1000 width=22) (actual time=210.519..210.519 rows=0 loops=1)
+           Buffers: shared hit=300561 read=1337 written=937
+           ->  LockRows  (cost=0.42..38354.81 rows=88562 width=22) (actual time=210.515..210.515 rows=0 loops=1)
+                 Buffers: shared hit=300561 read=1337 written=937
+                 ->  Index Scan using outbox_pkey on outbox  (cost=0.42..37469.19 rows=88562 width=22) (actual time=210.515..210.515 rows=0 loops=1)
                        Filter: ((published_at IS NOT NULL) AND (published_at < (now() - '14 days'::interval)))
                        Rows Removed by Filter: 210000
-                       Buffers: shared hit=300561 read=1337
-   ->  Nested Loop  (cost=0.42..7684.00 rows=1000 width=46) (actual time=146.608..146.608 rows=0 loops=1)
-         Buffers: shared hit=300561 read=1337
-         ->  CTE Scan on doomed  (cost=0.00..20.00 rows=1000 width=56) (actual time=146.608..146.608 rows=0 loops=1)
-               Buffers: shared hit=300561 read=1337
-         ->  Index Scan using outbox_pkey on outbox o  (cost=0.42..7.66 rows=1 width=22) (never executed)
+                       Buffers: shared hit=300561 read=1337 written=937
+   ->  Nested Loop  (cost=0.42..7316.00 rows=1000 width=46) (actual time=210.521..210.521 rows=0 loops=1)
+         Buffers: shared hit=300561 read=1337 written=937
+         ->  CTE Scan on doomed  (cost=0.00..20.00 rows=1000 width=56) (actual time=210.520..210.520 rows=0 loops=1)
+               Buffers: shared hit=300561 read=1337 written=937
+         ->  Index Scan using outbox_pkey on outbox o  (cost=0.42..7.30 rows=1 width=22) (never executed)
                Index Cond: (id = doomed.id)
- Planning Time: 0.130 ms
- Execution Time: 146.666 ms
+ Planning Time: 0.141 ms
+ Execution Time: 210.584 ms
 (19 rows)
 
 == C3 Outbox claim with 300k rows, 1% unpublished (outbox_available_idx, partial)
-                                                                    QUERY PLAN                                                                    
---------------------------------------------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.28..167.43 rows=50 width=30) (actual time=0.031..0.082 rows=50 loops=1)
-   Buffers: shared hit=100 read=2
-   ->  LockRows  (cost=0.28..10149.51 rows=3036 width=30) (actual time=0.031..0.078 rows=50 loops=1)
-         Buffers: shared hit=100 read=2
-         ->  Index Scan using outbox_available_idx on outbox  (cost=0.28..10119.15 rows=3036 width=30) (actual time=0.026..0.062 rows=50 loops=1)
+                                                                   QUERY PLAN                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.28..170.97 rows=50 width=30) (actual time=0.095..0.153 rows=50 loops=1)
+   Buffers: shared hit=100 read=2 dirtied=45 written=2
+   ->  LockRows  (cost=0.28..9333.73 rows=2734 width=30) (actual time=0.094..0.149 rows=50 loops=1)
+         Buffers: shared hit=100 read=2 dirtied=45 written=2
+         ->  Index Scan using outbox_available_idx on outbox  (cost=0.28..9306.39 rows=2734 width=30) (actual time=0.083..0.125 rows=50 loops=1)
                Index Cond: (available_at <= now())
                Filter: ((published_at IS NULL) AND (attempts < 10) AND ((locked_at IS NULL) OR (locked_at < (now() - '00:01:00'::interval))))
-               Buffers: shared hit=50 read=2
+               Buffers: shared hit=50 read=2 written=2
  Planning:
-   Buffers: shared hit=9
- Planning Time: 0.149 ms
- Execution Time: 0.099 ms
+   Buffers: shared hit=6 read=3 written=3
+ Planning Time: 0.508 ms
+ Execution Time: 0.175 ms
 (12 rows)
 
 == C4 Partitions due for retention and partition status (catalogue reads)
                                                             QUERY PLAN                                                             
 -----------------------------------------------------------------------------------------------------------------------------------
- Function Scan on partitions_due_for_retention  (cost=0.25..10.25 rows=1000 width=112) (actual time=15.477..15.477 rows=0 loops=1)
-   Buffers: shared hit=410 read=161
- Planning Time: 0.008 ms
- Execution Time: 15.495 ms
+ Function Scan on partitions_due_for_retention  (cost=0.25..10.25 rows=1000 width=112) (actual time=26.803..26.805 rows=0 loops=1)
+   Buffers: shared hit=414 read=190 dirtied=8 written=160
+ Planning Time: 0.011 ms
+ Execution Time: 26.826 ms
 (4 rows)
 
                                                       QUERY PLAN                                                      
 ----------------------------------------------------------------------------------------------------------------------
- Function Scan on partition_status  (cost=0.25..10.25 rows=1000 width=41) (actual time=17.270..17.271 rows=7 loops=1)
-   Buffers: shared hit=1681 read=133
- Planning Time: 0.024 ms
- Execution Time: 17.277 ms
+ Function Scan on partition_status  (cost=0.25..10.25 rows=1000 width=41) (actual time=38.646..38.647 rows=7 loops=1)
+   Buffers: shared hit=1650 read=136 dirtied=1 written=63
+ Planning Time: 0.025 ms
+ Execution Time: 38.657 ms
 (4 rows)
 
 (second run, warm catalogue cache)
                                                      QUERY PLAN                                                     
 --------------------------------------------------------------------------------------------------------------------
- Function Scan on partition_status  (cost=0.25..10.25 rows=1000 width=41) (actual time=1.861..1.862 rows=7 loops=1)
-   Buffers: shared hit=421
- Planning Time: 0.016 ms
- Execution Time: 1.867 ms
+ Function Scan on partition_status  (cost=0.25..10.25 rows=1000 width=41) (actual time=2.140..2.140 rows=7 loops=1)
+   Buffers: shared hit=413
+ Planning Time: 0.017 ms
+ Execution Time: 2.147 ms
 (4 rows)
 
 == C5 Partition pruning: a 90-day transactions window reads only the partitions it spans
@@ -1012,17 +1013,17 @@ DELETE 89000
    ->  Append
          Subplans Removed: 2
          ->  Index Only Scan using transactions_202610_merchant_id_environment_status_created__idx on transactions_202610 transactions_1
-               Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+               Index Cond: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (created_at >= (now() - '30 days'::interval)))
          ->  Index Only Scan using transactions_202611_merchant_id_environment_created_at_ref_idx on transactions_202611 transactions_2
-               Index Cond: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+               Index Cond: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (created_at >= (now() - '30 days'::interval)))
          ->  Seq Scan on transactions_202612 transactions_3
-               Filter: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (created_at >= (now() - '30 days'::interval)))
          ->  Seq Scan on transactions_202701 transactions_4
-               Filter: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (created_at >= (now() - '30 days'::interval)))
          ->  Seq Scan on transactions_202702 transactions_5
-               Filter: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (created_at >= (now() - '30 days'::interval)))
          ->  Seq Scan on transactions_default transactions_6
-               Filter: ((merchant_id = '01a1e5b7-9cbd-7593-9781-957473450e7f'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+               Filter: ((merchant_id = '01a1e73e-122d-7edf-aaaf-2de578090b97'::uuid) AND (created_at >= (now() - '30 days'::interval)))
 (15 rows)
 
 ROLLBACK
