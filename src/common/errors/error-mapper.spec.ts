@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { AppError } from './app-error';
 import { ERROR_CATALOGUE, errorDocUrl, renderMessage } from './catalogue';
-import { resolveError } from './error-mapper';
+import { OVERLOAD_RETRY_AFTER_SECONDS, isCapacityError, resolveError } from './error-mapper';
 
 describe('error catalogue', () => {
   it('never exposes details on server errors', () => {
@@ -110,5 +110,50 @@ describe('resolveError', () => {
       expect(resolved.details).toBeUndefined();
       expect(resolved.message).toBe(ERROR_CATALOGUE.INTERNAL_ERROR.message);
     }
+  });
+});
+
+describe('database capacity errors (P9-PERF-3)', () => {
+  const pgError = (code: string, message: string) => Object.assign(new Error(message), { code });
+  it.each([
+    ['pool connect timeout', new Error('timeout exceeded when trying to connect')],
+    ['pool timeout from the driver', new Error('Connection terminated due to connection timeout')],
+    ['too many connections', pgError('53300', 'sorry, too many clients already')],
+    ['server cannot accept connections', pgError('57P03', 'the database system is starting up')],
+    ['pgbouncer limit', new Error('no more connections allowed (max_client_conn)')],
+    ['statement timeout', pgError('57014', 'canceling statement due to statement timeout')],
+    [
+      'wrapped by drizzle',
+      Object.assign(new Error('Failed query: select 1'), {
+        cause: new Error('timeout exceeded when trying to connect'),
+      }),
+    ],
+  ])('answers 503 SERVICE_UNAVAILABLE with a retry hint for %s', (_name, error) => {
+    expect(isCapacityError(error)).toBe(true);
+    expect(resolveError(error)).toMatchObject({
+      code: 'SERVICE_UNAVAILABLE',
+      httpStatus: 503,
+      isServerError: true,
+      retryAfterSeconds: OVERLOAD_RETRY_AFTER_SECONDS,
+    });
+  });
+  it('keeps every other database failure a plain 500, and never leaks the driver message', () => {
+    for (const error of [
+      pgError('23505', 'duplicate key value violates unique constraint "x"'),
+      pgError('57014', 'canceling statement due to user request'),
+      new Error('connection terminated unexpectedly'),
+      'timeout exceeded when trying to connect',
+      null,
+    ]) {
+      expect(isCapacityError(error)).toBe(false);
+      expect(resolveError(error)).toMatchObject({ code: 'INTERNAL_ERROR', httpStatus: 500 });
+    }
+    const resolved = resolveError(new Error('timeout exceeded when trying to connect'));
+    expect(JSON.stringify(resolved)).not.toContain('timeout exceeded');
+  });
+  it('stops following causes after three levels', () => {
+    let error: Error = new Error('timeout exceeded when trying to connect');
+    for (let i = 0; i < 4; i += 1) error = Object.assign(new Error('wrap'), { cause: error });
+    expect(isCapacityError(error)).toBe(false);
   });
 });

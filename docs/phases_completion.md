@@ -903,11 +903,20 @@ Write the tests first: they pin what `verify` must keep proving. Do not weaken a
 - [ ] **P9-GW-1 BUILD.** `RedisCircuitBreaker` has no caller. Routing (P4-02) must skip a provider with an open
       breaker (spec 6.2).
 - [ ] **P9-PERF-1 BUILD.** Load shedding (spec 9.2 rule 13: event-loop lag above 200 ms or deep queues).
-- [ ] **P9-PERF-3 BUILD.** An exhausted connection pool or overload answers `500 INTERNAL_ERROR`. Return `503` with
+- [x] **P9-PERF-3 BUILD.** An exhausted connection pool or overload answers `500 INTERNAL_ERROR`. Return `503` with
       `Retry-After`, with a catalogue code and a test.
+      _Result:_ resolveError maps pool connect timeout, SQLSTATE 53300, 53400 and 57P03, PgBouncer client limit
+      and statement timeout (also through drizzle causes, three levels) to 503 SERVICE_UNAVAILABLE with Retry-
+      After 5. The existing catalogue code is used; no new code was needed. Tests: error-mapper.spec.ts and a new
+      global-exception.filter.spec.ts.
 - [ ] **P9-RDY-1 BUILD.** Health or readiness endpoint for the worker and consumer; a `HEALTHCHECK` in the image.
-- [ ] **P9-GW-2 FIX.** A payout answered 401 or 403 is retried up to 8 times (same key, financially safe). Spec 3.5
+- [x] **P9-GW-2 FIX.** A payout answered 401 or 403 is retried up to 8 times (same key, financially safe). Spec 3.5
       says page and do not loop. Stop retrying on 401/403 and raise an alert.
+      _Result:_ SettlementGatewayAuthRejected (a SettlementSubmitRetry) is thrown on 401 and 403; the settlement-
+      run processor turns it into an UnrecoverableError, so BullMQ does not retry it. An error is logged and
+      core_gateway_auth_rejections_total rises. The sweep still re-drives the payout once per
+      SETTLEMENT_RELEASE_RETRY_SECONDS with the same externalId; the hold stays. Tests: phase6-jobs.spec.ts and
+      the 401, 403, 404 and 429 cases in settlement.int-spec.ts (which passed with aml-controls.int-spec.ts).
 - [ ] **P9-GW-3 FIX.** `GATEWAY_MAX_RETRIES` is validated and read by nothing. Implement it in the client (P3-02) or
       remove it (schema and `.env.example` together).
 - [ ] **P9-OBS-1 BUILD.** Missing spec 10 metrics: `core_payment_initiations_total`, `core_ledger_entries_total` (add

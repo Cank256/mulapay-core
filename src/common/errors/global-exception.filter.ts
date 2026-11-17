@@ -44,8 +44,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     if (reply.sent) return;
 
-    if (exception instanceof AppError && exception.retryAfterSeconds !== undefined) {
-      void reply.header('Retry-After', String(Math.max(1, Math.ceil(exception.retryAfterSeconds))));
+    const retryAfter =
+      exception instanceof AppError ? exception.retryAfterSeconds : resolved.retryAfterSeconds;
+    if (retryAfter !== undefined) {
+      void reply.header('Retry-After', String(Math.max(1, Math.ceil(retryAfter))));
     }
 
     const body: ErrorEnvelope = {
