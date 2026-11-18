@@ -12,8 +12,8 @@
 -- This migration adds the retention policy row for gateway_events to `partition_policies`.
 
 CREATE TABLE core.gateway_events (
-  id bigserial PRIMARY KEY,
-  gateway_event_id uuid NOT NULL UNIQUE,
+  id bigserial NOT NULL,
+  gateway_event_id uuid NOT NULL,
   -- The cursor value from the gateway's event stream; monotonic but not gapless.
   gateway_id bigint NOT NULL,
   operation_id text,
@@ -41,11 +41,16 @@ CREATE TABLE core.gateway_events (
   -- How many times the handler has been attempted (incremented before each attempt).
   attempts integer NOT NULL DEFAULT 0,
   CONSTRAINT gateway_events_attempts_check CHECK (attempts >= 0),
-  CONSTRAINT gateway_events_gateway_id_check CHECK (gateway_id >= 0)
+  CONSTRAINT gateway_events_gateway_id_check CHECK (gateway_id >= 0),
+  CONSTRAINT gateway_events_pkey PRIMARY KEY (id, created_at)
 ) PARTITION BY RANGE (created_at);--> statement-breakpoint
 
 -- Default partition to catch rows without a matching month partition (spec 5.1).
 CREATE TABLE core.gateway_events_default PARTITION OF core.gateway_events DEFAULT;--> statement-breakpoint
+
+-- Deduplicate on gateway_event_id; must include the partition key (created_at) because
+-- PostgreSQL requires all partition columns in unique constraints on partitioned tables.
+CREATE UNIQUE INDEX gateway_events_gateway_event_id_idx ON core.gateway_events (gateway_event_id, created_at);--> statement-breakpoint
 
 -- Indexes for the event consumer and reconciliation queries.
 CREATE INDEX gateway_events_gateway_id_idx ON core.gateway_events (gateway_id);--> statement-breakpoint
@@ -62,7 +67,7 @@ CREATE TRIGGER gateway_events_no_truncate BEFORE TRUNCATE ON core.gateway_events
 
 CREATE TABLE core.gateway_requests (
   id bigserial PRIMARY KEY,
-  transaction_id bigint REFERENCES core.transactions(id),
+  transaction_id uuid,
   provider text NOT NULL,
   operation_type text NOT NULL CHECK (operation_type IN ('collection', 'disbursement', 'refund', 'query', 'balance')),
   external_id text NOT NULL,

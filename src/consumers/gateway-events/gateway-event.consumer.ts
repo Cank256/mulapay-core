@@ -154,7 +154,7 @@ export class GatewayEventConsumer implements OnModuleInit {
         ${event.providerTransactionId}, ${event.status}, ${event.previousStatus},
         ${event.amount}, ${event.currency}, ${event.reason}, ${event.source}, ${event.occurredAt}
       )
-      ON CONFLICT (gateway_event_id) DO NOTHING
+      ON CONFLICT DO NOTHING
       RETURNING id
     `);
 

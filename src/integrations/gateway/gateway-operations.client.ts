@@ -17,7 +17,7 @@ import { APP_CONFIG, ROOT_LOGGER } from '../../common/tokens';
 import type { AppConfig } from '../../config/configuration';
 import { assertGatewayEligible } from '../../modules/developer/sandbox/domain/gateway-boundary';
 import type { PaymentProvider } from '../../modules/payments/domain/payment-event';
-import type { RedisCircuitBreaker } from './circuit-breaker';
+import { RedisCircuitBreaker } from './circuit-breaker';
 import {
   type BalanceAccountType,
   type CollectionRequest,

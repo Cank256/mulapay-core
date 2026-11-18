@@ -12,18 +12,18 @@ import {
   integer,
   numeric,
   pgTable,
+  primaryKey,
   text,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createdAt, timestamptz } from './columns';
-import { transactions } from './transactions';
 
 export const gatewayEvents = pgTable(
   'gateway_events',
   {
-    id: bigserial('id', { mode: 'number' }).primaryKey(),
-    gatewayEventId: uuid('gateway_event_id').notNull().unique(),
+    id: bigserial('id', { mode: 'number' }).notNull(),
+    gatewayEventId: uuid('gateway_event_id').notNull(),
     gatewayId: bigint('gateway_id', { mode: 'number' }).notNull(),
     operationId: text('operation_id'),
     providerId: text('provider_id').notNull(),
@@ -45,6 +45,9 @@ export const gatewayEvents = pgTable(
     attempts: integer('attempts').notNull().default(0),
   },
   (table) => ({
+    // Composite PK required because gateway_events is partitioned by created_at.
+    // PostgreSQL 16 requires all partition columns in every unique/primary key constraint.
+    pk: primaryKey({ columns: [table.id, table.createdAt], name: 'gateway_events_pkey' }),
     operationTypeCheck: check(
       'gateway_events_operation_type_check',
       sql`${table.operationType} IN ('collection', 'disbursement', 'refund')`
@@ -67,6 +70,11 @@ export const gatewayEvents = pgTable(
     ),
     attemptsCheck: check('gateway_events_attempts_check', sql`${table.attempts} >= 0`),
     gatewayIdCheck: check('gateway_events_gateway_id_check', sql`${table.gatewayId} >= 0`),
+    // Dedupe index — includes created_at because that is the partition key.
+    gatewayEventIdIdx: index('gateway_events_gateway_event_id_idx').on(
+      table.gatewayEventId,
+      table.createdAt
+    ),
     gatewayIdIdx: index('gateway_events_gateway_id_idx').on(table.gatewayId),
     externalIdIdx: index('gateway_events_external_id_idx').on(
       table.externalId,
@@ -83,7 +91,10 @@ export const gatewayRequests = pgTable(
   'gateway_requests',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
-    transactionId: bigint('transaction_id', { mode: 'number' }).references(() => transactions.id),
+    // Informational reference to the transaction; no FK because transactions is partitioned
+    // and its PK is composite (id, created_at) — a simple FK is not possible without
+    // storing transaction_created_at here too.
+    transactionId: uuid('transaction_id'),
     provider: text('provider').notNull(),
     operationType: text('operation_type').notNull(),
     externalId: text('external_id').notNull(),

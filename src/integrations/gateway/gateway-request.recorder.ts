@@ -12,7 +12,7 @@ import { DB_RW } from '../../common/db/tokens';
 import { ROOT_LOGGER } from '../../common/tokens';
 
 export interface GatewayRequestRecord {
-  readonly transactionId?: number;
+  readonly transactionId?: string;
   readonly provider: string;
   readonly operationType: 'collection' | 'disbursement' | 'refund' | 'query' | 'balance';
   readonly externalId: string;

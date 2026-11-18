@@ -42,7 +42,7 @@ CREATE INDEX "payouts_merchant_created_idx" ON "core"."payouts" USING btree ("me
 --> statement-breakpoint
 CREATE INDEX "payouts_status_idx" ON "core"."payouts" USING btree ("status") WHERE "core"."payouts"."status" in ('processing', 'pending_approval');
 --> statement-breakpoint
-ALTER TABLE "core"."payouts" ADD CONSTRAINT "payouts_transaction_id_fkey" FOREIGN KEY ("transaction_id") REFERENCES "core"."transactions"("id","created_at") NOT VALID;
+ALTER TABLE "core"."payouts" ADD CONSTRAINT "payouts_transaction_id_fkey" FOREIGN KEY ("transaction_id") REFERENCES "core"."transaction_keys"("id") NOT VALID;
 --> statement-breakpoint
 ALTER TABLE "core"."payouts" ADD CONSTRAINT "payouts_merchant_id_fkey" FOREIGN KEY ("merchant_id") REFERENCES "core"."merchants"("id") NOT VALID;
 --> statement-breakpoint
@@ -87,7 +87,7 @@ CREATE INDEX "refunds_merchant_created_idx" ON "core"."refunds" USING btree ("me
 --> statement-breakpoint
 CREATE INDEX "refunds_status_idx" ON "core"."refunds" USING btree ("status") WHERE "core"."refunds"."status" in ('processing', 'pending_approval');
 --> statement-breakpoint
-ALTER TABLE "core"."refunds" ADD CONSTRAINT "refunds_transaction_id_fkey" FOREIGN KEY ("transaction_id") REFERENCES "core"."transactions"("id","created_at") NOT VALID;
+ALTER TABLE "core"."refunds" ADD CONSTRAINT "refunds_transaction_id_fkey" FOREIGN KEY ("transaction_id") REFERENCES "core"."transaction_keys"("id") NOT VALID;
 --> statement-breakpoint
 ALTER TABLE "core"."refunds" ADD CONSTRAINT "refunds_merchant_id_fkey" FOREIGN KEY ("merchant_id") REFERENCES "core"."merchants"("id") NOT VALID;
 --> statement-breakpoint
@@ -104,20 +104,16 @@ ALTER TABLE "core"."transactions" DROP CONSTRAINT IF EXISTS "transactions_status
 -- Add new status check that covers payments, payouts, and refunds
 ALTER TABLE "core"."transactions" ADD CONSTRAINT "transactions_status_check" CHECK (
   (
-    -- Payment status transitions (existing)
-    "core"."transactions"."type" = 'payment' AND
-    "core"."transactions"."status" IN ('created', 'requires_action', 'processing', 'succeeded', 'failed', 'cancelled', 'expired')
+    "type" = 'payment' AND
+    "status" IN ('created', 'requires_action', 'processing', 'succeeded', 'failed', 'cancelled', 'expired')
   ) OR (
-    -- Payout status transitions
-    "core"."transactions"."type" = 'payout' AND
-    "core"."transactions"."status" IN ('created', 'pending_approval', 'processing', 'succeeded', 'failed', 'cancelled', 'expired')
+    "type" = 'payout' AND
+    "status" IN ('created', 'pending_approval', 'processing', 'succeeded', 'failed', 'cancelled', 'expired')
   ) OR (
-    -- Refund status transitions  
-    "core"."transactions"."type" = 'refund' AND
-    "core"."transactions"."status" IN ('created', 'pending_approval', 'processing', 'succeeded', 'failed', 'cancelled')
+    "type" = 'refund' AND
+    "status" IN ('created', 'pending_approval', 'processing', 'succeeded', 'failed', 'cancelled')
   ) OR (
-    -- Other transaction types (settlement, adjustment, etc.) - no specific status constraint yet
-    "core"."transactions"."type" NOT IN ('payment', 'payout', 'refund')
+    "type" NOT IN ('payment', 'payout', 'refund')
   )
 );
 
@@ -127,20 +123,16 @@ ALTER TABLE "core"."transactions" DROP CONSTRAINT IF EXISTS "transactions_comple
 -- Add new completed_at check for payments, payouts, and refunds
 ALTER TABLE "core"."transactions" ADD CONSTRAINT "transactions_completed_at_check" CHECK (
   (
-    -- Payment: completed_at set iff terminal status
-    "core"."transactions"."type" = 'payment' AND
-    (("core"."transactions"."status" IN ('succeeded', 'failed', 'cancelled', 'expired')) = ("core"."transactions"."completed_at" IS NOT NULL))
+    "type" = 'payment' AND
+    (("status" IN ('succeeded', 'failed', 'cancelled', 'expired')) = ("completed_at" IS NOT NULL))
   ) OR (
-    -- Payout: completed_at set iff terminal status
-    "core"."transactions"."type" = 'payout' AND
-    (("core"."transactions"."status" IN ('succeeded', 'failed', 'cancelled', 'expired')) = ("core"."transactions"."completed_at" IS NOT NULL))
+    "type" = 'payout' AND
+    (("status" IN ('succeeded', 'failed', 'cancelled', 'expired')) = ("completed_at" IS NOT NULL))
   ) OR (
-    -- Refund: completed_at set iff terminal status (no expired for refunds)
-    "core"."transactions"."type" = 'refund' AND
-    (("core"."transactions"."status" IN ('succeeded', 'failed', 'cancelled')) = ("core"."transactions"."completed_at" IS NOT NULL))
+    "type" = 'refund' AND
+    (("status" IN ('succeeded', 'failed', 'cancelled')) = ("completed_at" IS NOT NULL))
   ) OR (
-    -- Other types: no constraint yet
-    "core"."transactions"."type" NOT IN ('payment', 'payout', 'refund')
+    "type" NOT IN ('payment', 'payout', 'refund')
   )
 );
 
@@ -150,20 +142,16 @@ ALTER TABLE "core"."transactions" DROP CONSTRAINT IF EXISTS "transactions_succes
 -- Add new success provider check for payments, payouts, and refunds
 ALTER TABLE "core"."transactions" ADD CONSTRAINT "transactions_success_provider_check" CHECK (
   (
-    -- Payment: succeeded requires provider
-    "core"."transactions"."type" = 'payment' AND
-    ("core"."transactions"."status" <> 'succeeded' OR "core"."transactions"."provider" IS NOT NULL)
+    "type" = 'payment' AND
+    ("status" <> 'succeeded' OR "provider" IS NOT NULL)
   ) OR (
-    -- Payout: succeeded requires provider
-    "core"."transactions"."type" = 'payout' AND
-    ("core"."transactions"."status" <> 'succeeded' OR "core"."transactions"."provider" IS NOT NULL)
+    "type" = 'payout' AND
+    ("status" <> 'succeeded' OR "provider" IS NOT NULL)
   ) OR (
-    -- Refund: succeeded requires provider
-    "core"."transactions"."type" = 'refund' AND
-    ("core"."transactions"."status" <> 'succeeded' OR "core"."transactions"."provider" IS NOT NULL)
+    "type" = 'refund' AND
+    ("status" <> 'succeeded' OR "provider" IS NOT NULL)
   ) OR (
-    -- Other types: no constraint
-    "core"."transactions"."type" NOT IN ('payment', 'payout', 'refund')
+    "type" NOT IN ('payment', 'payout', 'refund')
   )
 );
 

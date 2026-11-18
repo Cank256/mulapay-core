@@ -13,6 +13,8 @@ import { HoldsModule } from '../../modules/holds/holds.module';
 import { IncidentsModule } from '../../modules/incidents/incidents.module';
 import { LedgerModule } from '../../modules/ledger/ledger.module';
 import { PaymentsModule } from '../../modules/payments/payments.module';
+import { PayoutsModule } from '../../modules/payouts/payouts.module';
+import { RefundsModule } from '../../modules/refunds/refunds.module';
 import { SettlementModule } from '../../modules/settlement/settlement.module';
 import { TransactionsModule } from '../../modules/transactions/transactions.module';
 import { WebhooksModule } from '../../modules/webhooks/webhooks.module';
@@ -27,7 +29,9 @@ import { CheckoutSessionsController } from './checkout-sessions.controller';
 import { EventsController } from './events.controller';
 import { PaymentLinksController } from './payment-links.controller';
 import { PaymentsController } from './payments.controller';
+import { PayoutsController } from './payouts.controller';
 import { PingController } from './ping.controller';
+import { RefundsController } from './refunds.controller';
 import { TransactionsController } from './transactions.controller';
 import { WebhookEndpointsController } from './webhook-endpoints.controller';
 
@@ -39,6 +43,8 @@ import { WebhookEndpointsController } from './webhook-endpoints.controller';
     IncidentsModule,
     LedgerModule,
     PaymentsModule,
+    PayoutsModule,
+    RefundsModule,
     SettlementModule,
     TransactionsModule,
     WebhooksModule,
@@ -48,6 +54,8 @@ import { WebhookEndpointsController } from './webhook-endpoints.controller';
     PaymentsController,
     PaymentLinksController,
     CheckoutSessionsController,
+    PayoutsController,
+    RefundsController,
     TransactionsController,
     BalancesController,
     BalanceTransactionsController,
