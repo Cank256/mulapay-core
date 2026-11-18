@@ -6,6 +6,7 @@ import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../common/db/database.module';
 import { GatewayEventSourceModule } from '../../integrations/gateway/gateway-event-source.module';
 import { PaymentsModule } from '../../modules/payments/payments.module';
+import { RefundsModule } from '../../modules/refunds/refunds.module';
 import { TransactionsModule } from '../../modules/transactions/transactions.module';
 import { GatewayEventConsumer } from './gateway-event.consumer';
 import { GatewayEventHandlerRegistry } from './handler.registry';
@@ -35,7 +36,13 @@ import {
 } from './handlers/refund.handlers';
 
 @Module({
-  imports: [GatewayEventSourceModule, DatabaseModule, PaymentsModule, TransactionsModule],
+  imports: [
+    GatewayEventSourceModule,
+    DatabaseModule,
+    PaymentsModule,
+    RefundsModule,
+    TransactionsModule,
+  ],
   providers: [
     GatewayEventConsumer,
     GatewayEventHandlerRegistry,

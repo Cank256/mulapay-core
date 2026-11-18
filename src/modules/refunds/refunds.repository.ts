@@ -12,6 +12,7 @@ import type { Executor } from '../../common/db/database.types';
 import { DB_RW } from '../../common/db/tokens';
 import type { CursorKey } from '../../common/pagination/cursor';
 import { newestFirst, olderThan } from '../../common/pagination/keyset';
+import { resolveWindow } from '../../common/pagination/window';
 import { checkoutSessions, paymentLinks, payments, refunds, transactions } from '../../db/schema';
 import type { TransactionRow } from '../transactions/transactions.repository';
 import type { PaymentRow } from '../payments/payments.repository';
@@ -135,7 +136,7 @@ export class RefundsRepository {
   }
 
   async list(filter: RefundListFilter, executor: Executor = this.db): Promise<RefundDetail[]> {
-    const window = resolveWindow(filter.from, filter.to);
+    const window = resolveWindow({ from: filter.from, to: filter.to }, new Date());
     const conditions: SQL[] = [
       eq(refunds.merchantId, filter.scope.merchantId),
       eq(refunds.environment, filter.scope.environment),

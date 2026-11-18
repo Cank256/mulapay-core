@@ -1,23 +1,15 @@
 /**
  * Pure functions that decide what a refund event changes (follows payment pattern).
  */
-import type { TransactionRow } from '../../transactions/transactions.repository';
+import type {
+  TransactionRow,
+  TransactionPatch,
+} from '../../transactions/transactions.repository';
 import type {
   RefundEventInput,
   RefundRejectionReason,
   RefundStatus,
 } from './refund-state-machine';
-
-export interface TransactionChange {
-  readonly status?: string;
-  readonly provider?: string | null;
-  readonly operationId?: string | null;
-  readonly referenceId?: string | null;
-  readonly providerTransactionId?: string | null;
-  readonly outcomeUnknown?: boolean;
-  readonly failureCode?: string | null;
-  readonly failureReason?: string | null;
-}
 
 /**
  * Verifies that a success event's amounts and identifiers match the refund's recorded values.
@@ -56,11 +48,11 @@ export function changeFor(
   event: RefundEventInput,
   to: RefundStatus,
   now: Date
-): TransactionChange {
+): TransactionPatch {
   const signal = event.signal;
   const ids = event.identifiers;
 
-  const change: TransactionChange = {
+  const change: TransactionPatch = {
     status: to,
   };
 
@@ -68,11 +60,11 @@ export function changeFor(
   if (ids?.provider && !transaction.provider) {
     change.provider = ids.provider;
   }
-  if (ids?.operationId && !transaction.operationId) {
-    change.operationId = ids.operationId;
+  if (ids?.operationId && !transaction.gatewayOperationId) {
+    change.gatewayOperationId = ids.operationId;
   }
-  if (ids?.referenceId && !transaction.referenceId) {
-    change.referenceId = ids.referenceId;
+  if (ids?.referenceId && !transaction.gatewayReferenceId) {
+    change.gatewayReferenceId = ids.referenceId;
   }
   if (ids?.providerTransactionId && !transaction.providerTransactionId) {
     change.providerTransactionId = ids.providerTransactionId;
@@ -96,10 +88,12 @@ export function changeFor(
  * Checks if the change adds information beyond what's already in the transaction (even if
  * the status stays the same).
  */
-export function addsInformation(transaction: TransactionRow, change: TransactionChange): boolean {
+export function addsInformation(transaction: TransactionRow, change: TransactionPatch): boolean {
   if (change.provider && change.provider !== transaction.provider) return true;
-  if (change.operationId && change.operationId !== transaction.operationId) return true;
-  if (change.referenceId && change.referenceId !== transaction.referenceId) return true;
+  if (change.gatewayOperationId && change.gatewayOperationId !== transaction.gatewayOperationId)
+    return true;
+  if (change.gatewayReferenceId && change.gatewayReferenceId !== transaction.gatewayReferenceId)
+    return true;
   if (
     change.providerTransactionId &&
     change.providerTransactionId !== transaction.providerTransactionId
