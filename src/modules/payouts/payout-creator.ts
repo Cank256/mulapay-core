@@ -65,13 +65,13 @@ function assertPayoutAmount(amountMinor: bigint, currency: string): string {
 }
 
 function assertMerchantMayPayout(scope: MerchantScope): void {
-  if (scope.merchantStatus === 'inactive') {
+  if (scope.merchantStatus === 'draft') {
     throw new AppError('MERCHANT_INACTIVE');
   }
   if (scope.merchantStatus === 'suspended') {
     throw new AppError('MERCHANT_SUSPENDED');
   }
-  if (scope.merchantStatus === 'blocked') {
+  if (scope.merchantStatus === 'closed') {
     throw new AppError('MERCHANT_BLOCKED');
   }
 }
@@ -118,7 +118,7 @@ export class PayoutCreator {
       transactionId: ids.transactionId,
       expiresAt: null, // Payouts don't auto-expire; they wait for resolution
       idempotencyKey: `payout:${ids.payoutId}:hold`,
-      createdBy: `api_key:${scope.apiKeyId ?? 'unknown'}`,
+      createdBy: 'system:payout',
     });
 
     // Determine if approval is required

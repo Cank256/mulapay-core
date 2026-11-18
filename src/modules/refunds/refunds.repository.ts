@@ -149,8 +149,9 @@ export class RefundsRepository {
     if (filter.after) {
       conditions.push(olderThan(refunds.createdAt, refunds.ref, filter.after));
     }
-    return this.detailQuery(executor)
-      .where(and(...conditions))
+    const query = this.detailQuery(executor);
+    const filtered = conditions.length > 0 ? query.where(and(...conditions)) : query;
+    return filtered
       .orderBy(...newestFirst(refunds.createdAt, refunds.ref))
       .limit(filter.limit);
   }

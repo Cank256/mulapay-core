@@ -2,7 +2,7 @@
  * Zod schemas for refund request/response DTOs.
  */
 import { z } from 'zod';
-import { createZodDto } from '../../common/dto/create-zod-dto';
+import { createZodDto } from 'nestjs-zod';
 
 // Request schemas
 export const CreateRefundBodySchema = z.object({

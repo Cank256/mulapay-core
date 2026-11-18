@@ -130,8 +130,8 @@ export class RefundCreator {
       provider: paymentTransaction.provider, // Inherit from payment
       channel: payment.channel,
       gatewayExternalId,
-      operationId: null,
-      referenceId: null,
+      gatewayOperationId: null,
+      gatewayReferenceId: null,
       providerTransactionId: null,
       outcomeUnknown: false,
       failureCode: null,

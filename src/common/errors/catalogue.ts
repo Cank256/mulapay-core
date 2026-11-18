@@ -294,6 +294,48 @@ export const ERROR_CATALOGUE = {
     retryable: false,
     exposeDetails: true,
   },
+  REFUND_REQUEST_INVALID: {
+    httpStatus: 422,
+    message: 'The refund request is not acceptable: {reason}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  PAYOUT_REQUEST_INVALID: {
+    httpStatus: 422,
+    message: 'The payout request is not acceptable: {reason}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  PAYOUT_AMOUNT_EXCEEDS_LIMIT: {
+    httpStatus: 422,
+    message: 'The payout amount exceeds the configured limit',
+    retryable: false,
+    exposeDetails: true,
+  },
+  MERCHANT_INACTIVE: {
+    httpStatus: 403,
+    message: 'The merchant account is inactive',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MERCHANT_SUSPENDED: {
+    httpStatus: 403,
+    message: 'The merchant account is suspended',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MERCHANT_BLOCKED: {
+    httpStatus: 403,
+    message: 'The merchant account is blocked',
+    retryable: false,
+    exposeDetails: false,
+  },
+  MERCHANT_LIMITS_NOT_CONFIGURED: {
+    httpStatus: 500,
+    message: 'Merchant limits are not configured',
+    retryable: false,
+    exposeDetails: false,
+  },
   // Phase 5: developer platform (spec 6.11, 8.5). Signature failures are 401 because the
   // request is not authenticated as coming from the key holder; none reveals which part of
   // the signing string differed.

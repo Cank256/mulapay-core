@@ -22,9 +22,9 @@ export function newPayoutIds(now: Date): PayoutIds {
   const transactionId = uuidv7(now);
   return {
     payoutId,
-    payoutRef: `pyt_${publicId()}`,
+    payoutRef: publicId('payout', now),
     transactionId,
-    transactionRef: `txn_${publicId()}`,
+    transactionRef: publicId('transaction', now),
   };
 }
 

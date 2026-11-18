@@ -278,20 +278,12 @@ export class PayoutLifecycleService {
 
   private async captureHold(tx: Transaction, payout: PayoutRow): Promise<void> {
     if (!payout.holdRef) return; // No hold to capture
-    await this.holds.capture(tx, {
-      environment: payout.environment as 'test' | 'live',
-      holdRef: payout.holdRef,
-      captureKey: `payout:${payout.id}:succeeded`,
-    });
+    await this.holds.captureByRef(tx, payout.environment as 'test' | 'live', payout.holdRef, `payout:${payout.id}:succeeded`);
   }
 
   private async releaseHold(tx: Transaction, payout: PayoutRow): Promise<void> {
     if (!payout.holdRef) return; // No hold to release
-    await this.holds.release(tx, {
-      environment: payout.environment as 'test' | 'live',
-      holdRef: payout.holdRef,
-      releaseKey: `payout:${payout.id}:failed`,
-    });
+    await this.holds.releaseByRef(tx, payout.environment as 'test' | 'live', payout.holdRef, `payout:${payout.id}:failed`);
   }
 
   private async reject(

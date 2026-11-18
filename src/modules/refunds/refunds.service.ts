@@ -127,34 +127,40 @@ export class RefundsService {
     scope: MerchantScope,
     query: RefundListQuery
   ): Promise<{ data: RefundView[]; pagination: { limit: number; cursor: string | null; hasMore: boolean } }> {
-    const window = resolveWindow(query.from, query.to);
-    const after = query.cursor ? decodeCursor(query.cursor) : undefined;
+    const fingerprint = filterFingerprint({ scope, ...query });
+    const after = query.cursor ? decodeCursor(query.cursor, fingerprint) : undefined;
     const filter = {
       scope,
-      from: window.from,
-      to: window.to,
+      from: query.from ?? new Date(0),
+      to: query.to ?? new Date(),
       status: query.status,
       currency: query.currency,
       paymentRef: query.paymentRef,
       after,
       limit: query.limit + 1,
     };
-    const fingerprint = filterFingerprint(filter);
     const rows = await this.refunds.list(filter);
-    return toPage(
+    const page = toPage(
       rows,
       query.limit,
-      (detail) => toRefundView(detail),
-      (detail) => ({ key: detail.refund.createdAt, tiebreak: detail.refund.ref }),
-      fingerprint
+      fingerprint,
+      (detail) => ({ createdAt: detail.refund.createdAt, id: detail.refund.ref })
     );
+    return {
+      data: page.items.map((detail) => toRefundView(detail)),
+      pagination: {
+        limit: query.limit,
+        cursor: page.nextCursor,
+        hasMore: page.nextCursor !== null,
+      },
+    };
   }
 
   /** Retrieves the status timeline for a refund. */
   async timeline(scope: MerchantScope, ref: string): Promise<TimelineEntryView[]> {
     const detail = await this.refunds.findDetailByRef(scope, ref);
     if (!detail) throw new AppError('NOT_FOUND');
-    const events = await this.transactions.findEvents(detail.transaction.id);
-    return toTimeline(events);
+    const events = await this.transactions.findByTransactionId(detail.transaction.id);
+    return toTimeline(events ? [events] : []);
   }
 }
