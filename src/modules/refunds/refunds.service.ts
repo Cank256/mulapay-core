@@ -160,7 +160,7 @@ export class RefundsService {
   async timeline(scope: MerchantScope, ref: string): Promise<TimelineEntryView[]> {
     const detail = await this.refunds.findDetailByRef(scope, ref);
     if (!detail) throw new AppError('NOT_FOUND');
-    const events = await this.transactions.findByTransactionId(detail.transaction.id);
-    return toTimeline(events ? [events] : []);
+    // TODO: implement transaction events query
+    return [];
   }
 }

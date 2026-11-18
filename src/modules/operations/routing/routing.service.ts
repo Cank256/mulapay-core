@@ -240,6 +240,7 @@ export class RoutingService {
     // If only one candidate, use it
     if (availableCandidates.length === 1) {
       const selected = availableCandidates[0];
+      if (!selected) return undefined;
       return {
         provider: selected.rule.provider as PaymentProvider,
         ruleRef: selected.rule.ref,
@@ -249,6 +250,7 @@ export class RoutingService {
 
     // Multiple candidates: use weighted random selection
     const selected = this.weightedRandomSelect(availableCandidates);
+    if (!selected) return undefined;
     return {
       provider: selected.rule.provider as PaymentProvider,
       ruleRef: selected.rule.ref,

@@ -39,6 +39,7 @@ import { uuidv7 } from '../../common/ids/ids';
 import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { ledgerIdempotencyKey } from '../ledger/domain/posting';
 import { HoldsService } from '../holds/holds.service';
+import { HoldsRepository } from '../holds/holds.repository';
 import { MerchantEventsService } from '../events/merchant-events.service';
 import { PostingService } from '../ledger/posting.service';
 import { MerchantsRepository } from '../merchants/merchants.repository';
@@ -119,6 +120,7 @@ export class PayoutLifecycleService {
     private readonly merchants: MerchantsRepository,
     private readonly posting: PostingService,
     private readonly holds: HoldsService,
+    private readonly holdsRepo: HoldsRepository,
     private readonly events: MerchantEventsService,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
@@ -210,13 +212,22 @@ export class PayoutLifecycleService {
     const detail = await this.payouts.findDetailById(payout.id, tx);
     if (!detail) throw invariantViolation(`payout ${payout.ref} vanished before its event`);
     const environment = payout.environment as 'test' | 'live';
+    
+    // Map status to event type
+    let eventType: 'payout.succeeded' | 'payout.failed' | 'payout.expired' | 'payout.cancelled';
+    if (to === 'succeeded') eventType = 'payout.succeeded';
+    else if (to === 'failed') eventType = 'payout.failed';
+    else if (to === 'expired') eventType = 'payout.expired';
+    else if (to === 'cancelled') eventType = 'payout.cancelled';
+    else return; // No event for other statuses
+    
     await this.events.emit(tx, {
       merchantId: payout.merchantId,
       environment,
-      type: `payout.${to}`,
+      type: eventType,
       resourceType: 'payout',
       resourceId: payout.ref,
-      object: toPayoutView(detail),
+      object: toPayoutView(detail) as unknown as Readonly<Record<string, unknown>>,
     });
   }
 
@@ -278,12 +289,32 @@ export class PayoutLifecycleService {
 
   private async captureHold(tx: Transaction, payout: PayoutRow): Promise<void> {
     if (!payout.holdRef) return; // No hold to capture
-    await this.holds.captureByRef(tx, payout.environment as 'test' | 'live', payout.holdRef, `payout:${payout.id}:succeeded`);
+    const hold = await this.holdsRepo.findByRef(
+      payout.merchantId,
+      payout.environment as 'test' | 'live',
+      payout.holdRef,
+      tx
+    );
+    if (!hold) {
+      this.logger.warn({ payoutRef: payout.ref, holdRef: payout.holdRef }, 'hold not found for payout');
+      return;
+    }
+    await this.holds.capture(tx, hold.id, `payout:${payout.id}:succeeded`);
   }
 
   private async releaseHold(tx: Transaction, payout: PayoutRow): Promise<void> {
     if (!payout.holdRef) return; // No hold to release
-    await this.holds.releaseByRef(tx, payout.environment as 'test' | 'live', payout.holdRef, `payout:${payout.id}:failed`);
+    const hold = await this.holdsRepo.findByRef(
+      payout.merchantId,
+      payout.environment as 'test' | 'live',
+      payout.holdRef,
+      tx
+    );
+    if (!hold) {
+      this.logger.warn({ payoutRef: payout.ref, holdRef: payout.holdRef }, 'hold not found for payout');
+      return;
+    }
+    await this.holds.release(tx, hold.id, `payout:${payout.id}:failed`);
   }
 
   private async reject(

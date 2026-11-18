@@ -336,6 +336,24 @@ export const ERROR_CATALOGUE = {
     retryable: false,
     exposeDetails: false,
   },
+  FEE_PLAN_NOT_FOUND: {
+    httpStatus: 500,
+    message: 'Fee plan not found for merchant',
+    retryable: false,
+    exposeDetails: false,
+  },
+  FEE_RULE_NOT_FOUND: {
+    httpStatus: 500,
+    message: 'Fee rule not found for operation',
+    retryable: false,
+    exposeDetails: false,
+  },
+  INVALID_OPERATION_TYPE: {
+    httpStatus: 400,
+    message: 'Invalid operation type for fee calculation',
+    retryable: false,
+    exposeDetails: true,
+  },
   // Phase 5: developer platform (spec 6.11, 8.5). Signature failures are 401 because the
   // request is not authenticated as coming from the key holder; none reveals which part of
   // the signing string differed.

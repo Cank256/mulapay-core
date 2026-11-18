@@ -34,11 +34,11 @@ import type { QueueProcessor } from '../common/queue/queue-processor';
 import { QUEUES } from '../common/queue/queue.definitions';
 import { transactions } from '../db/schema';
 import {
-  GATEWAY_OPERATIONS_PORT,
   type GatewayOperationsPort,
   type GatewayOperationType,
   type GatewayStatus,
 } from '../integrations/gateway/gateway-operations.port';
+import { GATEWAY_OPERATIONS_PORT } from '../integrations/gateway/tokens';
 import type { TransactionRow } from '../modules/transactions/transactions.repository';
 import { UnitOfWork } from '../common/db/unit-of-work';
 

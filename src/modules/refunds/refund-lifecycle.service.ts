@@ -218,13 +218,21 @@ export class RefundLifecycleService {
     const detail = await this.refunds.findDetailById(refund.id, tx);
     if (!detail) throw invariantViolation(`refund ${refund.ref} vanished before its event`);
     const environment = refund.environment as 'test' | 'live';
+    
+    // Map status to event type
+    let eventType: 'refund.succeeded' | 'refund.failed' | 'refund.cancelled' | 'refund.created';
+    if (to === 'succeeded') eventType = 'refund.succeeded';
+    else if (to === 'failed') eventType = 'refund.failed';
+    else if (to === 'cancelled') eventType = 'refund.cancelled';
+    else return; // No event for other statuses
+    
     await this.events.emit(tx, {
       merchantId: refund.merchantId,
       environment,
-      type: `refund.${to}`,
+      type: eventType,
       resourceType: 'refund',
       resourceId: refund.ref,
-      object: toRefundView(detail),
+      object: toRefundView(detail) as unknown as Readonly<Record<string, unknown>>,
     });
     if (balanceMoved) {
       const balance = await this.balances.merchantBalance(

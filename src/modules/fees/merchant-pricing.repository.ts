@@ -6,11 +6,11 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, isNull, lte, or, sql } from 'drizzle-orm';
-import type { Database } from '../../db/connection';
-import { DB_CORE_RO } from '../../db/db.provider';
+import type { Logger } from 'pino';
+import type { Executor } from '../../common/db/database.types';
+import { DB_RW } from '../../common/db/tokens';
+import { ROOT_LOGGER } from '../../common/tokens';
 import { feePlanRules, feePlans } from '../../db/schema';
-import type { Logger } from '../../common/logging/logger.types';
-import { ROOT_LOGGER } from '../../common/logging/logger.provider';
 
 export interface FeePlan {
   id: string;
@@ -62,7 +62,7 @@ export interface RuleMatchCriteria {
 @Injectable()
 export class MerchantPricingRepository {
   constructor(
-    @Inject(DB_CORE_RO) private readonly db: Database,
+    @Inject(DB_RW) private readonly db: Executor,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
@@ -126,7 +126,7 @@ export class MerchantPricingRepository {
           eq(feePlanRules.operationType, criteria.operationType),
           eq(feePlanRules.active, true),
           // Amount must be >= tier threshold
-          lte(feePlanRules.tierFromMinor, criteria.amountMinor.toString()),
+          lte(feePlanRules.tierFromMinor, criteria.amountMinor),
           // Provider: exact match or null (wildcard)
           or(
             isNull(feePlanRules.provider),
@@ -176,7 +176,7 @@ export class MerchantPricingRepository {
         desc(feePlanRules.tierFromMinor)
       );
 
-    return rows.map((row) => this.mapFeePlanRule(row));
+    return rows.map((row: typeof feePlanRules.$inferSelect) => this.mapFeePlanRule(row));
   }
 
   private mapFeePlan(row: typeof feePlans.$inferSelect): FeePlan {

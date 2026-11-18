@@ -15,10 +15,10 @@
  * Provider fees (P4-D6): Currently 0 until gateway provides them.
  */
 import { Inject, Injectable } from '@nestjs/common';
-import type { Database } from '../../db/connection';
-import { DB_CORE_RO } from '../../db/db.provider';
-import type { Logger } from '../../common/logging/logger.types';
-import { ROOT_LOGGER } from '../../common/logging/logger.provider';
+import type { Logger } from 'pino';
+import type { Executor } from '../../common/db/database.types';
+import { DB_RW } from '../../common/db/tokens';
+import { ROOT_LOGGER } from '../../common/tokens';
 import { AppError } from '../../common/errors/app-error';
 import { MerchantPricingRepository } from './merchant-pricing.repository';
 
@@ -58,7 +58,6 @@ export interface FeeBreakdown {
 @Injectable()
 export class FeeCalculatorService {
   constructor(
-    @Inject(DB_CORE_RO) private readonly db: Database,
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
     private readonly pricingRepo: MerchantPricingRepository
   ) {}

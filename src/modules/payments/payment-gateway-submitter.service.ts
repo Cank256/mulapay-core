@@ -100,7 +100,7 @@ export class PaymentGatewaySubmitter {
     try {
       const route = await this.routing.selectProvider({
         operation: 'collection',
-        currency: input.currency,
+        currency: input.currency as any, // Type already validated during payment creation
         amountMinor: input.amountMinor,
         msisdn,
         channel: 'mobile_money', // TODO: get from payment

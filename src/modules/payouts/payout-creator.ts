@@ -188,7 +188,7 @@ export class PayoutCreator {
       type: requiresApproval ? 'payout.pending_approval' : 'payout.created',
       resourceType: 'payout',
       resourceId: ids.payoutRef,
-      object: toPayoutView(detail),
+      object: toPayoutView(detail) as unknown as Readonly<Record<string, unknown>>,
     });
 
     return detail;

@@ -125,6 +125,8 @@ export class RefundCreator {
       merchantId: scope.merchantId,
       environment: scope.environment,
       amountMinor: input.amountMinor,
+      netMinor: input.amountMinor, // Refunds net same as gross (fees already paid on payment)
+      feeMinor: 0n, // No fees on refunds
       currency: payment.currency,
       status: 'created',
       provider: paymentTransaction.provider, // Inherit from payment
