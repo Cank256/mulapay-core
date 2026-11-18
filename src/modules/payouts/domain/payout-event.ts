@@ -11,15 +11,24 @@ export type PayoutEventSource = 'gateway' | 'api' | 'chase' | 'expiry' | 'manual
 export type PayoutSignal =
   | { readonly kind: 'created' }
   | { readonly kind: 'pending_approval' }
-  | { readonly kind: 'processing' }
+  | { readonly kind: 'processing'; readonly outcomeUnknown?: boolean }
   | {
       readonly kind: 'succeeded';
       readonly feeMinor?: bigint;
       readonly providerFeeMinor?: bigint;
     }
   | { readonly kind: 'failed'; readonly code?: string }
-  | { readonly kind: 'expired' }
-  | { readonly kind: 'cancelled' };
+  | { readonly kind: 'expired'; readonly code?: string }
+  | { readonly kind: 'cancelled'; readonly code?: string };
+
+export interface PayoutGatewayDetails {
+  readonly provider?: PaymentProvider;
+  readonly operationId?: string;
+  readonly referenceId?: string;
+  readonly providerTransactionId?: string;
+  readonly amountMinor?: bigint;
+  readonly currency?: string;
+}
 
 export interface PayoutEventInput {
   /** Unique per event (idempotency). Gateway sends `{providerId}:{referenceId}:{status}`. */
@@ -29,12 +38,7 @@ export interface PayoutEventInput {
   /** When the event occurred (gateway `updatedAt` or now for local events). */
   readonly occurredAt: Date;
   /** Gateway operation details (only for gateway events). */
-  readonly gatewayDetails?: {
-    readonly provider: PaymentProvider;
-    readonly gatewayId: string;
-    readonly amountMinor: bigint;
-    readonly currency: string;
-  };
+  readonly gatewayDetails?: PayoutGatewayDetails;
 }
 
 export function signalTarget(signal: PayoutSignal): PayoutStatus {
