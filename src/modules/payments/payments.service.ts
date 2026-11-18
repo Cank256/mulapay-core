@@ -128,8 +128,8 @@ export class PaymentsService {
           // Submit payment to gateway after transaction commits (P4-08)
           // Only for live payments (test payments go to sandbox)
           if (scope.environment === 'live' && detail.payment.channel === 'mobile_money') {
-            // Extract MSISDN from payment method (may be encrypted)
-            const msisdn = detail.payment.paymentMethod.msisdnEnc ?? null;
+            // Extract encrypted MSISDN from payment method
+            const msisdnEnc = detail.payment.paymentMethod.msisdnEnc ?? null;
             
             // Fire and forget - errors handled by submitter service
             this.submitter
@@ -139,7 +139,7 @@ export class PaymentsService {
                 gatewayExternalId: detail.transaction.gatewayExternalId!,
                 amountMinor: detail.payment.amountMinor,
                 currency: detail.payment.currency,
-                msisdn,
+                msisdnEnc,
                 merchantId: scope.merchantId,
                 environment: scope.environment,
               })

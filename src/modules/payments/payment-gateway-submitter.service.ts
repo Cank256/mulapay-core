@@ -19,7 +19,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Logger } from 'pino';
 import { ROOT_LOGGER } from '../../common/tokens';
 import { UnitOfWork } from '../../common/db/unit-of-work';
-import type { MerchantScope } from '../../common/auth/merchant-scope';
+import { FieldEncryption } from '../../common/crypto/field-encryption';
 import { RoutingService } from '../operations/routing/routing.service';
 import {
   GATEWAY_OPERATIONS,
@@ -27,6 +27,7 @@ import {
 } from '../../integrations/gateway/gateway-operations.port';
 import { PaymentLifecycleService } from './payment-lifecycle.service';
 import { PaymentsRepository } from './payments.repository';
+import { normalizeMsisdn } from './domain/payment-input';
 import type { PaymentProvider } from './domain/payment-event';
 
 export interface SubmitPaymentInput {
@@ -35,7 +36,8 @@ export interface SubmitPaymentInput {
   readonly gatewayExternalId: string;
   readonly amountMinor: bigint;
   readonly currency: string;
-  readonly msisdn?: string | null;
+  /** Encrypted MSISDN from payment_method.msisdnEnc */
+  readonly msisdnEnc?: string | null;
   readonly merchantId: string;
   readonly environment: 'test' | 'live';
 }
@@ -48,6 +50,7 @@ export class PaymentGatewaySubmitter {
     private readonly lifecycle: PaymentLifecycleService,
     private readonly payments: PaymentsRepository,
     private readonly unitOfWork: UnitOfWork,
+    private readonly encryption: FieldEncryption,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
@@ -56,14 +59,50 @@ export class PaymentGatewaySubmitter {
    * Handles routing, submission, and updating payment status based on gateway response.
    */
   async submit(input: SubmitPaymentInput): Promise<void> {
+    // Decrypt MSISDN if present
+    let msisdn: string | undefined;
+    if (input.msisdnEnc) {
+      try {
+        const decrypted = this.encryption.decrypt(
+          input.msisdnEnc,
+          `payments.msisdn:${input.paymentRef}`
+        );
+        // Validate decrypted MSISDN format
+        const normalized = normalizeMsisdn(decrypted);
+        if (!normalized) {
+          throw new Error('decrypted MSISDN failed validation');
+        }
+        msisdn = normalized;
+      } catch (error) {
+        // Decryption or validation failed - mark payment as failed
+        this.logger.error(
+          { paymentRef: input.paymentRef, error },
+          'failed to decrypt or validate MSISDN'
+        );
+        await this.unitOfWork.run((tx) =>
+          this.lifecycle.apply(tx, input.paymentId, {
+            eventKey: 'decryption:failed',
+            source: 'job',
+            occurredAt: new Date(),
+            signal: {
+              kind: 'failed',
+              failureCode: 'msisdn_decryption_failed',
+              failureReason: 'Could not decrypt payment method',
+            },
+          })
+        );
+        return;
+      }
+    }
+
     // Route to a provider
     let provider: PaymentProvider;
     try {
       const route = await this.routing.selectProvider({
         operation: 'collection',
-        currency: input.currency as any, // TODO: type narrowing
+        currency: input.currency,
         amountMinor: input.amountMinor,
-        msisdn: input.msisdn ?? undefined,
+        msisdn,
         channel: 'mobile_money', // TODO: get from payment
       });
       provider = route.provider;
@@ -77,10 +116,7 @@ export class PaymentGatewaySubmitter {
       );
     } catch (error) {
       // No route available - mark payment as failed
-      this.logger.warn(
-        { paymentRef: input.paymentRef, error },
-        'no route available for payment'
-      );
+      this.logger.warn({ paymentRef: input.paymentRef, error }, 'no route available for payment');
       await this.unitOfWork.run((tx) =>
         this.lifecycle.apply(tx, input.paymentId, {
           eventKey: 'routing:no_route',
@@ -96,7 +132,27 @@ export class PaymentGatewaySubmitter {
       return;
     }
 
-    // Submit to gateway
+    // Submit to gateway - never log the decrypted MSISDN
+    if (!msisdn) {
+      this.logger.error(
+        { paymentRef: input.paymentRef },
+        'missing MSISDN for mobile money payment'
+      );
+      await this.unitOfWork.run((tx) =>
+        this.lifecycle.apply(tx, input.paymentId, {
+          eventKey: 'validation:missing_msisdn',
+          source: 'job',
+          occurredAt: new Date(),
+          signal: {
+            kind: 'failed',
+            failureCode: 'missing_payment_method',
+            failureReason: 'MSISDN required for mobile money collection',
+          },
+        })
+      );
+      return;
+    }
+
     const result = await this.gateway.submitCollection({
       environment: input.environment,
       providerId: provider,
@@ -105,7 +161,7 @@ export class PaymentGatewaySubmitter {
       currency: input.currency,
       payer: {
         partyIdType: 'MSISDN',
-        partyId: input.msisdn ?? '', // TODO: handle missing MSISDN
+        partyId: msisdn,
       },
       metadata: {
         merchantId: input.merchantId,
