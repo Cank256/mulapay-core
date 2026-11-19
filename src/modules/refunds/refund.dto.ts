@@ -11,7 +11,7 @@ export const CreateRefundBodySchema = z.object({
     .union([z.string(), z.number(), z.bigint()])
     .transform((val) => BigInt(val)),
   reason: z.string().min(1).max(500).optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
 });
 
 export class CreateRefundBodyDto extends createZodDto(CreateRefundBodySchema) {}
@@ -50,7 +50,7 @@ export const RefundViewSchema = z.object({
     'cancelled',
   ]),
   reason: z.string().nullable(),
-  metadata: z.record(z.string()),
+  metadata: z.record(z.string(), z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

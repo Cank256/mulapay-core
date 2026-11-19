@@ -29,7 +29,7 @@ const createPayoutSchema = z.object({
     name: z.string().min(1).max(100).optional(),
   }),
   description: z.string().min(1).max(500).optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
 });
 
 const listPayoutsSchema = z.object({
@@ -63,7 +63,7 @@ const payoutViewSchema = z.object({
     'cancelled',
   ]),
   description: z.string().nullable(),
-  metadata: z.record(z.string()),
+  metadata: z.record(z.string(), z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

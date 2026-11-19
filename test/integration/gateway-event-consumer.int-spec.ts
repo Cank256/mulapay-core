@@ -7,7 +7,6 @@
  * running application.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, inject } from 'vitest';
-import { sql } from 'drizzle-orm';
 import { Client } from 'pg';
 
 describe('Gateway Event Consumer (Integration)', () => {
@@ -72,7 +71,7 @@ describe('Gateway Event Consumer (Integration)', () => {
     const result = await client.query(`
       SELECT position FROM core.consumer_cursors WHERE name = 'gateway'
     `);
-    return result[0]?.position as string;
+    return result.rows[0]?.position as string;
   };
 
   describe('duplicate event dedupe (ON CONFLICT)', () => {
@@ -90,7 +89,7 @@ describe('Gateway Event Consumer (Integration)', () => {
         FROM core.gateway_events
         WHERE gateway_event_id = 'evt_dup_001'
       `);
-      expect(rows[0]).toMatchObject({ count: '1' });
+      expect(rows.rows[0]).toMatchObject({ count: '1' });
     });
 
     it('should allow different event IDs even with same gateway_id', async () => {
@@ -102,7 +101,7 @@ describe('Gateway Event Consumer (Integration)', () => {
         FROM core.gateway_events
         WHERE gateway_id = '1'
       `);
-      expect(rows[0]).toMatchObject({ count: '2' });
+      expect(rows.rows[0]).toMatchObject({ count: '2' });
     });
   });
 
@@ -180,7 +179,7 @@ describe('Gateway Event Consumer (Integration)', () => {
         WHERE gateway_event_id = 'evt_fail_001'
       `);
 
-      expect(result[0]).toMatchObject({
+      expect(result.rows[0]).toMatchObject({
         attempts: 1,
         apply_error: 'Test error',
       });
@@ -212,7 +211,7 @@ describe('Gateway Event Consumer (Integration)', () => {
         WHERE gateway_event_id = 'evt_fail_002'
       `);
 
-      expect(result[0]).toMatchObject({
+      expect(result.rows[0]).toMatchObject({
         attempts: 3,
         apply_status: 'failed',
       });
@@ -241,10 +240,10 @@ describe('Gateway Event Consumer (Integration)', () => {
         WHERE gateway_event_id = 'evt_status_001'
       `);
 
-      expect(result[0]).toMatchObject({
+      expect(result.rows[0]).toMatchObject({
         apply_status: 'applied',
       });
-      expect(result[0]?.processed_at).toBeTruthy();
+      expect(result.rows[0]?.processed_at).toBeTruthy();
     });
 
     it('should support all three apply_status values', async () => {
@@ -259,10 +258,10 @@ describe('Gateway Event Consumer (Integration)', () => {
         ORDER BY gateway_event_id
       `);
 
-      expect(result).toHaveLength(3);
-      expect(result[0]).toMatchObject({ apply_status: 'applied' });
-      expect(result[1]).toMatchObject({ apply_status: 'failed' });
-      expect(result[2]).toMatchObject({ apply_status: 'pending' });
+      expect(result.rows).toHaveLength(3);
+      expect(result.rows[0]).toMatchObject({ apply_status: 'applied' });
+      expect(result.rows[1]).toMatchObject({ apply_status: 'failed' });
+      expect(result.rows[2]).toMatchObject({ apply_status: 'pending' });
     });
   });
 
@@ -277,7 +276,7 @@ describe('Gateway Event Consumer (Integration)', () => {
       let cursor = await client.query(`
         SELECT heartbeat_at FROM core.consumer_cursors WHERE name = 'gateway'
       `);
-      expect(cursor[0]?.heartbeat_at).toBeNull();
+      expect(cursor.rows[0]?.heartbeat_at).toBeNull();
 
       // Update heartbeat
       await client.query(`
@@ -289,7 +288,7 @@ describe('Gateway Event Consumer (Integration)', () => {
       cursor = await client.query(`
         SELECT heartbeat_at FROM core.consumer_cursors WHERE name = 'gateway'
       `);
-      expect(cursor[0]?.heartbeat_at).toBeTruthy();
+      expect(cursor.rows[0]?.heartbeat_at).toBeTruthy();
     });
   });
 
@@ -335,7 +334,7 @@ describe('Gateway Event Consumer (Integration)', () => {
         WHERE gateway_event_id = 'evt_crash_002'
       `);
 
-      expect(result[0]).toMatchObject({ apply_status: 'applied' });
+      expect(result.rows[0]).toMatchObject({ apply_status: 'applied' });
     });
   });
 
@@ -360,9 +359,9 @@ describe('Gateway Event Consumer (Integration)', () => {
         LIMIT 10
       `);
 
-      expect(events).toHaveLength(2);
-      expect(events[0]).toMatchObject({ gateway_event_id: 'evt_order_002' });
-      expect(events[1]).toMatchObject({ gateway_event_id: 'evt_order_003' });
+      expect(events.rows).toHaveLength(2);
+      expect(events.rows[0]).toMatchObject({ gateway_event_id: 'evt_order_002' });
+      expect(events.rows[1]).toMatchObject({ gateway_event_id: 'evt_order_003' });
     });
   });
 
@@ -396,7 +395,7 @@ describe('Gateway Event Consumer (Integration)', () => {
         SELECT gateway_event_id FROM core.gateway_events
         WHERE gateway_event_id = 'evt_tx_001'
       `);
-      expect(event).toHaveLength(1);
+      expect(event.rows).toHaveLength(1);
       expect(await getCursor()).toBe('300');
     });
   });

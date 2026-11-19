@@ -23,7 +23,7 @@ const createRefundSchema = z.object({
   paymentId: z.string().uuid(),
   amountMinor: z.string().regex(/^\d+$/),
   reason: z.string().min(1).max(500).optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
 });
 
 const listRefundsSchema = z.object({
@@ -57,7 +57,7 @@ const refundViewSchema = z.object({
     'cancelled',
   ]),
   reason: z.string().nullable(),
-  metadata: z.record(z.string()),
+  metadata: z.record(z.string(), z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

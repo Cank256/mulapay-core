@@ -12,7 +12,7 @@
  * - 1: connectivity or configuration error
  */
 import pino from 'pino';
-import { loadConfig } from '../config/configuration';
+import { getConfig } from '../config/configuration';
 import { GatewayOperationsClient } from '../integrations/gateway/gateway-operations.client';
 import { RedisCircuitBreaker } from '../integrations/gateway/circuit-breaker';
 import { GatewayRequestRecorder } from '../integrations/gateway/gateway-request.recorder';
@@ -28,7 +28,7 @@ const logger = pino({
 async function verify(): Promise<void> {
   logger.info('Gateway verification starting...');
 
-  const config = loadConfig();
+  const config = getConfig();
 
   // Check configuration
   if (!config.GATEWAY_BASE_URL) {
@@ -60,7 +60,7 @@ async function verify(): Promise<void> {
   logger.info('Testing connectivity and authentication...');
 
   try {
-    const balanceResult = await client.getBalance('mtn', 'provider_operating');
+    const balanceResult = await client.getBalance('mtn_momo_ug', 'provider_operating', 'UGX');
 
     if (balanceResult.kind === 'unavailable') {
       if (balanceResult.reason === 'gateway_not_configured') {
@@ -81,7 +81,7 @@ async function verify(): Promise<void> {
     if (balanceResult.kind === 'ok') {
       logger.info(
         {
-          balance: balanceResult.balance,
+          availableMinor: balanceResult.availableMinor,
           currency: balanceResult.currency,
         },
         'Connectivity check passed'

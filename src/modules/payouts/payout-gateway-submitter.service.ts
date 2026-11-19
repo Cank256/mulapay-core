@@ -1,7 +1,7 @@
 /**
  * Payout gateway submission: submits payouts to the gateway after creation.
  *
- * Similar to RefundGatewaySubmitter but for payouts (disbursements to recipients).
+ * Similar to RefundGatewaySubmitter but for disbursements to recipients.
  */
 import { Inject, Injectable } from '@nestjs/common';
 import type { Logger } from 'pino';
@@ -27,7 +27,7 @@ export interface SubmitPayoutInput {
     partyId: string;
   };
   readonly merchantId: string;
-  readonly environment: 'test' | 'live';
+  readonly environment: 'live';
 }
 
 @Injectable()
@@ -50,39 +50,29 @@ export class PayoutGatewaySubmitter {
     let provider: PaymentProvider;
     try {
       const route = await this.routing.selectProvider({
-        operation: 'payout',
+        operation: 'disbursement',
         currency: input.currency as any,
         amountMinor: input.amountMinor,
         channel: 'mobile_money',
       });
       provider = route.provider;
       this.logger.info(
-        {
-          payoutRef: input.payoutRef,
-          provider: route.provider,
-          ruleRef: route.ruleRef,
-        },
+        { payoutRef: input.payoutRef, provider: route.provider, ruleRef: route.ruleRef },
         'routed payout to provider'
       );
     } catch (error) {
-      // No route available - mark payout as failed
       this.logger.warn({ payoutRef: input.payoutRef, error }, 'no route available for payout');
       await this.unitOfWork.run((tx) =>
         this.lifecycle.apply(tx, input.payoutId, {
           eventKey: 'routing:no_route',
           source: 'api',
           occurredAt: new Date(),
-          signal: {
-            kind: 'failed',
-            failureCode: 'no_route_available',
-            failureReason: 'No available provider for this payout',
-          },
+          signal: { kind: 'failed', code: 'no_route_available' },
         })
       );
       return;
     }
 
-    // Submit to gateway
     const result = await this.gateway.submitDisbursement({
       environment: input.environment,
       providerId: provider,
@@ -97,11 +87,10 @@ export class PayoutGatewaySubmitter {
       },
     });
 
-    // Handle result
-    await this.handleSubmissionResult(input, provider, result);
+    await this.handleResult(input, provider, result);
   }
 
-  private async handleSubmissionResult(
+  private async handleResult(
     input: SubmitPayoutInput,
     provider: PaymentProvider,
     result: Awaited<ReturnType<GatewayOperationsPort['submitDisbursement']>>
@@ -110,23 +99,15 @@ export class PayoutGatewaySubmitter {
       case 'accepted':
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.payoutId, {
-            eventKey: 'gateway:accepted',
-            source: 'gateway_event',
+            eventKey: `gateway:accepted:${result.referenceId}`,
+            source: 'gateway',
             occurredAt: new Date(),
             signal: { kind: 'processing', outcomeUnknown: false },
-            identifiers: {
-              provider,
-              referenceId: result.referenceId,
-            },
+            gatewayDetails: { provider, referenceId: result.referenceId },
           })
         );
         this.logger.info(
-          {
-            payoutRef: input.payoutRef,
-            provider,
-            referenceId: result.referenceId,
-            duplicate: result.duplicate,
-          },
+          { payoutRef: input.payoutRef, provider, referenceId: result.referenceId },
           'payout accepted by gateway'
         );
         break;
@@ -134,15 +115,11 @@ export class PayoutGatewaySubmitter {
       case 'rejected':
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.payoutId, {
-            eventKey: 'gateway:rejected',
+            eventKey: `gateway:rejected:${result.reason}`,
             source: 'api',
             occurredAt: new Date(),
-            signal: {
-              kind: 'failed',
-              failureCode: `gateway_${result.reason}`,
-              failureReason: `Gateway rejected: ${result.reason}`,
-            },
-            identifiers: { provider },
+            signal: { kind: 'failed', code: `gateway_${result.reason}` },
+            gatewayDetails: { provider },
           })
         );
         this.logger.warn(
@@ -154,22 +131,18 @@ export class PayoutGatewaySubmitter {
       case 'ambiguous':
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.payoutId, {
-            eventKey: 'gateway:ambiguous',
+            eventKey: `gateway:ambiguous:${Date.now()}`,
             source: 'api',
             occurredAt: new Date(),
             signal: { kind: 'processing', outcomeUnknown: true },
-            identifiers: {
+            gatewayDetails: {
               provider,
               referenceId: result.referenceId ?? undefined,
             },
           })
         );
         this.logger.warn(
-          {
-            payoutRef: input.payoutRef,
-            provider,
-            httpStatus: result.httpStatus,
-          },
+          { payoutRef: input.payoutRef, provider, httpStatus: result.httpStatus },
           'payout submission ambiguous, will be chased'
         );
         break;
@@ -177,11 +150,11 @@ export class PayoutGatewaySubmitter {
       case 'rate_limited':
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.payoutId, {
-            eventKey: 'gateway:rate_limited',
+            eventKey: `gateway:rate_limited:${Date.now()}`,
             source: 'api',
             occurredAt: new Date(),
             signal: { kind: 'processing', outcomeUnknown: true },
-            identifiers: { provider },
+            gatewayDetails: { provider },
           })
         );
         this.logger.warn(
