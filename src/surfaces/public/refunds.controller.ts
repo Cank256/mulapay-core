@@ -128,13 +128,16 @@ export class RefundsController {
     @IdempotencyKey() idempotency: IdempotencyContext
   ) {
     const scope = scopeOfApiKey(key);
-    return this.refunds.create(scope, {
-      paymentId: body.paymentId,
-      amountMinor: BigInt(body.amountMinor),
-      reason: body.reason,
-      metadata: body.metadata,
-      idempotencyKey: idempotency.key,
-    });
+    return this.refunds.create(
+      scope,
+      {
+        paymentId: body.paymentId,
+        amountMinor: BigInt(body.amountMinor),
+        reason: body.reason,
+        metadata: body.metadata,
+      },
+      idempotency
+    );
   }
 
   @Get(':ref')

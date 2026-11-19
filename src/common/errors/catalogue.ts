@@ -282,6 +282,24 @@ export const ERROR_CATALOGUE = {
     retryable: false,
     exposeDetails: true,
   },
+  PAYMENT_NOT_FOUND: {
+    httpStatus: 404,
+    message: 'Payment not found',
+    retryable: false,
+    exposeDetails: false,
+  },
+  PAYMENT_NOT_REFUNDABLE: {
+    httpStatus: 409,
+    message: 'Payment cannot be refunded: {reason}',
+    retryable: false,
+    exposeDetails: true,
+  },
+  REFUND_AMOUNT_EXCEEDS_REMAINING: {
+    httpStatus: 422,
+    message: 'Refund amount exceeds the refundable amount for this payment',
+    retryable: false,
+    exposeDetails: true,
+  },
   PAYMENT_LINK_UNAVAILABLE: {
     httpStatus: 409,
     message: 'The payment link cannot be used: {reason}',

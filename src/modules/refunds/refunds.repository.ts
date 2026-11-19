@@ -150,7 +150,7 @@ export class RefundsRepository {
       conditions.push(olderThan(refunds.createdAt, refunds.ref, filter.after));
     }
     return this.detailQuery(executor)
-      .where(and(...conditions))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(...newestFirst(refunds.createdAt, refunds.ref))
       .limit(filter.limit);
   }
