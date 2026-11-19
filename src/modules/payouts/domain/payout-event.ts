@@ -3,6 +3,7 @@
  *
  * Mirrors payment-event.ts but for disbursement operations.
  */
+import { LEDGER_PROVIDERS } from '../../accounts/domain/chart-of-accounts';
 import type { PaymentProvider } from '../../payments/domain/payment-event';
 import type { PayoutStatus } from './payout-state-machine';
 
@@ -58,6 +59,5 @@ export function validatePayoutEvent(event: PayoutEventInput): void {
 }
 
 export function isPayoutProvider(provider: string | null): provider is PaymentProvider {
-  const PROVIDERS = ['mtn_momo_ug', 'airtel_ug'];
-  return provider !== null && PROVIDERS.includes(provider);
+  return provider !== null && (LEDGER_PROVIDERS as readonly string[]).includes(provider);
 }
