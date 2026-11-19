@@ -39,6 +39,8 @@ export const users = core.table(
     lastLoginAt: timestamptz('last_login_at'),
     failedLoginCount: integer('failed_login_count').notNull().default(0),
     lockedUntil: timestamptz('locked_until'),
+    /** True once the user has clicked the email-verification link. */
+    emailVerified: boolean('email_verified').notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -92,5 +94,27 @@ export const sessions = core.table(
       'sessions_revoked_reason_check',
       sql`${t.revokedReason} is null or ${t.revokedReason} in ('rotated', 'logout', 'revoked_by_user', 'reuse_detected', 'user_disabled', 'access_removed')`
     ),
+  ]
+);
+
+export const emailTokens = core.table(
+  'email_tokens',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    /** `password_reset` | `email_verification` */
+    kind: text('kind').notNull(),
+    /** SHA-256 hex of the raw token; raw value never stored. */
+    tokenHash: text('token_hash').notNull(),
+    usedAt: timestamptz('used_at'),
+    expiresAt: timestamptz('expires_at').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('email_tokens_token_hash_key').on(t.tokenHash),
+    index('email_tokens_user_kind_idx').on(t.userId, t.kind),
+    check('email_tokens_kind_check', sql`${t.kind} in ('password_reset', 'email_verification')`),
   ]
 );

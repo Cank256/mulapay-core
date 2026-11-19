@@ -1,8 +1,5 @@
 /**
  * `/dashboard/v1/auth` (spec 7.2). Thin: validation, policy, shape mapping and cookies.
- *
- * Not implemented yet, because they need email delivery (Phase 8 notifications):
- * `forgot-password`, `reset-password`, `verify-email`. See docs/ARCHITECTURE.md.
  */
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -15,7 +12,9 @@ import { Audited } from '../../common/audit/audited.decorator';
 import { Authenticated, Public, RequiresStepUp } from '../../common/authz/policy.decorators';
 import { ApiEnvelopedResponses } from '../../common/http/response-schema.decorator';
 import { AuthService } from '../../modules/auth/auth.service';
+import { EmailVerificationService } from '../../modules/auth/email-verification.service';
 import { MfaService } from '../../modules/auth/mfa.service';
+import { PasswordResetService } from '../../modules/auth/password-reset.service';
 import { SessionService } from '../../modules/auth/session.service';
 import { InvitationsService } from '../../modules/merchants/invitations.service';
 import { OnboardingService } from '../../modules/merchants/onboarding.service';
@@ -81,6 +80,18 @@ class AcceptInviteDto extends createZodDto(
   })
 ) {}
 
+class ForgotPasswordDto extends createZodDto(
+  z.strictObject({ email: emailSchema })
+) {}
+
+class ResetPasswordDto extends createZodDto(
+  z.strictObject({ token: z.string().min(1).max(512), password: newPasswordSchema })
+) {}
+
+class VerifyEmailDto extends createZodDto(
+  z.strictObject({ token: z.string().min(1).max(512) })
+) {}
+
 const registrationSchema = z.object({
   user: z.object({ id: z.string(), email: z.string(), name: z.string() }),
   merchant: merchantSchema,
@@ -112,7 +123,9 @@ export class DashboardAuthController {
     private readonly sessions: SessionService,
     private readonly mfa: MfaService,
     private readonly onboarding: OnboardingService,
-    private readonly invitations: InvitationsService
+    private readonly invitations: InvitationsService,
+    private readonly passwordReset: PasswordResetService,
+    private readonly emailVerification: EmailVerificationService
   ) {}
 
   @Post('register')
@@ -267,5 +280,46 @@ export class DashboardAuthController {
   ) {
     await this.auth.revokeSession(principal, params.id);
     return { ok: true as const };
+  }
+  @Post('forgot-password')
+  @HttpCode(200)
+  @Public()
+  @ApiOperation({
+    summary:
+      'Request a password-reset link. Always returns ok to prevent email enumeration.',
+  })
+  @ApiEnvelopedResponses({ 200: okSchema })
+  forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.passwordReset.request(body.email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  @Public()
+  @Audited('auth.password_reset_applied', 'user')
+  @ApiOperation({ summary: 'Apply a new password using the token from the reset email' })
+  @ApiEnvelopedResponses({ 200: okSchema })
+  resetPassword(@Body() body: ResetPasswordDto) {
+    return this.passwordReset.reset(body.token, body.password);
+  }
+
+  @Post('verify-email')
+  @HttpCode(200)
+  @Public()
+  @Audited('auth.email_verified', 'user')
+  @ApiOperation({ summary: 'Confirm an email address using the token from the verification email' })
+  @ApiEnvelopedResponses({ 200: okSchema })
+  verifyEmail(@Body() body: VerifyEmailDto) {
+    return this.emailVerification.confirm(body.token);
+  }
+
+  @Post('send-verification')
+  @HttpCode(200)
+  @Authenticated()
+  @Audited('auth.verify_email_sent', 'user')
+  @ApiOperation({ summary: 'Send or re-send the email verification link to the current user' })
+  @ApiEnvelopedResponses({ 200: okSchema })
+  sendVerification(@CurrentMerchantUser() principal: MerchantUserPrincipal) {
+    return this.emailVerification.send(principal);
   }
 }

@@ -99,6 +99,13 @@
       "when": 1731903000000,
       "tag": "0013_payouts_refunds",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1731904000000,
+      "tag": "0014_email_tokens",
+      "breakpoints": true
     }
   ]
 }

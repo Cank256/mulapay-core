@@ -130,6 +130,18 @@ export const ERROR_CATALOGUE = {
     retryable: false,
     exposeDetails: false,
   },
+  EMAIL_TOKEN_INVALID: {
+    httpStatus: 400,
+    message: 'The token is invalid, expired or already used',
+    retryable: false,
+    exposeDetails: false,
+  },
+  EMAIL_ALREADY_VERIFIED: {
+    httpStatus: 409,
+    message: 'The email address is already verified',
+    retryable: false,
+    exposeDetails: false,
+  },
 
   // Phase 1: merchants and team (spec section 6.10)
   MERCHANT_INVALID_TRANSITION: {
