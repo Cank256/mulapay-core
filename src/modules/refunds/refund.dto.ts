@@ -22,8 +22,8 @@ export const RefundListQuerySchema = z.object({
     .optional(),
   currency: z.string().length(3).optional(),
   paymentRef: z.string().optional(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional(),
+  from: z.string().datetime({ offset: true }).optional(),
+  to: z.string().datetime({ offset: true }).optional(),
   limit: z.coerce.number().int().positive().max(100).default(20),
   cursor: z.string().optional(),
 });

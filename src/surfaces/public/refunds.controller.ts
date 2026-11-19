@@ -32,8 +32,8 @@ const listRefundsSchema = z.object({
     .optional(),
   currency: z.string().length(3).optional(),
   paymentRef: z.string().optional(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional(),
+  from: z.string().datetime({ offset: true }).optional(),
+  to: z.string().datetime({ offset: true }).optional(),
   limit: z.coerce.number().int().positive().max(100).default(25),
   cursor: z.string().optional(),
 });
@@ -167,8 +167,8 @@ export class RefundsController {
       status: query.status,
       currency: query.currency,
       paymentRef: query.paymentRef,
-      from: query.from,
-      to: query.to,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
       limit: query.limit,
       cursor: query.cursor,
     });

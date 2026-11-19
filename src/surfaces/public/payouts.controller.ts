@@ -37,8 +37,8 @@ const listPayoutsSchema = z.object({
     .enum(['created', 'pending_approval', 'processing', 'succeeded', 'failed', 'expired', 'cancelled'])
     .optional(),
   currency: z.string().length(3).optional(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional(),
+  from: z.string().datetime({ offset: true }).optional(),
+  to: z.string().datetime({ offset: true }).optional(),
   limit: z.coerce.number().int().positive().max(100).default(25),
   cursor: z.string().optional(),
 });
@@ -178,8 +178,8 @@ export class PayoutsController {
     return this.payouts.list(scope, {
       status: query.status,
       currency: query.currency,
-      from: query.from,
-      to: query.to,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
       limit: query.limit,
       cursor: query.cursor,
     });

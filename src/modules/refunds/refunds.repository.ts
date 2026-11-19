@@ -137,7 +137,7 @@ export class RefundsRepository {
 
   async list(filter: RefundListFilter, executor: Executor = this.db): Promise<RefundDetail[]> {
     const window = resolveWindow({ from: filter.from, to: filter.to }, new Date());
-    const conditions = [
+    const conditions: (SQL | undefined)[] = [
       eq(refunds.merchantId, filter.scope.merchantId),
       eq(refunds.environment, filter.scope.environment),
       gte(refunds.createdAt, window.from),
@@ -147,10 +147,10 @@ export class RefundsRepository {
     if (filter.currency) conditions.push(eq(refunds.currency, filter.currency));
     if (filter.paymentRef) conditions.push(eq(payments.ref, filter.paymentRef));
     if (filter.after) {
-      conditions.push(olderThan(refunds.createdAt, refunds.ref, filter.after));
+      conditions.push(...olderThan(refunds.createdAt, refunds.ref, filter.after));
     }
     return this.detailQuery(executor)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(and(...conditions))
       .orderBy(...newestFirst(refunds.createdAt, refunds.ref))
       .limit(filter.limit);
   }

@@ -60,7 +60,7 @@ async function verify(): Promise<void> {
   logger.info('Testing connectivity and authentication...');
 
   try {
-    const balanceResult = await client.getBalance('mtn_momo_ug', 'provider_operating', 'UGX');
+    const balanceResult = await client.getBalance('mtn', 'collection', 'UGX');
 
     if (balanceResult.kind === 'unavailable') {
       if (balanceResult.reason === 'gateway_not_configured') {
