@@ -194,7 +194,10 @@ def build_collection(root: Path) -> dict:
 
     variables = []
     for v in meta.get("request", {}).get("variables", []):
-        variables.append({"key": v["name"], "value": str(v.get("value", "")), "type": "string"})
+        # Never copy live values (tokens, keys, passwords) into the exported file.
+        # baseUrl is safe to carry over; everything else is blanked.
+        safe_value = str(v.get("value", "")) if v["name"] == "baseUrl" else ""
+        variables.append({"key": v["name"], "value": safe_value, "type": "string"})
 
     items = []
     for sub in sorted_subfolder_entries(root):

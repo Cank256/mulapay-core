@@ -42,6 +42,11 @@
       "type": "string"
     },
     {
+      "key": "csrfToken",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "inviteToken",
       "value": "",
       "type": "string"
@@ -1309,7 +1314,7 @@
                 "description": "Log in; returns tokens or MFA challenge",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"owner@example.com\",\n  \"password\": \"S3cur3P@ss!\"\n}",
+                  "raw": "{\n  \"email\": \"owner@example.com\",\n  \"password\": \"Password\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1465,6 +1470,10 @@
                   {
                     "key": "Accept",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
                   }
                 ],
                 "url": {
@@ -4305,6 +4314,10 @@
                   {
                     "key": "Accept",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "X-CSRF-Token",
+                    "value": "{{csrfToken}}"
                   }
                 ],
                 "url": {
@@ -9502,3 +9515,4 @@
     }
   ]
 }
+
