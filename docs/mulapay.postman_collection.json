@@ -32,6 +32,11 @@
       "type": "string"
     },
     {
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "resetToken",
       "value": "",
       "type": "string"
@@ -1314,7 +1319,7 @@
                 "description": "Log in; returns tokens or MFA challenge",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"owner@example.com\",\n  \"password\": \"Password\"\n}",
+                  "raw": "{\n  \"email\": \"owner@example.com\",\n  \"password\": \"Ultra@cank256\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1378,7 +1383,25 @@
                     }
                   }
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const body = pm.response.json();",
+                      "const token = body && body.data && body.data.accessToken;",
+                      "if (token) {",
+                      "    pm.collectionVariables.set('accessToken', token);",
+                      "    console.log('accessToken saved to collection variable');",
+                      "} else {",
+                      "    console.warn('Login succeeded but no accessToken found in response');",
+                      "}"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "Enroll MFA",
@@ -4236,7 +4259,7 @@
                 "description": "Password step — always returns MFA challenge",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"admin@mulapay.com\",\n  \"password\": \"S3cur3P@ss!\"\n}",
+                  "raw": "{\n  \"email\": \"admin@mulapay.com\",\n  \"password\": \"{{adminPassword}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4300,7 +4323,25 @@
                     }
                   }
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const body = pm.response.json();",
+                      "const token = body && body.data && body.data.accessToken;",
+                      "if (token) {",
+                      "    pm.collectionVariables.set('accessToken', token);",
+                      "    console.log('accessToken saved to collection variable');",
+                      "} else {",
+                      "    console.warn('Login succeeded but no accessToken found in response');",
+                      "}"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "Refresh token",
@@ -9515,4 +9556,3 @@
     }
   ]
 }
-
