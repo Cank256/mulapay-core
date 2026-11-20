@@ -38,6 +38,7 @@ import { AppError } from '../../common/errors/app-error';
 import { uuidv7 } from '../../common/ids/ids';
 import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { ledgerIdempotencyKey } from '../ledger/domain/posting';
+import { AmlMonitoringTrigger } from '../aml/monitoring/aml-monitoring.trigger';
 import { HoldsService } from '../holds/holds.service';
 import { HoldsRepository } from '../holds/holds.repository';
 import { MerchantEventsService } from '../events/merchant-events.service';
@@ -122,6 +123,7 @@ export class PayoutLifecycleService {
     private readonly holds: HoldsService,
     private readonly holdsRepo: HoldsRepository,
     private readonly events: MerchantEventsService,
+    private readonly monitoring: AmlMonitoringTrigger,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
@@ -195,12 +197,20 @@ export class PayoutLifecycleService {
       // Capture hold + post ledger entry
       await this.captureHold(tx, payout);
       ledgerEntryRef = await this.postDisbursement(tx, payout, updated, event);
-    } else if (to === 'failed' || to === 'cancelled') {
-      // Release hold
+    } else if (to === 'failed' || to === 'cancelled' || to === 'expired') {
+      // Release hold — expired has the same financial effect as failed: funds return
+      // to the available balance and nothing is posted to the ledger.
       await this.releaseHold(tx, payout);
     }
 
     await this.announce(tx, payout, to);
+    if (isTerminalPayoutStatus(to)) {
+      await this.monitoring.enqueue(tx, {
+        id: transaction.id,
+        environment: base.environment,
+        status: to,
+      });
+    }
     return { ...base, result: 'applied', from, to, ledgerEntryRef };
   }
 
@@ -212,7 +222,7 @@ export class PayoutLifecycleService {
     const detail = await this.payouts.findDetailById(payout.id, tx);
     if (!detail) throw invariantViolation(`payout ${payout.ref} vanished before its event`);
     const environment = payout.environment as 'test' | 'live';
-    
+
     // Map status to event type
     let eventType: 'payout.succeeded' | 'payout.failed' | 'payout.expired' | 'payout.cancelled';
     if (to === 'succeeded') eventType = 'payout.succeeded';
@@ -220,7 +230,7 @@ export class PayoutLifecycleService {
     else if (to === 'expired') eventType = 'payout.expired';
     else if (to === 'cancelled') eventType = 'payout.cancelled';
     else return; // No event for other statuses
-    
+
     await this.events.emit(tx, {
       merchantId: payout.merchantId,
       environment,
@@ -288,7 +298,11 @@ export class PayoutLifecycleService {
   }
 
   private async captureHold(tx: Transaction, payout: PayoutRow): Promise<void> {
-    if (!payout.holdRef) return; // No hold to capture
+    if (!payout.holdRef) {
+      // A payout without a hold is a creation-time bug; throw so the whole
+      // lifecycle transaction rolls back rather than silently leaving the balance wrong.
+      throw invariantViolation(`payout ${payout.ref} has no holdRef for capture`);
+    }
     const hold = await this.holdsRepo.findByRef(
       payout.merchantId,
       payout.environment as 'test' | 'live',
@@ -296,14 +310,17 @@ export class PayoutLifecycleService {
       tx
     );
     if (!hold) {
-      this.logger.warn({ payoutRef: payout.ref, holdRef: payout.holdRef }, 'hold not found for payout');
-      return;
+      throw invariantViolation(
+        `payout ${payout.ref}: holdRef ${payout.holdRef} not found in holds table`
+      );
     }
     await this.holds.capture(tx, hold.id, `payout:${payout.id}:succeeded`);
   }
 
   private async releaseHold(tx: Transaction, payout: PayoutRow): Promise<void> {
-    if (!payout.holdRef) return; // No hold to release
+    if (!payout.holdRef) {
+      throw invariantViolation(`payout ${payout.ref} has no holdRef for release`);
+    }
     const hold = await this.holdsRepo.findByRef(
       payout.merchantId,
       payout.environment as 'test' | 'live',
@@ -311,8 +328,9 @@ export class PayoutLifecycleService {
       tx
     );
     if (!hold) {
-      this.logger.warn({ payoutRef: payout.ref, holdRef: payout.holdRef }, 'hold not found for payout');
-      return;
+      throw invariantViolation(
+        `payout ${payout.ref}: holdRef ${payout.holdRef} not found in holds table`
+      );
     }
     await this.holds.release(tx, hold.id, `payout:${payout.id}:failed`);
   }

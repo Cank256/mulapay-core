@@ -15,6 +15,9 @@ import {
 import { PayoutLifecycleService } from './payout-lifecycle.service';
 import { PayoutsRepository } from './payouts.repository';
 import type { PaymentProvider } from '../payments/domain/payment-event';
+import type { Clock } from '../../common/clock/clock';
+import { CLOCK } from '../../common/tokens';
+import type { CurrencyCode } from '../../common/money/currency-codes';
 
 export interface SubmitPayoutInput {
   readonly payoutId: string;
@@ -38,6 +41,7 @@ export class PayoutGatewaySubmitter {
     private readonly lifecycle: PayoutLifecycleService,
     private readonly payouts: PayoutsRepository,
     private readonly unitOfWork: UnitOfWork,
+    @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
@@ -51,7 +55,7 @@ export class PayoutGatewaySubmitter {
     try {
       const route = await this.routing.selectProvider({
         operation: 'disbursement',
-        currency: input.currency as any,
+        currency: input.currency as CurrencyCode,
         amountMinor: input.amountMinor,
         channel: 'mobile_money',
       });
@@ -66,7 +70,7 @@ export class PayoutGatewaySubmitter {
         this.lifecycle.apply(tx, input.payoutId, {
           eventKey: 'routing:no_route',
           source: 'api',
-          occurredAt: new Date(),
+          occurredAt: this.clock.now(),
           signal: { kind: 'failed', code: 'no_route_available' },
         })
       );
@@ -101,7 +105,7 @@ export class PayoutGatewaySubmitter {
           this.lifecycle.apply(tx, input.payoutId, {
             eventKey: `gateway:accepted:${result.referenceId}`,
             source: 'gateway',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: false },
             gatewayDetails: { provider, referenceId: result.referenceId },
           })
@@ -117,7 +121,7 @@ export class PayoutGatewaySubmitter {
           this.lifecycle.apply(tx, input.payoutId, {
             eventKey: `gateway:rejected:${result.reason}`,
             source: 'api',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'failed', code: `gateway_${result.reason}` },
             gatewayDetails: { provider },
           })
@@ -129,11 +133,12 @@ export class PayoutGatewaySubmitter {
         break;
 
       case 'ambiguous':
+        // Key is deterministic: one submission → one ambiguous event (retries reuse the key).
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.payoutId, {
-            eventKey: `gateway:ambiguous:${Date.now()}`,
+            eventKey: `gateway:ambiguous:submit`,
             source: 'api',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: true },
             gatewayDetails: {
               provider,
@@ -150,9 +155,9 @@ export class PayoutGatewaySubmitter {
       case 'rate_limited':
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.payoutId, {
-            eventKey: `gateway:rate_limited:${Date.now()}`,
+            eventKey: `gateway:rate_limited:submit`,
             source: 'api',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: true },
             gatewayDetails: { provider },
           })

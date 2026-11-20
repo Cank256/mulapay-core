@@ -25,6 +25,9 @@ import {
   NotificationEventHandler,
 } from '../modules/notifications/notification.handlers';
 import { OperationsModule } from '../modules/operations/operations.module';
+import { PaymentsModule } from '../modules/payments/payments.module';
+import { PayoutsModule } from '../modules/payouts/payouts.module';
+import { RefundsModule } from '../modules/refunds/refunds.module';
 import { ReportRequestedHandler } from '../modules/reports/report.handlers';
 import { ReportsModule } from '../modules/reports/reports.module';
 import { RollupsModule } from '../modules/rollups/rollups.module';
@@ -66,7 +69,10 @@ import { SettlementRunProcessor } from './settlement-run.processor';
     NotificationsModule,
     OperationsModule,
     OutboxModule,
+    PaymentsModule,
+    PayoutsModule,
     ReconciliationModule,
+    RefundsModule,
     ReportsModule,
     RollupsModule,
     SandboxModule,

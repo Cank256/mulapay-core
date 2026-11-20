@@ -21,7 +21,8 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import type { Logger } from 'pino';
-import { ROOT_LOGGER } from '../../common/tokens';
+import { ROOT_LOGGER, CLOCK } from '../../common/tokens';
+import type { Clock } from '../../common/clock/clock';
 import { UnitOfWork } from '../../common/db/unit-of-work';
 import { FieldEncryption } from '../../common/crypto/field-encryption';
 import { RoutingService } from '../operations/routing/routing.service';
@@ -52,6 +53,7 @@ export class RefundGatewaySubmitter {
     private readonly refunds: RefundsRepository,
     private readonly encryption: FieldEncryption,
     private readonly unitOfWork: UnitOfWork,
+    @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
@@ -59,7 +61,10 @@ export class RefundGatewaySubmitter {
     // Retrieve the original payment's payer MSISDN from the refund detail.
     const detail = await this.refunds.findDetailById(input.refundId);
     if (!detail) {
-      this.logger.error({ refundRef: input.refundRef }, 'refund not found during gateway submission');
+      this.logger.error(
+        { refundRef: input.refundRef },
+        'refund not found during gateway submission'
+      );
       return;
     }
 
@@ -70,7 +75,7 @@ export class RefundGatewaySubmitter {
         this.lifecycle.apply(tx, input.refundId, {
           eventKey: 'validation:missing_msisdn',
           source: 'api',
-          occurredAt: new Date(),
+          occurredAt: this.clock.now(),
           signal: { kind: 'failed', failureCode: 'missing_payment_method' },
         })
       );
@@ -80,17 +85,14 @@ export class RefundGatewaySubmitter {
     // Decrypt — the context mirrors how the payment gateway submitter encrypts it.
     let msisdn: string;
     try {
-      msisdn = this.encryption.decrypt(
-        msisdnEnc,
-        `payments.msisdn:${detail.payment.ref}`
-      );
+      msisdn = this.encryption.decrypt(msisdnEnc, `payments.msisdn:${detail.payment.ref}`);
     } catch (error) {
       this.logger.error({ refundRef: input.refundRef, error }, 'failed to decrypt payer MSISDN');
       await this.unitOfWork.run((tx) =>
         this.lifecycle.apply(tx, input.refundId, {
           eventKey: 'decryption:failed',
           source: 'api',
-          occurredAt: new Date(),
+          occurredAt: this.clock.now(),
           signal: { kind: 'failed', failureCode: 'msisdn_decryption_failed' },
         })
       );
@@ -117,7 +119,7 @@ export class RefundGatewaySubmitter {
         this.lifecycle.apply(tx, input.refundId, {
           eventKey: 'routing:no_route',
           source: 'api',
-          occurredAt: new Date(),
+          occurredAt: this.clock.now(),
           signal: { kind: 'failed', failureCode: 'no_route_available' },
         })
       );
@@ -125,7 +127,7 @@ export class RefundGatewaySubmitter {
     }
 
     const result = await this.gateway.submitDisbursement({
-      environment: input.environment,       // ← use the refund's own environment
+      environment: input.environment,
       providerId: provider,
       externalId: input.gatewayExternalId,
       amountMinor: input.amountMinor,
@@ -133,7 +135,7 @@ export class RefundGatewaySubmitter {
       payee: { partyIdType: 'MSISDN', partyId: msisdn },
       metadata: {
         merchantId: input.merchantId,
-        environment: 'live',               // gateway metadata always live (disbursements only run live)
+        environment: 'live',
         coreTransactionId: input.refundRef,
       },
     });
@@ -152,7 +154,7 @@ export class RefundGatewaySubmitter {
           this.lifecycle.apply(tx, input.refundId, {
             eventKey: `gateway:accepted:${result.referenceId}`,
             source: 'gateway_event',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: false },
             identifiers: { provider, referenceId: result.referenceId },
           })
@@ -168,7 +170,7 @@ export class RefundGatewaySubmitter {
           this.lifecycle.apply(tx, input.refundId, {
             eventKey: `gateway:rejected:${result.reason}`,
             source: 'api',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'failed', failureCode: `gateway_${result.reason}` },
             identifiers: { provider },
           })
@@ -180,11 +182,12 @@ export class RefundGatewaySubmitter {
         break;
 
       case 'ambiguous':
+        // Key is deterministic: one submission → one ambiguous event (retries reuse the key).
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.refundId, {
-            eventKey: `gateway:ambiguous:${Date.now()}`,
+            eventKey: `gateway:ambiguous:submit`,
             source: 'api',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: true },
             identifiers: {
               provider,
@@ -201,9 +204,9 @@ export class RefundGatewaySubmitter {
       case 'rate_limited':
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.refundId, {
-            eventKey: `gateway:rate_limited:${Date.now()}`,
+            eventKey: `gateway:rate_limited:submit`,
             source: 'api',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: true },
             identifiers: { provider },
           })

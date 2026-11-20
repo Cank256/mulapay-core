@@ -1,15 +1,8 @@
 /**
  * Pure functions that decide what a refund event changes (follows payment pattern).
  */
-import type {
-  TransactionRow,
-  TransactionPatch,
-} from '../../transactions/transactions.repository';
-import type {
-  RefundEventInput,
-  RefundRejectionReason,
-  RefundStatus,
-} from './refund-state-machine';
+import type { TransactionRow, TransactionPatch } from '../../transactions/transactions.repository';
+import type { RefundEventInput, RefundRejectionReason, RefundStatus } from './refund-state-machine';
 
 /**
  * Verifies that a success event's amounts and identifiers match the refund's recorded values.
@@ -56,6 +49,17 @@ export function changeFor(
     status: to,
   };
 
+  // Stamp initiatedAt the first time the refund enters processing.
+  if (to === 'processing' && transaction.initiatedAt === null) {
+    change.initiatedAt = now;
+  }
+
+  // Stamp completedAt for all terminal statuses.
+  if (to === 'succeeded' || to === 'failed' || to === 'cancelled') {
+    change.completedAt = now;
+    change.outcomeUnknown = false;
+  }
+
   // Update identifiers if provided and not yet set
   if (ids?.provider && !transaction.provider) {
     change.provider = ids.provider;
@@ -70,9 +74,16 @@ export function changeFor(
     change.providerTransactionId = ids.providerTransactionId;
   }
 
-  // Outcome unknown flag
-  if (signal.outcomeUnknown !== undefined) {
+  // Outcome unknown flag for processing events
+  if (to === 'processing' && signal.outcomeUnknown !== undefined) {
     change.outcomeUnknown = signal.outcomeUnknown;
+  }
+
+  // Fee and net for a successful refund
+  if (signal.kind === 'succeeded') {
+    const fee = signal.feeMinor ?? 0n;
+    change.feeMinor = fee;
+    change.netMinor = transaction.amountMinor - fee;
   }
 
   // Failure information

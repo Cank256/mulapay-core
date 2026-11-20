@@ -11,6 +11,7 @@
  * not revealed.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import type { Logger } from 'pino';
 import type { MerchantScope } from '../../common/auth/merchant-scope';
 import type { Clock } from '../../common/clock/clock';
 import { UnitOfWork } from '../../common/db/unit-of-work';
@@ -25,7 +26,7 @@ import type {
 } from '../../common/idempotency/idempotency.types';
 import { decodeCursor, filterFingerprint, toPage } from '../../common/pagination/cursor';
 import { resolveWindow } from '../../common/pagination/window';
-import { CLOCK } from '../../common/tokens';
+import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { TransactionsRepository } from '../transactions/transactions.repository';
 import { toTimeline, type TimelineEntryView } from '../transactions/transaction.views';
 import type { PaymentProvider } from './domain/payment-event';
@@ -72,7 +73,8 @@ export class PaymentsService {
     private readonly idempotency: IdempotencyService,
     private readonly unitOfWork: UnitOfWork,
     private readonly audit: AuditService,
-    @Inject(CLOCK) private readonly clock: Clock
+    @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
   /**
@@ -130,8 +132,9 @@ export class PaymentsService {
           if (scope.environment === 'live' && detail.payment.channel === 'mobile_money') {
             // Extract encrypted MSISDN from payment method
             const msisdnEnc = detail.payment.paymentMethod.msisdnEnc ?? null;
-            
-            // Fire and forget - errors handled by submitter service
+
+            // Fire and forget — errors handled by submitter service.
+            // Chase job will pick it up if stuck in `processing`.
             this.submitter
               .submit({
                 paymentId: detail.payment.id,
@@ -142,11 +145,13 @@ export class PaymentsService {
                 msisdnEnc,
                 merchantId: scope.merchantId,
                 environment: scope.environment,
+                channel: detail.payment.channel,
               })
               .catch((error) => {
-                // Log but don't throw - payment is already created
-                // Chase job will pick it up if stuck
-                console.error('Payment gateway submission failed:', error);
+                this.logger.error(
+                  { paymentRef: detail.payment.ref, err: error },
+                  'payment gateway submission failed; chase job will resolve'
+                );
               });
           }
         },

@@ -9,12 +9,23 @@ import type { PayoutStatus } from './payout-state-machine';
 
 export type PayoutEventSource = 'gateway' | 'api' | 'chase' | 'expiry' | 'manual';
 
+const PAYOUT_EVENT_SOURCES: readonly PayoutEventSource[] = [
+  'gateway',
+  'api',
+  'chase',
+  'expiry',
+  'manual',
+];
+
 export type PayoutSignal =
   | { readonly kind: 'created' }
   | { readonly kind: 'pending_approval' }
   | { readonly kind: 'processing'; readonly outcomeUnknown?: boolean }
   | {
       readonly kind: 'succeeded';
+      /** What the provider says it disbursed. When present, must equal the payout. */
+      readonly amountMinor?: bigint;
+      readonly currency?: string;
       readonly feeMinor?: bigint;
       readonly providerFeeMinor?: bigint;
     }
@@ -43,15 +54,18 @@ export interface PayoutEventInput {
 }
 
 export function signalTarget(signal: PayoutSignal): PayoutStatus {
-  return signal.kind as PayoutStatus;
+  return signal.kind;
 }
 
 /**
- * Basic validation: eventKey must be present, signal must be known.
+ * Basic validation: eventKey must be non-empty, source must be known, signal must be valid.
  */
 export function validatePayoutEvent(event: PayoutEventInput): void {
   if (!event.eventKey || event.eventKey.length === 0) {
     throw new Error('eventKey required');
+  }
+  if (!PAYOUT_EVENT_SOURCES.includes(event.source)) {
+    throw new Error(`invalid payout event source: ${event.source}`);
   }
   if (!event.signal || !event.signal.kind) {
     throw new Error('signal.kind required');

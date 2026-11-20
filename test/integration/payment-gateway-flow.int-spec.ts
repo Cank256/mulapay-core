@@ -23,7 +23,11 @@ import { BalancesRepository } from '../../src/modules/balances/balances.reposito
 import { UnitOfWork } from '../../src/common/db/unit-of-work';
 import { DB_RW } from '../../src/common/db/tokens';
 import { uuidv7, ulid } from '../../src/common/ids/ids';
-import { FAKE_GATEWAY_KEY, startFakeGatewayOps, type FakeGatewayOps } from '../support/fake-gateway-ops';
+import {
+  FAKE_GATEWAY_KEY,
+  startFakeGatewayOps,
+  type FakeGatewayOps,
+} from '../support/fake-gateway-ops';
 import {
   createTestMerchant,
   startPaymentsContext,
@@ -144,6 +148,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
         amountMinor,
         currency: 'UGX',
         msisdnEnc: 'encrypted_+256700000001',
+        channel: 'mobile_money' as const,
         merchantId: merchant.id,
         environment: 'live',
       });
@@ -167,7 +172,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
             currency: 'UGX',
           },
           identifiers: {
-            provider: 'mtn_momo_ug',
+            provider: 'mtn',
             referenceId,
           },
         })
@@ -207,6 +212,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
         amountMinor: 10000n,
         currency: 'UGX',
         msisdnEnc: 'encrypted_+256700000001',
+        channel: 'mobile_money' as const,
         merchantId: merchant.id,
         environment: 'live',
       });
@@ -240,6 +246,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
         amountMinor: 15000n,
         currency: 'UGX',
         msisdnEnc: 'encrypted_+256700000001',
+        channel: 'mobile_money' as const,
         merchantId: merchant.id,
         environment: 'live',
       });
@@ -269,6 +276,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
         amountMinor: 25000n,
         currency: 'UGX',
         msisdnEnc: 'encrypted_+256700000001',
+        channel: 'mobile_money' as const,
         merchantId: merchant.id,
         environment: 'live',
       });
@@ -296,6 +304,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
         amountMinor: 30000n,
         currency: 'UGX',
         msisdnEnc: 'encrypted_+256700000001',
+        channel: 'mobile_money' as const,
         merchantId: merchant.id,
         environment: 'live',
       });
@@ -325,6 +334,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
         amountMinor,
         currency: 'UGX',
         msisdnEnc: 'encrypted_+256700000001',
+        channel: 'mobile_money' as const,
         merchantId: merchant.id,
         environment: 'live',
       });
@@ -339,7 +349,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
           source: 'gateway_event',
           occurredAt: new Date(),
           signal: { kind: 'succeeded', amountMinor, currency: 'UGX' },
-          identifiers: { provider: 'mtn_momo_ug', referenceId },
+          identifiers: { provider: 'mtn', referenceId },
         })
       );
       expect(result1.result).toBe('applied');
@@ -351,7 +361,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
           source: 'gateway_event',
           occurredAt: new Date(),
           signal: { kind: 'succeeded', amountMinor, currency: 'UGX' },
-          identifiers: { provider: 'mtn_momo_ug', referenceId },
+          identifiers: { provider: 'mtn', referenceId },
         })
       );
       expect(result2.result).toBe('duplicate');
@@ -383,6 +393,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
         amountMinor,
         currency: 'UGX',
         msisdnEnc: 'encrypted_+256700000001',
+        channel: 'mobile_money' as const,
         merchantId: merchant.id,
         environment: 'live',
       });
@@ -394,6 +405,7 @@ describe('Payment Gateway Flow (P4-08/P4-09 integration)', () => {
         amountMinor,
         currency: 'UGX',
         msisdnEnc: 'encrypted_+256700000001',
+        channel: 'mobile_money' as const,
         merchantId: merchant.id,
         environment: 'live',
       });

@@ -4,22 +4,34 @@
  * Mirrors payment-event-effects.ts for payout lifecycle.
  */
 import type { TransactionRow, TransactionPatch } from '../../transactions/transactions.repository';
-import type { PayoutEventInput, PayoutGatewayDetails } from './payout-event';
+import type { PayoutEventInput } from './payout-event';
 import type { PayoutRejectionReason, PayoutStatus } from './payout-state-machine';
 
 /**
- * Verify that gateway details match what the transaction already has.
+ * Verify that gateway details AND the success signal amounts match the transaction.
  * Returns rejection reason if verification fails, null if ok.
  */
 export function verifyEvent(
   transaction: TransactionRow,
   event: PayoutEventInput
 ): PayoutRejectionReason | null {
-  if (!event.gatewayDetails) return null;
+  const { signal, gatewayDetails } = event;
 
-  const { provider, operationId, referenceId, amountMinor, currency } = event.gatewayDetails;
+  // Verify amounts and currency from the success signal (the definitive source).
+  if (signal.kind === 'succeeded') {
+    if (signal.amountMinor !== undefined && signal.amountMinor !== transaction.amountMinor) {
+      return 'amount_mismatch';
+    }
+    if (signal.currency !== undefined && signal.currency !== transaction.currency) {
+      return 'currency_mismatch';
+    }
+  }
 
-  // Amount and currency must match transaction
+  if (!gatewayDetails) return null;
+
+  const { provider, operationId, referenceId, amountMinor, currency } = gatewayDetails;
+
+  // Amount and currency from gateway details are a secondary check.
   if (amountMinor !== undefined && amountMinor !== transaction.amountMinor) {
     return 'amount_mismatch';
   }
@@ -77,10 +89,7 @@ export function changeFor(
     if (transaction.gatewayReferenceId === null && event.gatewayDetails.referenceId) {
       change.gatewayReferenceId = event.gatewayDetails.referenceId;
     }
-    if (
-      transaction.providerTransactionId === null &&
-      event.gatewayDetails.providerTransactionId
-    ) {
+    if (transaction.providerTransactionId === null && event.gatewayDetails.providerTransactionId) {
       change.providerTransactionId = event.gatewayDetails.providerTransactionId;
     }
   }
@@ -113,10 +122,7 @@ export function changeFor(
 /**
  * Does this event add information not already in the transaction?
  */
-export function addsInformation(
-  transaction: TransactionRow,
-  change: TransactionPatch
-): boolean {
+export function addsInformation(transaction: TransactionRow, change: TransactionPatch): boolean {
   if (change.provider !== undefined && transaction.provider === null) return true;
   if (change.gatewayOperationId !== undefined && transaction.gatewayOperationId === null)
     return true;

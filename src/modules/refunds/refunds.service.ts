@@ -22,7 +22,6 @@ import type {
   IdempotentResponse,
 } from '../../common/idempotency/idempotency.types';
 import { decodeCursor, filterFingerprint, toPage } from '../../common/pagination/cursor';
-import { resolveWindow } from '../../common/pagination/window';
 import { CLOCK } from '../../common/tokens';
 import { TransactionsRepository } from '../transactions/transactions.repository';
 import { toTimeline, type TimelineEntryView } from '../transactions/transaction.views';
@@ -126,7 +125,10 @@ export class RefundsService {
   async list(
     scope: MerchantScope,
     query: RefundListQuery
-  ): Promise<{ data: RefundView[]; pagination: { limit: number; cursor: string | null; hasMore: boolean } }> {
+  ): Promise<{
+    data: RefundView[];
+    pagination: { limit: number; cursor: string | null; hasMore: boolean };
+  }> {
     const fingerprint = filterFingerprint({ scope, ...query });
     const after = query.cursor ? decodeCursor(query.cursor, fingerprint) : undefined;
     const filter = {
@@ -140,12 +142,10 @@ export class RefundsService {
       limit: query.limit + 1,
     };
     const rows = await this.refunds.list(filter);
-    const page = toPage(
-      rows,
-      query.limit,
-      fingerprint,
-      (detail) => ({ createdAt: detail.refund.createdAt, id: detail.refund.ref })
-    );
+    const page = toPage(rows, query.limit, fingerprint, (detail) => ({
+      createdAt: detail.refund.createdAt,
+      id: detail.refund.ref,
+    }));
     return {
       data: page.items.map((detail) => toRefundView(detail)),
       pagination: {
@@ -160,7 +160,6 @@ export class RefundsService {
   async timeline(scope: MerchantScope, ref: string): Promise<TimelineEntryView[]> {
     const detail = await this.refunds.findDetailByRef(scope, ref);
     if (!detail) throw new AppError('NOT_FOUND');
-    // TODO: implement transaction events query
-    return [];
+    return toTimeline(await this.transactions.listEvents(scope, detail.transaction.id));
   }
 }

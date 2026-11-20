@@ -1,8 +1,9 @@
 /**
  * The `gateway-chase` queue (spec 8.9, concurrency 8): polls for stuck transactions in
  * `processing` state and queries the gateway for their status. Applies the result
- * idempotently, completing transactions that were left pending due to ambiguous responses,
- * timeouts or 5xx failures during initiation.
+ * idempotently through the appropriate lifecycle service, so every chase resolution
+ * goes through the state machine, posts to the ledger, releases holds and emits merchant
+ * events exactly as a gateway event delivery would.
  *
  * Job:
  *   gateway.chase   - sweep all stuck transactions and reconcile their state
@@ -10,26 +11,27 @@
  * A transaction is "stuck" when:
  *   - status = 'processing' AND (outcome_unknown = true OR processing for > threshold)
  *   - has gateway_external_id (was submitted to provider)
- *   - not already terminal
+ *   - completed_at IS NULL
  *
  * For each stuck transaction, query gateway.findByExternalId():
- *   - Found + terminal: apply the event via the appropriate lifecycle service
- *   - Found + pending: log, will be checked again next sweep
- *   - Not found: depends on how long stuck; flag for reconciliation if too long
- *   - Gateway unavailable: skip this pass, will retry next sweep
+ *   - Found + terminal: apply the event via the lifecycle service
+ *   - Found + pending: log; flag for reconciliation if stuck > 30 min
+ *   - Not found: flag for reconciliation if stuck > 30 min
+ *   - Gateway unavailable: skip; will retry next sweep
  *
- * The sweep is idempotent: a retry or duplicate job has the same effect, and applying
- * a terminal status twice is a no-op (state machine guards it).
+ * The sweep is idempotent: a retry or duplicate job has the same effect. The lifecycle
+ * service's event-key deduplication prevents double-posting.
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { UnrecoverableError, type Job } from 'bullmq';
 import type { Logger } from 'pino';
 import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { APP_CONFIG, CLOCK, ROOT_LOGGER } from '../common/tokens';
 import type { AppConfig } from '../config/configuration';
 import type { Clock } from '../common/clock/clock';
+import type { Executor } from '../common/db/database.types';
 import { DB_RW } from '../common/db/tokens';
+import { UnitOfWork } from '../common/db/unit-of-work';
 import type { QueueProcessor } from '../common/queue/queue-processor';
 import { QUEUES } from '../common/queue/queue.definitions';
 import { transactions } from '../db/schema';
@@ -39,18 +41,25 @@ import {
   type GatewayStatus,
 } from '../integrations/gateway/gateway-operations.port';
 import { GATEWAY_OPERATIONS_PORT } from '../integrations/gateway/tokens';
+import { PaymentLifecycleService } from '../modules/payments/payment-lifecycle.service';
+import { PaymentsRepository } from '../modules/payments/payments.repository';
+import { PayoutLifecycleService } from '../modules/payouts/payout-lifecycle.service';
+import { PayoutsRepository } from '../modules/payouts/payouts.repository';
+import { RefundLifecycleService } from '../modules/refunds/refund-lifecycle.service';
+import { RefundsRepository } from '../modules/refunds/refunds.repository';
+import { ReconciliationExceptionRecorder } from '../modules/reconciliation/exception-recorder';
 import type { TransactionRow } from '../modules/transactions/transactions.repository';
-import { UnitOfWork } from '../common/db/unit-of-work';
+import { TransactionsRepository } from '../modules/transactions/transactions.repository';
 
 export const CHASE_JOB = 'gateway.chase';
 
-/** Default: transactions stuck for more than 5 minutes are chased. */
+/** Transactions stuck for more than 5 minutes are chased. */
 const DEFAULT_PENDING_THRESHOLD_MS = 5 * 60 * 1000;
 
 /** Default: check for stuck transactions every 2 minutes. */
 export const DEFAULT_CHASE_INTERVAL_MS = 2 * 60 * 1000;
 
-/** Batch size per sweep: process up to 50 stuck transactions per run. */
+/** Batch size per sweep. */
 const DEFAULT_BATCH_SIZE = 50;
 
 /** After 30 minutes stuck, flag for reconciliation. */
@@ -69,9 +78,17 @@ export class GatewayChaseProcessor implements QueueProcessor {
   readonly definition = QUEUES.gatewayChase;
 
   constructor(
-    @Inject(DB_RW) private readonly db: PostgresJsDatabase,
+    @Inject(DB_RW) private readonly db: Executor,
     @Inject(GATEWAY_OPERATIONS_PORT) private readonly gateway: GatewayOperationsPort,
     private readonly uow: UnitOfWork,
+    private readonly txnRepo: TransactionsRepository,
+    private readonly paymentsRepo: PaymentsRepository,
+    private readonly payoutsRepo: PayoutsRepository,
+    private readonly refundsRepo: RefundsRepository,
+    private readonly paymentLifecycle: PaymentLifecycleService,
+    private readonly payoutLifecycle: PayoutLifecycleService,
+    private readonly refundLifecycle: RefundLifecycleService,
+    private readonly reconciliation: ReconciliationExceptionRecorder,
     @Inject(ROOT_LOGGER) private readonly logger: Logger,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(APP_CONFIG) private readonly config: AppConfig
@@ -94,9 +111,7 @@ export class GatewayChaseProcessor implements QueueProcessor {
     const thresholdDate = new Date(now.getTime() - DEFAULT_PENDING_THRESHOLD_MS);
     const reconciliationDate = new Date(now.getTime() - RECONCILIATION_THRESHOLD_MS);
 
-    // Find stuck transactions: processing + (outcome_unknown OR older than threshold)
     const stuck = await this.findStuckTransactions(thresholdDate, DEFAULT_BATCH_SIZE);
-
     if (stuck.length === 0) {
       this.logger.debug('gateway chase: no stuck transactions');
       return metrics;
@@ -111,15 +126,9 @@ export class GatewayChaseProcessor implements QueueProcessor {
       } catch (error) {
         metrics.errors += 1;
         this.logger.error(
-          {
-            transactionId: txn.id,
-            ref: txn.ref,
-            externalId: txn.gatewayExternalId,
-            err: error,
-          },
+          { transactionId: txn.id, ref: txn.ref, externalId: txn.gatewayExternalId, err: error },
           'gateway chase: error processing transaction'
         );
-        // Continue with next transaction; don't let one error stop the sweep
       }
     }
 
@@ -128,11 +137,11 @@ export class GatewayChaseProcessor implements QueueProcessor {
   }
 
   /**
-   * Find transactions that are stuck in processing:
+   * Find transactions stuck in processing:
    *  - status = 'processing'
    *  - has gateway_external_id (was submitted)
    *  - (outcome_unknown = true OR initiated_at < threshold)
-   *  - not completed (completed_at IS NULL)
+   *  - completed_at IS NULL
    */
   private async findStuckTransactions(
     thresholdDate: Date,
@@ -146,19 +155,13 @@ export class GatewayChaseProcessor implements QueueProcessor {
           eq(transactions.status, 'processing'),
           sql`${transactions.gatewayExternalId} IS NOT NULL`,
           isNull(transactions.completedAt),
-          or(
-            eq(transactions.outcomeUnknown, true),
-            lt(transactions.initiatedAt, thresholdDate)
-          )
+          or(eq(transactions.outcomeUnknown, true), lt(transactions.initiatedAt, thresholdDate))
         )
       )
       .orderBy(transactions.initiatedAt)
       .limit(limit);
   }
 
-  /**
-   * Chase one transaction: query the gateway and apply the result if terminal.
-   */
   private async chaseTransaction(
     txn: TransactionRow,
     reconciliationDate: Date,
@@ -166,20 +169,19 @@ export class GatewayChaseProcessor implements QueueProcessor {
   ): Promise<void> {
     const externalId = txn.gatewayExternalId;
     if (!externalId) {
-      this.logger.warn({ transactionId: txn.id, ref: txn.ref }, 'transaction has no external_id');
+      this.logger.warn({ transactionId: txn.id, ref: txn.ref }, 'gateway chase: no external_id');
       return;
     }
 
-    const operationType = this.mapTransactionTypeToOperationType(txn.type);
+    const operationType = this.operationType(txn.type);
     if (!operationType) {
       this.logger.warn(
         { transactionId: txn.id, ref: txn.ref, type: txn.type },
-        'unknown transaction type for chase'
+        'gateway chase: unknown transaction type'
       );
       return;
     }
 
-    // Query the gateway
     const result = await this.gateway.findByExternalId(externalId, {
       operationType,
       providerId: txn.provider ?? undefined,
@@ -187,37 +189,21 @@ export class GatewayChaseProcessor implements QueueProcessor {
 
     switch (result.kind) {
       case 'found': {
-        const operation = result.operation;
+        const { status, referenceId } = result.operation;
         this.logger.info(
-          {
-            transactionId: txn.id,
-            ref: txn.ref,
-            externalId,
-            status: operation.status,
-          },
+          { transactionId: txn.id, ref: txn.ref, externalId, status },
           'gateway chase: found operation'
         );
 
-        if (this.isTerminalStatus(operation.status)) {
-          // Apply the terminal status
-          await this.applyStatus(txn, operation.status, operation.referenceId);
+        if (this.isTerminal(status)) {
+          await this.applyViaLifecycle(txn, status, referenceId ?? null);
           metrics.resolved += 1;
         } else {
-          // Still pending; check if it's been too long
           if (txn.initiatedAt && txn.initiatedAt < reconciliationDate) {
-            this.logger.warn(
-              {
-                transactionId: txn.id,
-                ref: txn.ref,
-                externalId,
-                initiatedAt: txn.initiatedAt,
-              },
-              'gateway chase: transaction stuck pending for too long, flagging for reconciliation'
-            );
-            // TODO P4: create reconciliation exception
+            await this.raiseReconciliationException(txn, 'stuck_pending', externalId);
           } else {
             this.logger.debug(
-              { transactionId: txn.id, ref: txn.ref, externalId },
+              { transactionId: txn.id, ref: txn.ref },
               'gateway chase: still pending'
             );
           }
@@ -226,123 +212,150 @@ export class GatewayChaseProcessor implements QueueProcessor {
         break;
       }
 
-      case 'not_found': {
+      case 'not_found':
         this.logger.warn(
           { transactionId: txn.id, ref: txn.ref, externalId },
           'gateway chase: operation not found'
         );
         metrics.notFound += 1;
-
-        // If stuck for too long, flag for reconciliation
         if (txn.initiatedAt && txn.initiatedAt < reconciliationDate) {
-          this.logger.error(
-            {
-              transactionId: txn.id,
-              ref: txn.ref,
-              externalId,
-              initiatedAt: txn.initiatedAt,
-            },
-            'gateway chase: operation not found after threshold, flagging for reconciliation'
-          );
-          // TODO P4: create reconciliation exception
+          await this.raiseReconciliationException(txn, 'operation_not_found', externalId);
         }
         break;
-      }
 
-      case 'unavailable': {
+      case 'unavailable':
         this.logger.warn(
-          {
-            transactionId: txn.id,
-            ref: txn.ref,
-            externalId,
-            reason: result.reason,
-          },
-          'gateway chase: gateway unavailable'
+          { transactionId: txn.id, ref: txn.ref, externalId, reason: result.reason },
+          'gateway chase: gateway unavailable, will retry'
         );
-        // Skip this transaction; will be checked again next sweep
         break;
-      }
-
-      default:
-        this.logger.error(
-          { transactionId: txn.id, ref: txn.ref, result },
-          'gateway chase: unexpected result kind'
-        );
     }
   }
 
   /**
-   * Apply a terminal status to the transaction. This updates the transaction and posts
-   * ledger entries if needed, all within a transaction boundary.
-   *
-   * The implementation delegates to the appropriate lifecycle service based on transaction
-   * type. For now, we directly update the transaction row to support the basic chase flow.
-   * Phase 4's full lifecycle services will handle the complete flow.
+   * Applies a terminal gateway status through the proper lifecycle service. The lifecycle
+   * service handles the state machine, ledger posting, hold release and merchant events —
+   * the chase processor must not do any of that itself.
    */
-  private async applyStatus(
+  private async applyViaLifecycle(
     txn: TransactionRow,
     status: GatewayStatus,
     referenceId: string | null
   ): Promise<void> {
-    await this.uow.run(async (tx) => {
-      // Lock the transaction to prevent concurrent updates
-      const [locked] = await tx
-        .select()
-        .from(transactions)
-        .where(and(eq(transactions.id, txn.id), eq(transactions.createdAt, txn.createdAt)))
-        .for('update');
+    // Build a deterministic event key: chase + externalId + status (not a timestamp).
+    const eventKey = `chase:${txn.gatewayExternalId}:${status}`;
+    const now = this.clock.now();
 
-      if (!locked) {
-        this.logger.warn({ transactionId: txn.id }, 'transaction not found when applying status');
-        return;
-      }
-
-      // Check if already terminal (idempotency)
-      if (this.isTerminalStatus(locked.status)) {
-        this.logger.debug(
-          { transactionId: txn.id, status: locked.status },
-          'transaction already terminal, skipping'
+    if (txn.type === 'payment') {
+      const payment = await this.paymentsRepo.findByTransactionId(txn.id);
+      if (!payment) {
+        this.logger.warn(
+          { transactionId: txn.id, ref: txn.ref },
+          'gateway chase: payment row not found'
         );
         return;
       }
-
-      // Update transaction status
-      const newStatus = this.mapGatewayStatusToTransactionStatus(status);
-      const completedAt = this.clock.now();
-
-      await tx
-        .update(transactions)
-        .set({
-          status: newStatus,
-          gatewayReferenceId: referenceId,
-          outcomeUnknown: false,
-          completedAt,
+      await this.uow.run((tx) =>
+        this.paymentLifecycle.apply(tx, payment.id, {
+          eventKey,
+          source: 'chase',
+          occurredAt: now,
+          signal: this.paymentSignal(status),
+          identifiers: referenceId ? { referenceId } : undefined,
         })
-        .where(and(eq(transactions.id, txn.id), eq(transactions.createdAt, txn.createdAt)));
-
-      this.logger.info(
-        {
-          transactionId: txn.id,
-          ref: txn.ref,
-          oldStatus: locked.status,
-          newStatus,
-        },
-        'gateway chase: applied terminal status'
       );
+      return;
+    }
 
-      // TODO P4: Post ledger entries for successful collections/payouts
-      // TODO P4: Release holds for failed/cancelled/expired transactions
-      // TODO P4: Emit events to outbox for webhooks
-    });
+    if (txn.type === 'payout') {
+      const payout = await this.payoutsRepo.findByTransactionId(txn.id);
+      if (!payout) {
+        this.logger.warn(
+          { transactionId: txn.id, ref: txn.ref },
+          'gateway chase: payout row not found'
+        );
+        return;
+      }
+      await this.uow.run((tx) =>
+        this.payoutLifecycle.apply(tx, payout.id, {
+          eventKey,
+          source: 'chase',
+          occurredAt: now,
+          signal: this.payoutSignal(status),
+          gatewayDetails: referenceId ? { referenceId } : undefined,
+        })
+      );
+      return;
+    }
+
+    if (txn.type === 'refund') {
+      const refund = await this.refundsRepo.findByTransactionId(txn.id, this.db);
+      if (!refund) {
+        this.logger.warn(
+          { transactionId: txn.id, ref: txn.ref },
+          'gateway chase: refund row not found'
+        );
+        return;
+      }
+      await this.uow.run((tx) =>
+        this.refundLifecycle.apply(tx, refund.id, {
+          eventKey,
+          source: 'chase',
+          occurredAt: now,
+          signal: this.refundSignal(status),
+          identifiers: referenceId ? { referenceId } : undefined,
+        })
+      );
+      return;
+    }
+
+    this.logger.warn(
+      { transactionId: txn.id, type: txn.type },
+      'gateway chase: no lifecycle handler for transaction type'
+    );
   }
 
-  private mapTransactionTypeToOperationType(type: string): GatewayOperationType | null {
+  private async raiseReconciliationException(
+    txn: TransactionRow,
+    reason: 'stuck_pending' | 'operation_not_found',
+    externalId: string
+  ): Promise<void> {
+    this.logger.error(
+      { transactionId: txn.id, ref: txn.ref, externalId, reason },
+      'gateway chase: raising reconciliation exception'
+    );
+    try {
+      const kind =
+        reason === 'stuck_pending'
+          ? 'stale_processing_transaction'
+          : 'core_transaction_missing_at_gateway';
+      await this.uow.run((tx) =>
+        this.reconciliation.raise(tx, null, {
+          kind,
+          dedupeKey: `chase:${reason}:${txn.ref}`,
+          environment: txn.environment as 'test' | 'live',
+          currency: txn.currency,
+          amountMinor: txn.amountMinor,
+          merchantId: txn.merchantId,
+          transactionId: txn.id,
+          expected: { status: 'terminal', externalId },
+          actual: { status: txn.status, reason, initiatedAt: txn.initiatedAt?.toISOString() },
+        })
+      );
+    } catch (error) {
+      this.logger.error(
+        { transactionId: txn.id, err: error },
+        'gateway chase: failed to raise reconciliation exception'
+      );
+    }
+  }
+
+  private operationType(type: string): GatewayOperationType | null {
     switch (type) {
       case 'payment':
-      case 'collection':
         return 'collection';
       case 'payout':
-      case 'disbursement':
+      case 'settlement':
         return 'disbursement';
       case 'refund':
         return 'refund';
@@ -351,26 +364,57 @@ export class GatewayChaseProcessor implements QueueProcessor {
     }
   }
 
-  private isTerminalStatus(status: string): boolean {
+  private isTerminal(status: GatewayStatus): boolean {
     return ['successful', 'failed', 'expired', 'cancelled'].includes(status);
   }
 
-  private mapGatewayStatusToTransactionStatus(status: GatewayStatus): string {
+  private paymentSignal(
+    status: GatewayStatus
+  ): import('../modules/payments/domain/payment-event').PaymentSignal {
     switch (status) {
       case 'successful':
-        return 'succeeded';
+        return { kind: 'succeeded' };
       case 'failed':
-        return 'failed';
+        return { kind: 'failed', failureCode: 'gateway_failed' };
       case 'expired':
-        return 'expired';
+        return { kind: 'expired', failureCode: 'gateway_expired' };
       case 'cancelled':
-        return 'cancelled';
-      case 'pending':
-        return 'processing';
-      case 'unknown':
-        return 'processing';
+        return { kind: 'cancelled', failureCode: 'gateway_cancelled' };
       default:
-        return 'processing';
+        return { kind: 'processing', outcomeUnknown: status === 'unknown' };
+    }
+  }
+
+  private payoutSignal(
+    status: GatewayStatus
+  ): import('../modules/payouts/domain/payout-event').PayoutSignal {
+    switch (status) {
+      case 'successful':
+        return { kind: 'succeeded' };
+      case 'failed':
+        return { kind: 'failed', code: 'gateway_failed' };
+      case 'expired':
+        return { kind: 'expired', code: 'gateway_expired' };
+      case 'cancelled':
+        return { kind: 'cancelled', code: 'gateway_cancelled' };
+      default:
+        return { kind: 'processing', outcomeUnknown: status === 'unknown' };
+    }
+  }
+
+  private refundSignal(
+    status: GatewayStatus
+  ): import('../modules/refunds/domain/refund-state-machine').RefundEventSignal {
+    switch (status) {
+      case 'successful':
+        return { kind: 'succeeded' };
+      case 'failed':
+        return { kind: 'failed', failureCode: 'gateway_failed' };
+      case 'cancelled':
+        return { kind: 'cancelled', failureCode: 'gateway_cancelled' };
+      default:
+        // Refunds don't have 'expired' in their state machine; map to failed.
+        return { kind: 'failed', failureCode: 'gateway_failed' };
     }
   }
 }

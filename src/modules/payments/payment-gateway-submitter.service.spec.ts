@@ -66,6 +66,7 @@ describe('PaymentGatewaySubmitter', () => {
       payments,
       unitOfWork,
       encryption,
+      { now: () => new Date('2026-01-01T00:00:00Z') } satisfies import('../../common/clock/clock').Clock,
       logger
     );
   });
@@ -79,6 +80,7 @@ describe('PaymentGatewaySubmitter', () => {
       currency: 'TZS',
       merchantId: 'merchant_123',
       environment: 'live' as const,
+      channel: 'mobile_money' as const,
     };
 
     it('should decrypt MSISDN before gateway submission', async () => {
@@ -91,12 +93,12 @@ describe('PaymentGatewaySubmitter', () => {
         provider: 'airtel',
         ruleRef: 'rule_001',
         reason: 'matched',
-        confidence: 1,
       });
       vi.mocked(gateway.submitCollection).mockResolvedValue({
         kind: 'accepted',
         referenceId: 'ref_123',
         duplicate: false,
+        status: 'pending',
       });
 
       // Execute
@@ -191,17 +193,11 @@ describe('PaymentGatewaySubmitter', () => {
     });
 
     it('should handle missing MSISDN (undefined msisdnEnc)', async () => {
-      // Setup
+      // Routing succeeds, but no MSISDN means mobile_money submission is refused.
       vi.mocked(routing.selectProvider).mockResolvedValue({
         provider: 'airtel',
         ruleRef: 'rule_001',
         reason: 'matched',
-        confidence: 1,
-      });
-      vi.mocked(gateway.submitCollection).mockResolvedValue({
-        kind: 'accepted',
-        referenceId: 'ref_123',
-        duplicate: false,
       });
 
       // Execute
@@ -213,29 +209,29 @@ describe('PaymentGatewaySubmitter', () => {
       // Verify decryption was never called
       expect(encryption.decrypt).not.toHaveBeenCalled();
 
-      // Verify gateway was called with empty MSISDN
-      expect(gateway.submitCollection).toHaveBeenCalledWith(
+      // Verify payment was marked as failed — MSISDN is required for mobile_money
+      expect(lifecycle.apply).toHaveBeenCalledWith(
+        {},
+        validInput.paymentId,
         expect.objectContaining({
-          payer: {
-            partyIdType: 'MSISDN',
-            partyId: '',
-          },
+          eventKey: 'validation:missing_msisdn',
+          signal: expect.objectContaining({
+            kind: 'failed',
+            failureCode: 'missing_payment_method',
+          }),
         })
       );
+
+      // Verify gateway was never called
+      expect(gateway.submitCollection).not.toHaveBeenCalled();
     });
 
     it('should handle null msisdnEnc', async () => {
-      // Setup
+      // Routing succeeds, but no MSISDN means mobile_money submission is refused.
       vi.mocked(routing.selectProvider).mockResolvedValue({
         provider: 'airtel',
         ruleRef: 'rule_001',
         reason: 'matched',
-        confidence: 1,
-      });
-      vi.mocked(gateway.submitCollection).mockResolvedValue({
-        kind: 'accepted',
-        referenceId: 'ref_123',
-        duplicate: false,
       });
 
       // Execute
@@ -247,15 +243,21 @@ describe('PaymentGatewaySubmitter', () => {
       // Verify decryption was never called
       expect(encryption.decrypt).not.toHaveBeenCalled();
 
-      // Verify gateway was called with empty MSISDN
-      expect(gateway.submitCollection).toHaveBeenCalledWith(
+      // Verify payment was marked as failed — MSISDN is required for mobile_money
+      expect(lifecycle.apply).toHaveBeenCalledWith(
+        {},
+        validInput.paymentId,
         expect.objectContaining({
-          payer: {
-            partyIdType: 'MSISDN',
-            partyId: '',
-          },
+          eventKey: 'validation:missing_msisdn',
+          signal: expect.objectContaining({
+            kind: 'failed',
+            failureCode: 'missing_payment_method',
+          }),
         })
       );
+
+      // Verify gateway was never called
+      expect(gateway.submitCollection).not.toHaveBeenCalled();
     });
 
     it('should never log decrypted MSISDN', async () => {
@@ -268,12 +270,12 @@ describe('PaymentGatewaySubmitter', () => {
         provider: 'airtel',
         ruleRef: 'rule_001',
         reason: 'matched',
-        confidence: 1,
       });
       vi.mocked(gateway.submitCollection).mockResolvedValue({
         kind: 'accepted',
         referenceId: 'ref_123',
         duplicate: false,
+        status: 'pending',
       });
 
       // Execute
@@ -308,6 +310,7 @@ describe('PaymentGatewaySubmitter', () => {
         currency: 'TZS',
         merchantId: 'merchant_123',
         environment: 'live' as const,
+        channel: 'mobile_money' as const,
         msisdnEnc: undefined,
       };
 

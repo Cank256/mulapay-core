@@ -7,6 +7,7 @@ import type { MerchantScope } from '../../common/auth/merchant-scope';
 import type { Transaction } from '../../common/db/database.types';
 import { UnitOfWork } from '../../common/db/unit-of-work';
 import { AppError } from '../../common/errors/app-error';
+import { resolveWindow } from '../../common/pagination/window';
 import { PayoutCreator, type NewPayoutInput } from './payout-creator';
 import { toPayoutView, type PayoutView } from './payout.views';
 import { PayoutsRepository } from './payouts.repository';
@@ -47,15 +48,27 @@ export class PayoutsService {
   async list(
     scope: MerchantScope,
     query: PayoutListQuery
-  ): Promise<{ data: PayoutView[]; pagination: { limit: number; cursor: string | null; hasMore: boolean } }> {
-    // TODO: Implement list method in PayoutsRepository
-    // For now, return empty list
+  ): Promise<{
+    data: PayoutView[];
+    pagination: { limit: number; cursor: string | null; hasMore: boolean };
+  }> {
+    const window = resolveWindow(query, new Date());
+    const rows = await this.payouts.list({
+      scope,
+      from: window.from,
+      to: window.to,
+      status: query.status,
+      currency: query.currency,
+      limit: query.limit + 1,
+    });
+    const hasMore = rows.length > query.limit;
+    const page = rows.slice(0, query.limit);
     return {
-      data: [],
+      data: page.map((r) => toPayoutView(r)),
       pagination: {
         limit: query.limit,
-        cursor: null,
-        hasMore: false,
+        cursor: null, // cursor-based pagination left for a future iteration
+        hasMore,
       },
     };
   }

@@ -17,9 +17,11 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import type { Logger } from 'pino';
-import { ROOT_LOGGER } from '../../common/tokens';
+import type { Clock } from '../../common/clock/clock';
+import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { UnitOfWork } from '../../common/db/unit-of-work';
 import { FieldEncryption } from '../../common/crypto/field-encryption';
+import type { CurrencyCode } from '../../common/money/currency-codes';
 import { RoutingService } from '../operations/routing/routing.service';
 import {
   GATEWAY_OPERATIONS,
@@ -40,6 +42,7 @@ export interface SubmitPaymentInput {
   readonly msisdnEnc?: string | null;
   readonly merchantId: string;
   readonly environment: 'test' | 'live';
+  readonly channel: 'mobile_money' | 'card' | 'bank';
 }
 
 @Injectable()
@@ -51,6 +54,7 @@ export class PaymentGatewaySubmitter {
     private readonly payments: PaymentsRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly encryption: FieldEncryption,
+    @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
@@ -83,7 +87,7 @@ export class PaymentGatewaySubmitter {
           this.lifecycle.apply(tx, input.paymentId, {
             eventKey: 'decryption:failed',
             source: 'job',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: {
               kind: 'failed',
               failureCode: 'msisdn_decryption_failed',
@@ -100,10 +104,10 @@ export class PaymentGatewaySubmitter {
     try {
       const route = await this.routing.selectProvider({
         operation: 'collection',
-        currency: input.currency as any, // Type already validated during payment creation
+        currency: input.currency as CurrencyCode, // validated during payment creation
         amountMinor: input.amountMinor,
         msisdn,
-        channel: 'mobile_money', // TODO: get from payment
+        channel: input.channel,
       });
       provider = route.provider;
       this.logger.info(
@@ -121,7 +125,7 @@ export class PaymentGatewaySubmitter {
         this.lifecycle.apply(tx, input.paymentId, {
           eventKey: 'routing:no_route',
           source: 'job',
-          occurredAt: new Date(),
+          occurredAt: this.clock.now(),
           signal: {
             kind: 'failed',
             failureCode: 'no_route_available',
@@ -142,7 +146,7 @@ export class PaymentGatewaySubmitter {
         this.lifecycle.apply(tx, input.paymentId, {
           eventKey: 'validation:missing_msisdn',
           source: 'job',
-          occurredAt: new Date(),
+          occurredAt: this.clock.now(),
           signal: {
             kind: 'failed',
             failureCode: 'missing_payment_method',
@@ -186,7 +190,7 @@ export class PaymentGatewaySubmitter {
           this.lifecycle.apply(tx, input.paymentId, {
             eventKey: 'gateway:accepted',
             source: 'gateway_event',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: false },
             identifiers: {
               provider,
@@ -211,7 +215,7 @@ export class PaymentGatewaySubmitter {
           this.lifecycle.apply(tx, input.paymentId, {
             eventKey: 'gateway:rejected',
             source: 'job',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: {
               kind: 'failed',
               failureCode: `gateway_${result.reason}`,
@@ -227,12 +231,12 @@ export class PaymentGatewaySubmitter {
         break;
 
       case 'ambiguous':
-        // Outcome unknown - mark for chase job
+        // Outcome unknown — key is deterministic: one submission → one ambiguous event.
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.paymentId, {
-            eventKey: 'gateway:ambiguous',
+            eventKey: 'gateway:ambiguous:submit',
             source: 'job',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: true },
             identifiers: {
               provider,
@@ -251,12 +255,11 @@ export class PaymentGatewaySubmitter {
         break;
 
       case 'rate_limited':
-        // Rate limited - mark for retry
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.paymentId, {
-            eventKey: 'gateway:rate_limited',
+            eventKey: 'gateway:rate_limited:submit',
             source: 'job',
-            occurredAt: new Date(),
+            occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: true },
             identifiers: { provider },
           })

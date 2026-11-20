@@ -9,10 +9,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import type { Job } from 'bullmq';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { uuidv7 } from '../../src/common/ids/ids';
 import { transactions } from '../../src/db/schema';
-import { GATEWAY_OPERATIONS_PORT } from '../../src/integrations/gateway/tokens';
 import type {
   GatewayOperationsPort,
   OperationLookup,
@@ -21,34 +19,46 @@ import type {
   OperationPage,
   GatewayBalance,
 } from '../../src/integrations/gateway/gateway-operations.port';
-import type { PaymentProvider } from '../../src/modules/payments/domain/payment-event';
 import { CHASE_JOB, GatewayChaseProcessor } from '../../src/jobs/gateway-chase.processor';
 import { DB_RW } from '../../src/common/db/tokens';
 import { startContext } from '../support/identity';
 import type { TestContext } from '../support/identity';
 import { FixedClock } from '../support/fixed-clock';
-import { CLOCK } from '../../src/common/tokens';
+import type { Executor } from '../../src/common/db/database.types';
 
 describe('GatewayChaseProcessor (integration)', () => {
   let ctx: TestContext;
   let processor: GatewayChaseProcessor;
   let mockGateway: MockGatewayClient;
   let clock: FixedClock;
-  let db: PostgresJsDatabase;
+  let db: Executor;
 
   beforeAll(async () => {
     ctx = await startContext();
-    db = ctx.app.get(DB_RW, { strict: false });
+    db = ctx.app.get<Executor>(DB_RW, { strict: false });
 
     clock = new FixedClock(new Date('2024-01-15T10:00:00Z'));
     mockGateway = new MockGatewayClient();
 
-    // Build processor directly with the mock gateway
+    // Build processor with all dependencies from the app container
     processor = new GatewayChaseProcessor(
       db,
       mockGateway,
       ctx.app.get('UnitOfWork', { strict: false }),
-      ctx.app.get('PinoLogger', { strict: false }) ?? { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+      ctx.app.get('TransactionsRepository', { strict: false }),
+      ctx.app.get('PaymentsRepository', { strict: false }),
+      ctx.app.get('PayoutsRepository', { strict: false }),
+      ctx.app.get('RefundsRepository', { strict: false }),
+      ctx.app.get('PaymentLifecycleService', { strict: false }),
+      ctx.app.get('PayoutLifecycleService', { strict: false }),
+      ctx.app.get('RefundLifecycleService', { strict: false }),
+      ctx.app.get('ReconciliationExceptionRecorder', { strict: false }),
+      ctx.app.get('PinoLogger', { strict: false }) ?? {
+        info: () => {},
+        warn: () => {},
+        error: () => {},
+        debug: () => {},
+      },
       clock,
       ctx.config
     );
