@@ -2,13 +2,13 @@
   "info": {
     "_postman_id": "5c544434-9b24-41ed-806f-c5b01045a7dc",
     "name": "MulaPay Core API",
-    "description": "Full API collection for MulaPay Core API.\n\n**Surfaces**\n- `v1/` \u2014 Public merchant API (API key auth)\n- `dashboard/v1/` \u2014 Merchant dashboard (JWT session)\n- `admin/v1/` \u2014 Admin console (staff JWT, MFA required)\n\n**Variables** \u2014 set these in your Postman environment:\n- `baseUrl` \u2014 e.g. `https://api.mulapay.com` or `http://localhost:3000`\n- `accessToken` \u2014 dashboard or admin JWT access token\n- `apiKey` \u2014 live or test API key for the public API",
+    "description": "Full API collection for MulaPay Core API.\n\n**Surfaces**\n- `v1/` — Public merchant API (API key auth)\n- `dashboard/v1/` — Merchant dashboard (JWT session)\n- `admin/v1/` — Admin console (staff JWT, MFA required)\n\n**Variables** — set these in your Postman environment:\n- `baseUrl` — e.g. `https://api.mulapay.com` or `http://localhost:3000`\n- `accessToken` — dashboard or admin JWT access token\n- `apiKey` — live or test API key for the public API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3000",
+      "value": "http://localhost:4000",
       "type": "string"
     },
     {
@@ -60,11 +60,9 @@
   "item": [
     {
       "name": "Public API (v1)",
-      "description": "Server-to-server merchant API. Authenticated with an API key via Authorization: Bearer <key> or X-Api-Key header.",
       "item": [
         {
           "name": "Health & Status",
-          "description": "Unauthenticated health probes and platform status",
           "item": [
             {
               "name": "Ping",
@@ -120,11 +118,11 @@
                 "description": "Platform status and public incident updates"
               }
             }
-          ]
+          ],
+          "description": "Unauthenticated health probes and platform status"
         },
         {
           "name": "Payments",
-          "description": "Create and manage payment collection requests",
           "item": [
             {
               "name": "Create payment",
@@ -185,8 +183,7 @@
                     "v1",
                     "payments"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -213,8 +210,7 @@
                     "payments",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -284,11 +280,11 @@
                 "description": "The statuses a payment went through"
               }
             }
-          ]
+          ],
+          "description": "Create and manage payment collection requests"
         },
         {
           "name": "Payouts",
-          "description": "Disburse funds to external accounts",
           "item": [
             {
               "name": "Create payout",
@@ -349,8 +345,7 @@
                     "v1",
                     "payouts"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -377,15 +372,14 @@
                     "payouts",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Disburse funds to external accounts"
         },
         {
           "name": "Refunds",
-          "description": "Refund a captured payment",
           "item": [
             {
               "name": "Create refund",
@@ -446,8 +440,7 @@
                     "v1",
                     "refunds"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -474,15 +467,14 @@
                     "refunds",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Refund a captured payment"
         },
         {
           "name": "Payment Links",
-          "description": "Reusable links that accept payments",
           "item": [
             {
               "name": "Create payment link",
@@ -543,8 +535,7 @@
                     "v1",
                     "payment-links"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -571,8 +562,7 @@
                     "payment-links",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -600,7 +590,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"active\": true\n}",
@@ -638,7 +627,6 @@
                     "deactivate"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -650,11 +638,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Reusable links that accept payments"
         },
         {
           "name": "Checkout Sessions",
-          "description": "Short-lived hosted checkout sessions",
           "item": [
             {
               "name": "Create checkout session",
@@ -716,8 +704,7 @@
                     "checkout-sessions",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -746,7 +733,6 @@
                     "expire"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -758,11 +744,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Short-lived hosted checkout sessions"
         },
         {
           "name": "Transactions",
-          "description": "Ledger transactions tied to payments and payouts",
           "item": [
             {
               "name": "List transactions",
@@ -787,8 +773,7 @@
                     "v1",
                     "transactions"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -815,15 +800,14 @@
                     "transactions",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Ledger transactions tied to payments and payouts"
         },
         {
           "name": "Balances",
-          "description": "Merchant balance and hold positions",
           "item": [
             {
               "name": "List balances",
@@ -906,11 +890,11 @@
                 "description": "Holds against the available balance"
               }
             }
-          ]
+          ],
+          "description": "Merchant balance and hold positions"
         },
         {
           "name": "Settlements",
-          "description": "Completed settlement payouts to the merchant",
           "item": [
             {
               "name": "List settlements",
@@ -935,8 +919,7 @@
                     "v1",
                     "settlements"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -963,8 +946,7 @@
                     "settlements",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -992,15 +974,14 @@
                     ":ref",
                     "items"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Completed settlement payouts to the merchant"
         },
         {
           "name": "Webhook Endpoints",
-          "description": "Register URLs to receive event notifications",
           "item": [
             {
               "name": "Register endpoint",
@@ -1026,7 +1007,6 @@
                     "webhook-endpoints"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"url\": \"https://example.com/webhooks\",\n  \"enabledEvents\": [\n    \"payment.succeeded\"\n  ]\n}",
@@ -1061,8 +1041,7 @@
                     "v1",
                     "webhook-endpoints"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -1089,8 +1068,7 @@
                     "webhook-endpoints",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -1118,7 +1096,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"enabledEvents\": [\n    \"*\"\n  ]\n}",
@@ -1154,8 +1131,7 @@
                     "webhook-endpoints",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -1184,7 +1160,6 @@
                     "rotate-secret"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -1196,11 +1171,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Register URLs to receive event notifications"
         },
         {
           "name": "Events",
-          "description": "Event stream for a merchant environment",
           "item": [
             {
               "name": "List events",
@@ -1225,8 +1200,7 @@
                     "v1",
                     "events"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -1253,21 +1227,20 @@
                     "events",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Event stream for a merchant environment"
         }
-      ]
+      ],
+      "description": "Server-to-server merchant API. Authenticated with an API key via Authorization: Bearer <key> or X-Api-Key header."
     },
     {
       "name": "Merchant Dashboard (dashboard/v1)",
-      "description": "API for the merchant dashboard web application. Authenticated with a dashboard JWT (Bearer token).",
       "item": [
         {
           "name": "Auth",
-          "description": "Registration, login, MFA, password reset and email verification",
           "item": [
             {
               "name": "Register",
@@ -1350,8 +1323,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "const res = pm.response.json();",
-                      "const token = res && res.data && res.data.accessToken;",
+                      "const body = pm.response.json();",
+                      "const token = body && body.data && body.data.accessToken;",
                       "if (token) {",
                       "    pm.collectionVariables.set('accessToken', token);",
                       "    console.log('accessToken saved to collection variable');",
@@ -1648,8 +1621,7 @@
                     "auth",
                     "sessions"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -1678,8 +1650,7 @@
                     "sessions",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -1834,11 +1805,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Registration, login, MFA, password reset and email verification"
         },
         {
           "name": "Merchant",
-          "description": "Merchant profile management",
           "item": [
             {
               "name": "Get merchant",
@@ -1864,8 +1835,7 @@
                     "v1",
                     "merchant"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -1893,7 +1863,6 @@
                     "merchant"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"tradingName\": \"Acme\"\n}",
@@ -1905,11 +1874,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Merchant profile management"
         },
         {
           "name": "Team",
-          "description": "Invite and manage team members",
           "item": [
             {
               "name": "List team",
@@ -1935,8 +1904,7 @@
                     "v1",
                     "team"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -1965,7 +1933,6 @@
                     "invites"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"email\": \"dev@example.com\",\n  \"role\": \"developer\"\n}",
@@ -2002,8 +1969,7 @@
                     "team",
                     "invites"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2032,8 +1998,7 @@
                     "invites",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2062,7 +2027,6 @@
                     ":userId"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"role\": \"developer\"\n}",
@@ -2099,15 +2063,14 @@
                     "team",
                     ":userId"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Invite and manage team members"
         },
         {
           "name": "API Keys",
-          "description": "Manage live and test API keys",
           "item": [
             {
               "name": "List API keys",
@@ -2133,8 +2096,7 @@
                     "v1",
                     "api-keys"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2162,7 +2124,6 @@
                     "api-keys"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"name\": \"Production key\",\n  \"environment\": \"live\",\n  \"scopes\": [\n    \"payments:read\",\n    \"payments:write\",\n    \"payouts:read\",\n    \"payouts:write\",\n    \"refunds:read\",\n    \"refunds:write\",\n    \"transactions:read\",\n    \"balances:read\",\n    \"settlements:read\",\n    \"events:read\",\n    \"webhooks:read\",\n    \"webhooks:write\"\n  ]\n}",
@@ -2201,7 +2162,6 @@
                     "roll"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -2238,15 +2198,14 @@
                     "api-keys",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Manage live and test API keys"
         },
         {
           "name": "Payments (dashboard view)",
-          "description": "Payments and transaction history",
           "item": [
             {
               "name": "List payments",
@@ -2272,8 +2231,7 @@
                     "v1",
                     "payments"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2300,15 +2258,14 @@
                     "v1",
                     "transactions"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Payments and transaction history"
         },
         {
           "name": "KYC",
-          "description": "Submit and manage KYC documents",
           "item": [
             {
               "name": "KYC status",
@@ -2334,8 +2291,7 @@
                     "v1",
                     "kyc"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2363,8 +2319,7 @@
                     "kyc",
                     "requirements"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2392,8 +2347,7 @@
                     "kyc",
                     "profile"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2422,7 +2376,6 @@
                     "profile"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -2459,8 +2412,7 @@
                     "kyc",
                     "parties"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2489,7 +2441,6 @@
                     "parties"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"name\": \"Jane Doe\",\n  \"role\": \"director\"\n}",
@@ -2527,8 +2478,7 @@
                     "parties",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2557,7 +2507,6 @@
                     "submit"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -2596,7 +2545,6 @@
                     "presign"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"filename\": \"passport.jpg\",\n  \"contentType\": \"image/jpeg\"\n}",
@@ -2634,7 +2582,6 @@
                     "documents"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"key\": \"s3-key\",\n  \"type\": \"passport\"\n}",
@@ -2672,15 +2619,14 @@
                     "documents",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Submit and manage KYC documents"
         },
         {
           "name": "Disputes",
-          "description": "View and respond to disputes",
           "item": [
             {
               "name": "List disputes",
@@ -2706,8 +2652,7 @@
                     "v1",
                     "disputes"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2735,8 +2680,7 @@
                     "disputes",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2766,7 +2710,6 @@
                     "evidence"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"evidence\": \"...\"\n}",
@@ -2778,11 +2721,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "View and respond to disputes"
         },
         {
           "name": "Complaints",
-          "description": "Customer complaints submitted via the dashboard",
           "item": [
             {
               "name": "Complaint categories",
@@ -2809,8 +2752,7 @@
                     "complaints",
                     "categories"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2838,7 +2780,6 @@
                     "complaints"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"categoryCode\": \"billing\",\n  \"description\": \"...\"\n}",
@@ -2874,8 +2815,7 @@
                     "v1",
                     "complaints"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2903,8 +2843,7 @@
                     "complaints",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -2934,7 +2873,6 @@
                     "messages"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"body\": \"...\"\n}",
@@ -2973,7 +2911,6 @@
                     "close"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -2985,11 +2922,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Customer complaints submitted via the dashboard"
         },
         {
           "name": "Notifications",
-          "description": "In-app inbox and delivery preferences",
           "item": [
             {
               "name": "List notifications",
@@ -3015,8 +2952,7 @@
                     "v1",
                     "notifications"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3044,8 +2980,7 @@
                     "notifications",
                     "unread-count"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3074,7 +3009,6 @@
                     "read-all"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -3113,7 +3047,6 @@
                     "read"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -3149,8 +3082,7 @@
                     "v1",
                     "notification-preferences"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3178,7 +3110,6 @@
                     "notification-preferences"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"changes\": []\n}",
@@ -3214,8 +3145,7 @@
                     "v1",
                     "notification-destinations"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3244,7 +3174,6 @@
                     ":channel"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"address\": \"+256700000000\"\n}",
@@ -3281,15 +3210,14 @@
                     "notification-destinations",
                     ":channel"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "In-app inbox and delivery preferences"
         },
         {
           "name": "Webhooks",
-          "description": "Webhook endpoints and delivery history",
           "item": [
             {
               "name": "List endpoints",
@@ -3315,8 +3243,7 @@
                     "v1",
                     "webhook-endpoints"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3344,7 +3271,6 @@
                     "webhook-endpoints"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"url\": \"https://example.com/hook\",\n  \"enabledEvents\": [\n    \"payment.succeeded\"\n  ]\n}",
@@ -3381,8 +3307,7 @@
                     "webhook-endpoints",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3411,7 +3336,6 @@
                     ":id"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -3448,8 +3372,7 @@
                     "webhook-endpoints",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3479,7 +3402,6 @@
                     "rotate-secret"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -3515,8 +3437,7 @@
                     "v1",
                     "webhook-deliveries"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3545,7 +3466,6 @@
                     "replay"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"eventRef\": \"evt_01...\"\n}",
@@ -3582,8 +3502,7 @@
                     "webhook-deliveries",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3613,7 +3532,6 @@
                     "retry"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -3625,11 +3543,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Webhook endpoints and delivery history"
         },
         {
           "name": "Request Logs",
-          "description": "API request log for debugging",
           "item": [
             {
               "name": "List request logs",
@@ -3655,8 +3573,7 @@
                     "v1",
                     "request-logs"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3684,15 +3601,14 @@
                     "request-logs",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "API request log for debugging"
         },
         {
           "name": "Settlements (dashboard)",
-          "description": "Settlement history",
           "item": [
             {
               "name": "List settlements",
@@ -3718,8 +3634,7 @@
                     "v1",
                     "settlements"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3747,8 +3662,7 @@
                     "settlements",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3777,8 +3691,7 @@
                     ":ref",
                     "items"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3807,8 +3720,7 @@
                     ":ref",
                     "statement"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3838,15 +3750,14 @@
                     "statement",
                     "csv"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Settlement history"
         },
         {
           "name": "Reports",
-          "description": "Async reports and schedules",
           "item": [
             {
               "name": "Request report",
@@ -3873,7 +3784,6 @@
                     "reports"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"type\": \"transactions\",\n  \"from\": \"2025-01-01\",\n  \"to\": \"2025-01-31\"\n}",
@@ -3909,8 +3819,7 @@
                     "v1",
                     "reports"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3938,8 +3847,7 @@
                     "reports",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3968,8 +3876,7 @@
                     ":ref",
                     "download"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -3997,7 +3904,6 @@
                     "report-schedules"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"type\": \"transactions\",\n  \"cron\": \"0 9 * * 1\"\n}",
@@ -4033,8 +3939,7 @@
                     "v1",
                     "report-schedules"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4062,8 +3967,7 @@
                     "report-schedules",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4092,7 +3996,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -4129,15 +4032,14 @@
                     "report-schedules",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Async reports and schedules"
         },
         {
           "name": "Analytics",
-          "description": "Dashboard analytics overview",
           "item": [
             {
               "name": "Overview",
@@ -4164,8 +4066,7 @@
                     "analytics",
                     "overview"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4193,8 +4094,7 @@
                     "analytics",
                     "volume"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4222,8 +4122,7 @@
                     "analytics",
                     "success-rate"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4251,15 +4150,14 @@
                     "analytics",
                     "channels"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Dashboard analytics overview"
         },
         {
           "name": "Status (dashboard)",
-          "description": "Platform status as seen from the dashboard",
           "item": [
             {
               "name": "Platform status",
@@ -4285,21 +4183,20 @@
                     "v1",
                     "status"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Platform status as seen from the dashboard"
         }
-      ]
+      ],
+      "description": "API for the merchant dashboard web application. Authenticated with a dashboard JWT (Bearer token)."
     },
     {
       "name": "Admin Console (admin/v1)",
-      "description": "API for the MulaPay admin console. Staff only \u2014 MFA required at login. Authenticated with an admin JWT (Bearer token).",
       "item": [
         {
           "name": "Auth (Admin)",
-          "description": "Staff login with mandatory MFA, step-up and session management",
           "item": [
             {
               "name": "Login",
@@ -4327,7 +4224,7 @@
                     "login"
                   ]
                 },
-                "description": "Password step \u2014 always returns MFA challenge",
+                "description": "Password step — always returns MFA challenge",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"email\": \"admin@mulapay.com\",\n  \"password\": \"S3cur3P@ss!\"\n}",
@@ -4344,8 +4241,8 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "const res = pm.response.json();",
-                      "const token = res && res.data && res.data.accessToken;",
+                      "const body = pm.response.json();",
+                      "const token = body && body.data && body.data.accessToken;",
                       "if (token) {",
                       "    pm.collectionVariables.set('accessToken', token);",
                       "    console.log('accessToken saved to collection variable');",
@@ -4497,8 +4394,7 @@
                     "auth",
                     "me"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4539,11 +4435,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Staff login with mandatory MFA, step-up and session management"
         },
         {
           "name": "Merchants",
-          "description": "Merchant lifecycle management",
           "item": [
             {
               "name": "List merchants",
@@ -4569,8 +4465,7 @@
                     "v1",
                     "merchants"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4598,7 +4493,6 @@
                     "merchants"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"legalName\": \"Acme Ltd\",\n  \"country\": \"UG\",\n  \"defaultCurrency\": \"UGX\"\n}",
@@ -4635,8 +4529,7 @@
                     "merchants",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4665,7 +4558,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -4704,7 +4596,6 @@
                     "activate"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -4743,7 +4634,6 @@
                     "suspend"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"reason\": \"policy_violation\"\n}",
@@ -4782,7 +4672,6 @@
                     "close"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -4820,15 +4709,14 @@
                     ":ref",
                     "users"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Merchant lifecycle management"
         },
         {
           "name": "KYC (Admin)",
-          "description": "KYC review queue and document verification",
           "item": [
             {
               "name": "KYC queue",
@@ -4855,8 +4743,7 @@
                     "kyc",
                     "queue"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4884,8 +4771,7 @@
                     "kyc",
                     "requirements"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -4914,7 +4800,6 @@
                     "requirements"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -4953,7 +4838,6 @@
                     ":id"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -4991,8 +4875,7 @@
                     "requirements",
                     ":id"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5020,8 +4903,7 @@
                     "kyc",
                     ":merchantRef"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5051,7 +4933,6 @@
                     "approve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -5090,7 +4971,6 @@
                     "reject"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"reasons\": []\n}",
@@ -5129,7 +5009,6 @@
                     "request-info"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"message\": \"...\"\n}",
@@ -5168,7 +5047,6 @@
                     "checks"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"type\": \"address\"\n}",
@@ -5208,8 +5086,7 @@
                     ":id",
                     "view"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5241,7 +5118,6 @@
                     "verify"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"outcome\": \"verified\"\n}",
@@ -5253,11 +5129,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "KYC review queue and document verification"
         },
         {
-          "name": "AML \u2014 Cases",
-          "description": "AML case management and STR filing",
+          "name": "AML — Cases",
           "item": [
             {
               "name": "List alerts",
@@ -5284,8 +5160,7 @@
                     "aml",
                     "alerts"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5314,8 +5189,7 @@
                     "alerts",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5346,7 +5220,6 @@
                     "assign"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"assigneeRef\": \"usr_01...\"\n}",
@@ -5386,7 +5259,6 @@
                     "escalate"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -5426,7 +5298,6 @@
                     "resolve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"outcome\": \"false_positive\"\n}",
@@ -5463,8 +5334,7 @@
                     "aml",
                     "cases"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5493,7 +5363,6 @@
                     "cases"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"merchantRef\": \"mch_01...\",\n  \"summary\": \"...\"\n}",
@@ -5531,8 +5400,7 @@
                     "cases",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5562,7 +5430,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -5602,7 +5469,6 @@
                     "str"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -5614,11 +5480,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "AML case management and STR filing"
         },
         {
-          "name": "AML \u2014 Controls",
-          "description": "Screening, monitoring rules and merchant blocks",
+          "name": "AML — Controls",
           "item": [
             {
               "name": "List screenings",
@@ -5645,8 +5511,7 @@
                     "aml",
                     "screenings"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5675,7 +5540,6 @@
                     "screenings"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"name\": \"John Doe\",\n  \"type\": \"person\"\n}",
@@ -5715,7 +5579,6 @@
                     "decide"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"outcome\": \"false_positive\"\n}",
@@ -5752,8 +5615,7 @@
                     "aml",
                     "rules"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5782,7 +5644,6 @@
                     "rules"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -5821,7 +5682,6 @@
                     ":code"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -5858,8 +5718,7 @@
                     "aml",
                     "blocklist"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5888,7 +5747,6 @@
                     "blocklist"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"value\": \"...\",\n  \"type\": \"phone\"\n}",
@@ -5926,8 +5784,7 @@
                     "blocklist",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5955,8 +5812,7 @@
                     "aml",
                     "blocks"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -5985,7 +5841,6 @@
                     "blocks"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"merchantRef\": \"mch_01...\",\n  \"reason\": \"aml_flag\"\n}",
@@ -6025,7 +5880,6 @@
                     "lift"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -6037,11 +5891,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Screening, monitoring rules and merchant blocks"
         },
         {
           "name": "Disputes (Admin)",
-          "description": "Dispute investigation and resolution",
           "item": [
             {
               "name": "List disputes",
@@ -6067,8 +5921,7 @@
                     "v1",
                     "disputes"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6096,7 +5949,6 @@
                     "disputes"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"paymentRef\": \"pay_01...\",\n  \"amount\": 10000,\n  \"reason\": \"fraud\"\n}",
@@ -6133,8 +5985,7 @@
                     "disputes",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6163,7 +6014,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -6202,7 +6052,6 @@
                     "assign"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"assigneeRef\": \"usr_01...\"\n}",
@@ -6240,8 +6089,7 @@
                     ":ref",
                     "notes"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6271,7 +6119,6 @@
                     "notes"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"body\": \"...\"\n}",
@@ -6310,7 +6157,6 @@
                     "resolve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"outcome\": \"merchant_won\"\n}",
@@ -6322,11 +6168,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Dispute investigation and resolution"
         },
         {
           "name": "Complaints (Admin)",
-          "description": "Support complaint queue and resolution",
           "item": [
             {
               "name": "List complaints",
@@ -6352,8 +6198,7 @@
                     "v1",
                     "complaints"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6381,8 +6226,7 @@
                     "complaints",
                     "sla-breaches"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6410,8 +6254,7 @@
                     "complaints",
                     "categories"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6439,7 +6282,6 @@
                     "complaints"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"categoryCode\": \"billing\",\n  \"description\": \"...\"\n}",
@@ -6476,8 +6318,7 @@
                     "complaints",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6506,8 +6347,7 @@
                     ":ref",
                     "contact"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6537,7 +6377,6 @@
                     "assign"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"assigneeRef\": \"usr_01...\"\n}",
@@ -6576,7 +6415,6 @@
                     "messages"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"body\": \"...\"\n}",
@@ -6615,7 +6453,6 @@
                     "escalate"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -6654,7 +6491,6 @@
                     "resolve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"resolution\": \"resolved\"\n}",
@@ -6666,11 +6502,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Support complaint queue and resolution"
         },
         {
           "name": "Incidents",
-          "description": "Incident tracking and status page management",
           "item": [
             {
               "name": "List incidents",
@@ -6696,8 +6532,7 @@
                     "v1",
                     "incidents"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6725,7 +6560,6 @@
                     "incidents"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"title\": \"Payment delays\",\n  \"severity\": \"major\"\n}",
@@ -6762,8 +6596,7 @@
                     "incidents",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6792,7 +6625,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -6831,7 +6663,6 @@
                     "updates"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"message\": \"Investigating...\"\n}",
@@ -6870,7 +6701,6 @@
                     "resolve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -6909,7 +6739,6 @@
                     "postmortem"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"body\": \"...\"\n}",
@@ -6921,11 +6750,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Incident tracking and status page management"
         },
         {
           "name": "Ledger (Admin)",
-          "description": "Double-entry ledger and journal entries",
           "item": [
             {
               "name": "List accounts",
@@ -6951,8 +6780,7 @@
                     "v1",
                     "accounts"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -6980,8 +6808,7 @@
                     "accounts",
                     ":code"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7010,8 +6837,7 @@
                     ":code",
                     "statement"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7038,8 +6864,7 @@
                     "v1",
                     "journal-entries"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7067,8 +6892,7 @@
                     "journal-entries",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7095,8 +6919,7 @@
                     "v1",
                     "trial-balance"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7124,15 +6947,14 @@
                     "ledger",
                     "integrity"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Double-entry ledger and journal entries"
         },
         {
           "name": "Balances (Admin)",
-          "description": "Merchant balance and holds (admin view)",
           "item": [
             {
               "name": "List balances",
@@ -7158,8 +6980,7 @@
                     "v1",
                     "balances?merchantRef=mch_01..."
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7186,15 +7007,14 @@
                     "v1",
                     "holds?merchantRef=mch_01..."
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Merchant balance and holds (admin view)"
         },
         {
           "name": "Settlement (Admin)",
-          "description": "Settlement cycles, batches, approval and release",
           "item": [
             {
               "name": "List cycles",
@@ -7221,8 +7041,7 @@
                     "settlement",
                     "cycles"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7251,7 +7070,6 @@
                     "cycles"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"name\": \"Weekly\",\n  \"cadence\": \"weekly\"\n}",
@@ -7290,7 +7108,6 @@
                     "assign"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"merchantRef\": \"mch_01...\",\n  \"cycleRef\": \"scy_01...\"\n}",
@@ -7329,7 +7146,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -7366,8 +7182,7 @@
                     "settlement",
                     "payables"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7396,7 +7211,6 @@
                     "batches"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"cycleRef\": \"scy_01...\"\n}",
@@ -7433,8 +7247,7 @@
                     "settlement",
                     "batches"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7463,8 +7276,7 @@
                     "batches",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7494,8 +7306,7 @@
                     ":ref",
                     "items"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7525,8 +7336,7 @@
                     ":ref",
                     "statement"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7557,7 +7367,6 @@
                     "submit"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -7597,7 +7406,6 @@
                     "approve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -7637,7 +7445,6 @@
                     "release"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -7677,7 +7484,6 @@
                     "cancel"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -7714,8 +7520,7 @@
                     "settlement",
                     "destinations?merchantRef=mch_01..."
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7744,7 +7549,6 @@
                     "destinations"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"merchantRef\": \"mch_01...\",\n  \"accountNumber\": \"...\"\n}",
@@ -7782,7 +7586,6 @@
                     "rolling-reserve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"merchantRef\": \"mch_01...\",\n  \"bps\": 500,\n  \"holdDays\": 90\n}",
@@ -7794,11 +7597,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Settlement cycles, batches, approval and release"
         },
         {
           "name": "Reconciliation",
-          "description": "Reconciliation runs, exceptions and statement upload",
           "item": [
             {
               "name": "Status overview",
@@ -7825,8 +7628,7 @@
                     "reconciliation",
                     "status"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7854,8 +7656,7 @@
                     "reconciliation",
                     "runs"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7884,7 +7685,6 @@
                     "runs"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"kind\": \"daily_provider\"\n}",
@@ -7922,8 +7722,7 @@
                     "runs",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7951,8 +7750,7 @@
                     "reconciliation",
                     "exceptions"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -7980,8 +7778,7 @@
                     "reconciliation",
                     "unresolved"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8009,8 +7806,7 @@
                     "reconciliation",
                     "history"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8038,8 +7834,7 @@
                     "reconciliation",
                     "pending-resolutions"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8068,8 +7863,7 @@
                     "exceptions",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8100,7 +7894,6 @@
                     "assign"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"assigneeRef\": \"usr_01...\"\n}",
@@ -8140,7 +7933,6 @@
                     "notes"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"body\": \"...\"\n}",
@@ -8180,7 +7972,6 @@
                     "resolve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"outcome\": \"write_off\"\n}",
@@ -8220,7 +8011,6 @@
                     "decide"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"outcome\": \"approved\"\n}",
@@ -8258,7 +8048,6 @@
                     "statements"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"provider\": \"mtn\",\n  \"rows\": []\n}",
@@ -8295,8 +8084,7 @@
                     "reconciliation",
                     "statements"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8326,15 +8114,14 @@
                     ":ref",
                     "rows"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Reconciliation runs, exceptions and statement upload"
         },
         {
           "name": "Providers & Routing",
-          "description": "Payment provider health and routing rules",
           "item": [
             {
               "name": "List providers",
@@ -8360,8 +8147,7 @@
                     "v1",
                     "providers"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8390,7 +8176,6 @@
                     ":id"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"enabled\": true\n}",
@@ -8428,8 +8213,7 @@
                     ":id",
                     "balance"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8456,8 +8240,7 @@
                     "v1",
                     "routing-rules"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8485,7 +8268,6 @@
                     "routing-rules"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -8522,8 +8304,7 @@
                     "routing-rules",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8552,7 +8333,6 @@
                     ":ref"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -8589,15 +8369,14 @@
                     "routing-rules",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Payment provider health and routing rules"
         },
         {
           "name": "Roles & Permissions",
-          "description": "RBAC role configuration",
           "item": [
             {
               "name": "List roles",
@@ -8623,8 +8402,7 @@
                     "v1",
                     "roles"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8653,7 +8431,6 @@
                     ":key"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"permissions\": [\n    \"merchants:read\"\n  ]\n}",
@@ -8665,11 +8442,11 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "RBAC role configuration"
         },
         {
           "name": "Audit Logs",
-          "description": "Tamper-evident audit trail",
           "item": [
             {
               "name": "List audit logs",
@@ -8695,8 +8472,7 @@
                     "v1",
                     "audit-logs"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8724,8 +8500,7 @@
                     "audit-logs",
                     "verify"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8753,15 +8528,14 @@
                     "audit-logs",
                     ":seq"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Tamper-evident audit trail"
         },
         {
           "name": "Notifications (Admin)",
-          "description": "Notification templates, broadcast and delivery log",
           "item": [
             {
               "name": "List templates",
@@ -8787,8 +8561,7 @@
                     "v1",
                     "notification-templates"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8818,7 +8591,6 @@
                     ":channel"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"subject\": \"Password reset\",\n  \"body\": \"Click {{reset_token}}\",\n  \"variables\": [\n    \"reset_token\"\n  ]\n}",
@@ -8856,7 +8628,6 @@
                     "broadcast"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"audience\": \"merchants\",\n  \"headline\": \"Maintenance\",\n  \"message\": \"Brief maintenance at midnight.\"\n}",
@@ -8893,8 +8664,7 @@
                     "notifications",
                     "deliveries"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8921,8 +8691,7 @@
                     "v1",
                     "notification-destinations"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -8951,7 +8720,6 @@
                     ":channel"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"address\": \"+256700000000\"\n}",
@@ -8988,15 +8756,14 @@
                     "notification-destinations",
                     ":channel"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Notification templates, broadcast and delivery log"
         },
         {
           "name": "Reports (Admin)",
-          "description": "Platform reports for staff",
           "item": [
             {
               "name": "Request report",
@@ -9023,7 +8790,6 @@
                     "reports"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"type\": \"ledger_summary\"\n}",
@@ -9059,8 +8825,7 @@
                     "v1",
                     "reports"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9088,8 +8853,7 @@
                     "reports",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9118,15 +8882,14 @@
                     ":ref",
                     "download"
                   ]
-                },
-                "description": ""
+                }
               }
             }
-          ]
+          ],
+          "description": "Platform reports for staff"
         },
         {
           "name": "Operations",
-          "description": "Queue management, feature flags, maintenance mode and approvals",
           "item": [
             {
               "name": "Overview",
@@ -9153,8 +8916,7 @@
                     "ops",
                     "overview"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9182,8 +8944,7 @@
                     "ops",
                     "queues"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9214,7 +8975,6 @@
                     "retry-failed"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -9254,7 +9014,6 @@
                     "pause"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -9294,7 +9053,6 @@
                     "resume"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -9331,8 +9089,7 @@
                     "ops",
                     "consumer-cursors"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9363,7 +9120,6 @@
                     "rewind"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"toSequence\": 0\n}",
@@ -9400,8 +9156,7 @@
                     "ops",
                     "stuck-transactions"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9429,8 +9184,7 @@
                     "ops",
                     "suspense"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9458,8 +9212,7 @@
                     "ops",
                     "feature-flags"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9488,7 +9241,6 @@
                     "feature-flags"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"key\": \"new_payout_flow\"\n}",
@@ -9527,7 +9279,6 @@
                     ":key"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"enabled\": true\n}",
@@ -9564,8 +9315,7 @@
                     "ops",
                     "maintenance-mode"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9594,7 +9344,6 @@
                     "maintenance-mode"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"enabled\": true,\n  \"retryAfterSeconds\": 300\n}",
@@ -9631,8 +9380,7 @@
                     "ops",
                     "approvals"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9661,8 +9409,7 @@
                     "approvals",
                     ":ref"
                   ]
-                },
-                "description": ""
+                }
               }
             },
             {
@@ -9693,7 +9440,6 @@
                     "approve"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"note\": \"LGTM\"\n}",
@@ -9733,7 +9479,6 @@
                     "reject"
                   ]
                 },
-                "description": "",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"note\": \"Not now\"\n}",
@@ -9745,9 +9490,15 @@
                 }
               }
             }
-          ]
+          ],
+          "description": "Queue management, feature flags, maintenance mode and approvals"
         }
-      ]
+      ],
+      "description": "API for the MulaPay admin console. Staff only — MFA required at login. Authenticated with an admin JWT (Bearer token)."
+    },
+    {
+      "name": "environments",
+      "item": []
     }
   ]
 }

@@ -34,6 +34,7 @@
     "db:studio": "drizzle-kit studio",
     "gateway:verify": "tsx src/scripts/gateway-verify.ts",
     "openapi:export": "npm run build && node dist/scripts/openapi-export.js",
+    "postman:generate": "python3.11 scripts/generate-postman.py",
     "seed:admin": "npm run build && node dist/scripts/seed-admin.js"
   },
   "dependencies": {
