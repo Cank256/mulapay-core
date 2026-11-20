@@ -15,8 +15,11 @@ export const ARGON2_OPTIONS = {
   parallelism: 1,
 } as const;
 
-/** Spec 8.3 does not set a length policy; 12 to 128 characters is the platform rule. */
-export const PASSWORD_MIN_LENGTH = 12;
+/**
+ * Password policy: 8–128 characters, with at least one uppercase letter, one lowercase
+ * letter, one digit, and one special character (% @ $ # ^ & * ? |).
+ */
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 
 @Injectable()

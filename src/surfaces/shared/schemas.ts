@@ -6,8 +6,27 @@ import { isCidrEntry } from '../../modules/api-keys/ip-allowlist';
 
 export const emailSchema = z.string().trim().toLowerCase().pipe(z.email().max(254));
 
-/** New passwords. Login accepts any string up to the maximum so the policy is not leaked. */
-export const newPasswordSchema = z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH);
+/**
+ * New passwords. Must be 8–128 characters and contain at least:
+ *   - one uppercase letter (A–Z)
+ *   - one lowercase letter (a–z)
+ *   - one digit (0–9)
+ *   - one special character (% @ $ # ^ & * ? |)
+ *
+ * Login accepts any string up to the maximum so the policy is not revealed to
+ * someone testing an existing account.
+ */
+export const newPasswordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
+  .max(PASSWORD_MAX_LENGTH, `Password must be at most ${PASSWORD_MAX_LENGTH} characters`)
+  .refine((p) => /[A-Z]/.test(p), 'Password must contain at least one uppercase letter')
+  .refine((p) => /[a-z]/.test(p), 'Password must contain at least one lowercase letter')
+  .refine((p) => /[0-9]/.test(p), 'Password must contain at least one number')
+  .refine(
+    (p) => /[%@$#^&*?|]/.test(p),
+    'Password must contain at least one special character (% @ $ # ^ & * ? |)'
+  );
 export const passwordSchema = z.string().min(1).max(PASSWORD_MAX_LENGTH);
 
 export const nameSchema = z.string().trim().min(1).max(200);
