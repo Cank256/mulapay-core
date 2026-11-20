@@ -1343,7 +1343,25 @@
                     }
                   }
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "const token = res && res.data && res.data.accessToken;",
+                      "if (token) {",
+                      "    pm.collectionVariables.set('accessToken', token);",
+                      "    console.log('accessToken saved to collection variable');",
+                      "} else {",
+                      "    console.warn('Login succeeded but no accessToken found in response');",
+                      "}"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "Verify MFA",
@@ -2147,7 +2165,7 @@
                 "description": "",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Production key\",\n  \"environment\": \"live\"\n}",
+                  "raw": "{\n  \"name\": \"Production key\",\n  \"environment\": \"live\",\n  \"scopes\": [\n    \"payments:read\",\n    \"payments:write\",\n    \"payouts:read\",\n    \"payouts:write\",\n    \"refunds:read\",\n    \"refunds:write\",\n    \"transactions:read\",\n    \"balances:read\",\n    \"settlements:read\",\n    \"events:read\",\n    \"webhooks:read\",\n    \"webhooks:write\"\n  ]\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4319,7 +4337,25 @@
                     }
                   }
                 }
-              }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "const token = res && res.data && res.data.accessToken;",
+                      "if (token) {",
+                      "    pm.collectionVariables.set('accessToken', token);",
+                      "    console.log('accessToken saved to collection variable');",
+                      "} else {",
+                      "    console.warn('Login succeeded but no accessToken found in response');",
+                      "}"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "Verify MFA",
