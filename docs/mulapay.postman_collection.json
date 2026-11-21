@@ -37,6 +37,11 @@
       "type": "string"
     },
     {
+      "key": "merchantRef",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "resetToken",
       "value": "",
       "type": "string"
@@ -4316,7 +4321,7 @@
                 "description": "Complete staff login with TOTP",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"mfaToken\": \"{{adminMfaToken}}\",\n  \"code\": \"952633\"\n}",
+                  "raw": "{\n  \"mfaToken\": \"{{adminMfaToken}}\",\n  \"code\": \"080757\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4573,7 +4578,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/admin/v1/merchants/mch_01M7VNZY5V18WMNG9NBWMHFZ1E",
+                  "raw": "{{baseUrl}}/admin/v1/merchants/{{merchantRef}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4581,7 +4586,7 @@
                     "admin",
                     "v1",
                     "merchants",
-                    "mch_01M7VNZY5V18WMNG9NBWMHFZ1E"
+                    "{{merchantRef}}"
                   ]
                 }
               }
@@ -4601,7 +4606,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/admin/v1/merchants/:ref",
+                  "raw": "{{baseUrl}}/admin/v1/merchants/{{merchantRef}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4609,7 +4614,7 @@
                     "admin",
                     "v1",
                     "merchants",
-                    ":ref"
+                    "{{merchantRef}}"
                   ]
                 },
                 "body": {
@@ -4638,7 +4643,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/admin/v1/merchants/:ref/activate",
+                  "raw": "{{baseUrl}}/admin/v1/merchants/{{merchantRef}}/activate",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4646,7 +4651,7 @@
                     "admin",
                     "v1",
                     "merchants",
-                    ":ref",
+                    "{{merchantRef}}",
                     "activate"
                   ]
                 },
@@ -4676,7 +4681,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/admin/v1/merchants/:ref/suspend",
+                  "raw": "{{baseUrl}}/admin/v1/merchants/{{merchantRef}}/suspend",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4684,7 +4689,7 @@
                     "admin",
                     "v1",
                     "merchants",
-                    ":ref",
+                    "{{merchantRef}}",
                     "suspend"
                   ]
                 },
@@ -4714,7 +4719,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/admin/v1/merchants/:ref/close",
+                  "raw": "{{baseUrl}}/admin/v1/merchants/{{merchantRef}}/close",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4722,7 +4727,7 @@
                     "admin",
                     "v1",
                     "merchants",
-                    ":ref",
+                    "{{merchantRef}}",
                     "close"
                   ]
                 },
@@ -4752,7 +4757,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/admin/v1/merchants/mch_01M7VNZY5V18WMNG9NBWMHFZ1E/users",
+                  "raw": "{{baseUrl}}/admin/v1/merchants/{{merchantRef}}/users",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4760,7 +4765,7 @@
                     "admin",
                     "v1",
                     "merchants",
-                    "mch_01M7VNZY5V18WMNG9NBWMHFZ1E",
+                    "{{merchantRef}}",
                     "users"
                   ]
                 }
