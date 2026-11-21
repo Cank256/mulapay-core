@@ -4316,7 +4316,7 @@
                 "description": "Complete staff login with TOTP",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"mfaToken\": \"{{adminMfaToken}}\",\n  \"code\": \"123456\"\n}",
+                  "raw": "{\n  \"mfaToken\": \"{{adminMfaToken}}\",\n  \"code\": \"952633\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4573,7 +4573,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/admin/v1/merchants/:ref",
+                  "raw": "{{baseUrl}}/admin/v1/merchants/mch_01M7VNZY5V18WMNG9NBWMHFZ1E",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4581,7 +4581,7 @@
                     "admin",
                     "v1",
                     "merchants",
-                    ":ref"
+                    "mch_01M7VNZY5V18WMNG9NBWMHFZ1E"
                   ]
                 }
               }
@@ -4652,7 +4652,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{}",
+                  "raw": "{\n  \"reason\": \"KYC approved and all requirements met\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4728,7 +4728,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{}",
+                  "raw": "{\n  \"reason\": \"Merchant requested account closure\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4752,7 +4752,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/admin/v1/merchants/:ref/users",
+                  "raw": "{{baseUrl}}/admin/v1/merchants/mch_01M7VNZY5V18WMNG9NBWMHFZ1E/users",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4760,7 +4760,7 @@
                     "admin",
                     "v1",
                     "merchants",
-                    ":ref",
+                    "mch_01M7VNZY5V18WMNG9NBWMHFZ1E",
                     "users"
                   ]
                 }
@@ -5936,7 +5936,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{}",
+                  "raw": "{\n  \"note\": \"Block lifted — investigation concluded, no further action required\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
