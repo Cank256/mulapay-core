@@ -24,6 +24,7 @@ import {
   type CollectionResult,
   type DisbursementRequest,
   type DisbursementResult,
+  type RefundRequest,
   type GatewayBalance,
   type GatewayOperation,
   type GatewayOperationsPort,
@@ -267,6 +268,83 @@ export class GatewayOperationsClient implements GatewayOperationsPort {
       isSuccess ? 'success' : isAmbiguous ? 'failure' : 'success'
     );
 
+    switch (reply.status) {
+      case 200:
+      case 201: {
+        const referenceId = text(data?.referenceId);
+        const status = text(data?.status);
+        if (!referenceId || !status || !STATUSES.includes(status)) {
+          return { kind: 'ambiguous', referenceId: referenceId ?? null, httpStatus: reply.status };
+        }
+        return {
+          kind: 'accepted',
+          duplicate: reply.status === 200,
+          referenceId,
+          status: status as GatewayStatus,
+        };
+      }
+      case 400:
+        return { kind: 'rejected', reason: 'validation', httpStatus: 400 };
+      case 409:
+        return { kind: 'rejected', reason: 'conflict', httpStatus: 409 };
+      case 401:
+      case 403:
+        return { kind: 'rejected', reason: 'unauthorized', httpStatus: reply.status };
+      case 404:
+        return { kind: 'rejected', reason: 'provider_unavailable', httpStatus: 404 };
+      case 429:
+        return { kind: 'rate_limited', retryAfterMs: null };
+      default:
+        return {
+          kind: 'ambiguous',
+          referenceId: text(details?.referenceId) ?? null,
+          httpStatus: reply.status,
+        };
+    }
+  }
+
+  async submitRefund(req: RefundRequest): Promise<CollectionResult> {
+    assertGatewayEligible(req.environment);
+    if (!this.configured() || !isSupportedCurrency(req.currency)) {
+      return { kind: 'rejected', reason: 'provider_unavailable', httpStatus: 0 };
+    }
+    const allowed = await this.breaker.allow(req.providerId, 'refund');
+    if (!allowed) {
+      this.logger.warn({ providerId: req.providerId }, 'circuit breaker open for refund');
+      return { kind: 'rejected', reason: 'provider_unavailable', httpStatus: 0 };
+    }
+    const body = JSON.stringify({
+      transactionId: req.transactionId,
+      externalId: req.externalId,
+      amount: toGatewayAmount(req.amountMinor, req.currency),
+      currency: req.currency,
+      ...(req.reason === undefined ? {} : { reason: req.reason }),
+      metadata: req.metadata,
+    });
+    let reply: Reply;
+    try {
+      reply = await this.callWithRetry(
+        'POST',
+        `/api/v1/payment/${req.providerId}/refund`,
+        body,
+        req.providerId,
+        'refund',
+        req.externalId
+      );
+    } catch (error) {
+      this.logger.warn({ err: toLoggableError(error) }, 'gateway refund call failed');
+      await this.breaker.record(req.providerId, 'refund', 'failure');
+      return { kind: 'ambiguous', referenceId: null, httpStatus: null };
+    }
+    const data = record(record(reply.body)?.data);
+    const details = record(record(record(reply.body)?.error)?.details);
+    const isSuccess = reply.status === 200 || reply.status === 201;
+    const isAmbiguous = reply.status >= 500;
+    await this.breaker.record(
+      req.providerId,
+      'refund',
+      isSuccess ? 'success' : isAmbiguous ? 'failure' : 'success'
+    );
     switch (reply.status) {
       case 200:
       case 201: {

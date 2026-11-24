@@ -7,6 +7,7 @@
  */
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, lte, sql, sum, type SQL } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { MerchantScope } from '../../common/auth/merchant-scope';
 import type { Executor } from '../../common/db/database.types';
 import { DB_RW } from '../../common/db/tokens';
@@ -73,6 +74,27 @@ export class RefundsRepository {
       .innerJoin(payments, eq(payments.id, refunds.paymentId))
       .leftJoin(paymentLinks, eq(paymentLinks.id, payments.paymentLinkId))
       .leftJoin(checkoutSessions, eq(checkoutSessions.id, payments.checkoutSessionId));
+  }
+
+  /** Provider identity of the collection this refund reverses. */
+  async findCollectionGateway(
+    paymentId: string,
+    executor: Executor = this.db
+  ): Promise<{ provider: string | null; providerTransactionId: string | null } | undefined> {
+    const collection = alias(transactions, 'collection_transaction');
+    const [row] = await executor
+      .select({
+        provider: collection.provider,
+        providerTransactionId: collection.providerTransactionId,
+      })
+      .from(payments)
+      .innerJoin(
+        collection,
+        and(eq(collection.id, payments.transactionId), eq(collection.createdAt, payments.createdAt))
+      )
+      .where(eq(payments.id, paymentId))
+      .limit(1);
+    return row;
   }
 
   async findDetailByRef(
@@ -147,12 +169,7 @@ export class RefundsRepository {
 
   /** Lock refund by id (SELECT FOR UPDATE). */
   async lockById(tx: Executor, id: string): Promise<RefundRow | undefined> {
-    const [row] = await tx
-      .select()
-      .from(refunds)
-      .where(eq(refunds.id, id))
-      .for('update')
-      .limit(1);
+    const [row] = await tx.select().from(refunds).where(eq(refunds.id, id)).for('update').limit(1);
     return row;
   }
 
@@ -187,10 +204,7 @@ export class RefundsRepository {
   }
 
   /** Sum of all refunds (any status) for a payment. */
-  async totalRefundedForPayment(
-    paymentId: string,
-    executor: Executor = this.db
-  ): Promise<bigint> {
+  async totalRefundedForPayment(paymentId: string, executor: Executor = this.db): Promise<bigint> {
     const [result] = await executor
       .select({ total: sum(refunds.amountMinor) })
       .from(refunds)

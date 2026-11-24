@@ -6,7 +6,6 @@ import { BalancesModule } from '../balances/balances.module';
 import { EventsModule } from '../events/events.module';
 import { LedgerModule } from '../ledger/ledger.module';
 import { MerchantsModule } from '../merchants/merchants.module';
-import { OperationsModule } from '../operations/operations.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { RefundCreator } from './refund-creator';
@@ -26,7 +25,6 @@ import { RefundsService } from './refunds.service';
     IdempotencyModule,
     LedgerModule,
     MerchantsModule,
-    OperationsModule,
     OutboxModule,
     PaymentsModule,
     TransactionsModule,

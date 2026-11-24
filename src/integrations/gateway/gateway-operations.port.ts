@@ -3,6 +3,7 @@
  * integrations sit behind explicit interfaces" and "no coupling to gateway internals").
  *
  *   submitDisbursement  settlement payout, `POST /api/v1/payment/:providerId/disbursement`
+ *   submitRefund        `POST /api/v1/payment/:providerId/refund`
  *   findByExternalId    `GET /api/v1/transaction/by-external-id/:externalId`
  *   listOperations      `GET /api/v1/transaction` (newest first, offset pagination)
  *   getBalance          `GET /api/v1/payment/:providerId/balance?accountType=`
@@ -62,6 +63,23 @@ export interface CollectionRequest {
   readonly amountMinor: bigint;
   readonly currency: string;
   readonly payer: { readonly partyIdType: 'MSISDN' | 'EMAIL'; readonly partyId: string };
+  readonly metadata: {
+    readonly merchantId: string;
+    readonly environment: 'test' | 'live';
+    readonly coreTransactionId: string;
+  };
+}
+
+export interface RefundRequest {
+  readonly environment: 'test' | 'live';
+  readonly providerId: PaymentProvider;
+  /** `rfd_{ULID}`: the same refund always has the same key. */
+  readonly externalId: string;
+  /** The original collection's provider transaction id. */
+  readonly transactionId: string;
+  readonly amountMinor: bigint;
+  readonly currency: string;
+  readonly reason?: string;
   readonly metadata: {
     readonly merchantId: string;
     readonly environment: 'test' | 'live';
@@ -137,6 +155,8 @@ export interface GatewayOperationsPort {
   submitDisbursement(request: DisbursementRequest): Promise<DisbursementResult>;
   /** Sends a collection (payment). Never throws for an outcome; throws only for a programming error. */
   submitCollection(request: CollectionRequest): Promise<CollectionResult>;
+  /** Sends a refund of a collection. Never throws for an outcome; throws only for a programming error. */
+  submitRefund(request: RefundRequest): Promise<CollectionResult>;
   findByExternalId(
     externalId: string,
     filter?: { providerId?: string; operationType?: GatewayOperationType }

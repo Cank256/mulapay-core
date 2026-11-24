@@ -1,20 +1,14 @@
 /**
- * Refund gateway submission: submits a refund to the Provider Gateway.
+ * Refund gateway submission: posts to `POST /api/v1/payment/:providerId/refund`.
  *
- * A refund is a disbursement back to the original payer. The payer's MSISDN was stored
- * encrypted on the original payment (payments.paymentMethod.msisdnEnc); it is decrypted
- * here, used for the gateway call, and never logged.
- *
- * The gateway call uses `submitDisbursement` with the refund's own `gatewayExternalId` as
- * the external reference, so a retried submission cannot create a second disbursement.
- *
- * The correct environment (`test` or `live`) is always passed to the gateway — test refunds
- * never touch the live provider.
+ * The provider is the one that collected the original payment. `transactionId` is that
+ * collection's provider transaction id. The refund ref is the gateway `externalId`, so a
+ * retry cannot create a second refund. A provider that cannot refund, or a collection
+ * that never received a provider transaction id, fails in Core and is not sent.
  *
  * Failure outcomes:
- *  - No MSISDN on the original payment → `failed` (missing_payment_method)
- *  - MSISDN decryption error → `failed` (msisdn_decryption_failed)
- *  - No routing rule → `failed` (no_route_available)
+ *  - No provider transaction id → `failed` (`provider_transaction_missing`)
+ *  - Provider cannot refund → `failed` (`refund_not_supported`)
  *  - Gateway accepted → `processing`
  *  - Gateway rejected → `failed`
  *  - Gateway ambiguous / rate-limited → `processing` with `outcomeUnknown: true`
@@ -24,13 +18,12 @@ import type { Logger } from 'pino';
 import { ROOT_LOGGER, CLOCK } from '../../common/tokens';
 import type { Clock } from '../../common/clock/clock';
 import { UnitOfWork } from '../../common/db/unit-of-work';
-import { FieldEncryption } from '../../common/crypto/field-encryption';
-import { RoutingService } from '../operations/routing/routing.service';
+import { providerSupports } from '../../integrations/gateway/provider-capabilities';
 import {
   GATEWAY_OPERATIONS,
   type GatewayOperationsPort,
 } from '../../integrations/gateway/gateway-operations.port';
-import type { PaymentProvider } from '../payments/domain/payment-event';
+import { isPaymentProvider, type PaymentProvider } from '../payments/domain/payment-event';
 import { RefundLifecycleService } from './refund-lifecycle.service';
 import { RefundsRepository } from './refunds.repository';
 
@@ -47,11 +40,9 @@ export interface SubmitRefundInput {
 @Injectable()
 export class RefundGatewaySubmitter {
   constructor(
-    private readonly routing: RoutingService,
     @Inject(GATEWAY_OPERATIONS) private readonly gateway: GatewayOperationsPort,
     private readonly lifecycle: RefundLifecycleService,
     private readonly refunds: RefundsRepository,
-    private readonly encryption: FieldEncryption,
     private readonly unitOfWork: UnitOfWork,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
@@ -68,85 +59,52 @@ export class RefundGatewaySubmitter {
       return;
     }
 
-    const msisdnEnc = detail.payment.paymentMethod?.msisdnEnc ?? null;
-    if (!msisdnEnc) {
-      this.logger.error({ refundRef: input.refundRef }, 'missing MSISDN on original payment');
-      await this.unitOfWork.run((tx) =>
-        this.lifecycle.apply(tx, input.refundId, {
-          eventKey: 'validation:missing_msisdn',
-          source: 'api',
-          occurredAt: this.clock.now(),
-          signal: { kind: 'failed', failureCode: 'missing_payment_method' },
-        })
-      );
+    const collection = await this.refunds.findCollectionGateway(detail.payment.id);
+    const providerId = collection?.provider ?? null;
+    const transactionId = collection?.providerTransactionId ?? null;
+    if (!transactionId) {
+      await this.fail(input.refundId, 'provider_transaction_missing');
+      return;
+    }
+    if (!providerId || !isPaymentProvider(providerId) || !providerSupports(providerId, 'refund')) {
+      await this.fail(input.refundId, 'refund_not_supported');
       return;
     }
 
-    // Decrypt — the context mirrors how the payment gateway submitter encrypts it.
-    let msisdn: string;
-    try {
-      msisdn = this.encryption.decrypt(msisdnEnc, `payments.msisdn:${detail.payment.ref}`);
-    } catch (error) {
-      this.logger.error({ refundRef: input.refundRef, error }, 'failed to decrypt payer MSISDN');
-      await this.unitOfWork.run((tx) =>
-        this.lifecycle.apply(tx, input.refundId, {
-          eventKey: 'decryption:failed',
-          source: 'api',
-          occurredAt: this.clock.now(),
-          signal: { kind: 'failed', failureCode: 'msisdn_decryption_failed' },
-        })
-      );
-      return;
-    }
-
-    // Route to the same provider as the original payment where possible.
-    let provider: PaymentProvider;
-    try {
-      const route = await this.routing.selectProvider({
-        operation: 'refund',
-        currency: input.currency as Parameters<RoutingService['selectProvider']>[0]['currency'],
-        amountMinor: input.amountMinor,
-        channel: 'mobile_money',
-      });
-      provider = route.provider;
-      this.logger.info(
-        { refundRef: input.refundRef, provider: route.provider, ruleRef: route.ruleRef },
-        'routed refund to provider'
-      );
-    } catch (error) {
-      this.logger.warn({ refundRef: input.refundRef, error }, 'no route available for refund');
-      await this.unitOfWork.run((tx) =>
-        this.lifecycle.apply(tx, input.refundId, {
-          eventKey: 'routing:no_route',
-          source: 'api',
-          occurredAt: this.clock.now(),
-          signal: { kind: 'failed', failureCode: 'no_route_available' },
-        })
-      );
-      return;
-    }
-
-    const result = await this.gateway.submitDisbursement({
+    const result = await this.gateway.submitRefund({
       environment: input.environment,
-      providerId: provider,
+      providerId,
       externalId: input.gatewayExternalId,
+      transactionId,
       amountMinor: input.amountMinor,
       currency: input.currency,
-      payee: { partyIdType: 'MSISDN', partyId: msisdn },
+      ...(detail.refund.reason ? { reason: detail.refund.reason } : {}),
       metadata: {
         merchantId: input.merchantId,
-        environment: 'live',
+        environment: input.environment,
         coreTransactionId: input.refundRef,
       },
     });
 
-    await this.handleResult(input, provider, result);
+    await this.handleResult(input, providerId, result);
+  }
+
+  private async fail(refundId: string, failureCode: string): Promise<void> {
+    this.logger.warn({ refundId, failureCode }, 'refund not sent to gateway');
+    await this.unitOfWork.run((tx) =>
+      this.lifecycle.apply(tx, refundId, {
+        eventKey: `validation:${failureCode}`,
+        source: 'api',
+        occurredAt: this.clock.now(),
+        signal: { kind: 'failed', failureCode },
+      })
+    );
   }
 
   private async handleResult(
     input: SubmitRefundInput,
     provider: PaymentProvider,
-    result: Awaited<ReturnType<GatewayOperationsPort['submitDisbursement']>>
+    result: Awaited<ReturnType<GatewayOperationsPort['submitRefund']>>
   ): Promise<void> {
     switch (result.kind) {
       case 'accepted':

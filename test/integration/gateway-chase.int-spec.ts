@@ -514,6 +514,10 @@ class MockGatewayClient implements GatewayOperationsPort {
     throw new Error('submitDisbursement not implemented in MockGatewayClient');
   }
 
+  async submitRefund(): Promise<CollectionResult> {
+    throw new Error('submitRefund not implemented in MockGatewayClient');
+  }
+
   async listOperations(): Promise<OperationPage> {
     throw new Error('listOperations not implemented in MockGatewayClient');
   }
