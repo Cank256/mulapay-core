@@ -175,7 +175,7 @@ export async function issueKey(
   owner: MerchantUser,
   options: KeyOptions = {}
 ): Promise<IssuedKey> {
-  const res = await owner.client.post('/dashboard/v1/api-keys', {
+  const res = await owner.client.post('/merchant/v1/api-keys', {
     name: options.name ?? 'integration key',
     environment: options.environment ?? 'test',
     scopes: options.scopes ?? ['payments:read', 'payments:write'],

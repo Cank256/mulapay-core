@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/webhook-endpoints` and `/webhook-deliveries` (spec 7.2): the dashboard's view
+ * `/merchant/v1/webhook-endpoints` and `/webhook-deliveries` (spec 7.2): the dashboard's view
  * of webhooks. Endpoint routes mirror `/v1/webhook-endpoints`; the delivery routes list the
  * delivery log and replay deliveries individually or in bulk. The session is bound to one
  * merchant; the environment is chosen per request (default `live`).

@@ -82,7 +82,7 @@ describe('the merchant wins or the dispute is withdrawn', () => {
         note: 'no',
       }),
       staff.client.patch(`/admin/v1/disputes/${dispute.id}`, { internalNote: 'x' }),
-      merchant.owner.client.post(`/dashboard/v1/disputes/${dispute.id}/evidence`, { text: 'x' }),
+      merchant.owner.client.post(`/merchant/v1/disputes/${dispute.id}/evidence`, { text: 'x' }),
     ]);
     expect(attempts.map((a) => a.statusCode)).toEqual([409, 409, 409]);
     expect(await entryCount(merchant.id)).toBe(entries);

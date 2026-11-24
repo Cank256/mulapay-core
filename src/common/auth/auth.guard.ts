@@ -3,7 +3,7 @@
  *
  * 1. Fail closed: a route without a policy decorator is refused.
  * 2. Authenticate by the surface of the matched route template (never the raw URL):
- *    `/v1` API key, `/dashboard/v1` dashboard JWT, `/admin/v1` admin JWT with MFA.
+ *    `/v1` API key, `/merchant/v1` dashboard JWT, `/admin/v1` admin JWT with MFA.
  *    A dashboard token is never accepted on admin routes and vice versa (JWT `aud`).
  * 3. Authorize with the actor's CASL ability, then step-up, then the merchant status
  *    rule that a closed merchant may only read (spec 6.10).

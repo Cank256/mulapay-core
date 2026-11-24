@@ -687,7 +687,7 @@ describe('API request logs', () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 150));
     await ctx.requestLogs.flush();
-    const base = '/dashboard/v1/request-logs?environment=test';
+    const base = '/merchant/v1/request-logs?environment=test';
     const page1 = (await m.owner.client.get(`${base}&limit=2&${untilNow()}`)).json().data;
     expect(page1.items).toHaveLength(2);
     const page2 = (
@@ -716,7 +716,7 @@ describe('API request logs', () => {
     ).toBe('INVALID_CURSOR');
     const one = page1.items[0] as { id: string; apiKeyId: string };
     const detail = await m.owner.client.get(
-      `/dashboard/v1/request-logs/${one.id}?environment=test`
+      `/merchant/v1/request-logs/${one.id}?environment=test`
     );
     expect(detail.json().data).toMatchObject({
       id: one.id,
@@ -744,15 +744,15 @@ describe('API request logs', () => {
     );
     const other = await createMerchant(ctx, { label: 'logs-dash-other' });
     expect(
-      (await other.owner.client.get(`/dashboard/v1/request-logs/${one.id}?environment=test`))
+      (await other.owner.client.get(`/merchant/v1/request-logs/${one.id}?environment=test`))
         .statusCode
     ).toBe(404);
     expect((await other.owner.client.get(`${base}&${untilNow()}`)).json().data.items).toEqual([]);
     expect(
-      (await m.owner.client.get(`/dashboard/v1/request-logs/${one.id}?environment=live`)).statusCode
+      (await m.owner.client.get(`/merchant/v1/request-logs/${one.id}?environment=live`)).statusCode
     ).toBe(404);
     expect(
-      (await m.owner.client.get('/dashboard/v1/request-logs/not-a-ref?environment=test')).statusCode
+      (await m.owner.client.get('/merchant/v1/request-logs/not-a-ref?environment=test')).statusCode
     ).toBe(404);
     const viewer = await addTeamMember(ctx, m.owner, 'viewer');
     expect((await viewer.client.get(`${base}`)).statusCode).toBe(403);

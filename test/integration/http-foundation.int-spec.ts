@@ -160,7 +160,7 @@ describe('HTTP foundation', () => {
     });
 
     it('returns 404 NOT_FOUND for unknown routes on every surface', async () => {
-      for (const url of ['/v1/nope', '/dashboard/v1/nope', '/admin/v1/nope', '/nope']) {
+      for (const url of ['/v1/nope', '/merchant/v1/nope', '/admin/v1/nope', '/nope']) {
         const res = await app.inject({ method: 'GET', url });
         expect(res.statusCode).toBe(404);
         expect(res.json()).toEqual({
@@ -260,11 +260,11 @@ describe('HTTP foundation', () => {
     });
 
     it('allows the configured dashboard origin on the dashboard surface only', async () => {
-      const ok = await preflight('/dashboard/v1/anything', DASHBOARD_ORIGIN);
+      const ok = await preflight('/merchant/v1/anything', DASHBOARD_ORIGIN);
       expect(ok.headers['access-control-allow-origin']).toBe(DASHBOARD_ORIGIN);
       expect(ok.headers['access-control-allow-credentials']).toBe('true');
 
-      const other = await preflight('/dashboard/v1/anything', 'https://evil.example.com');
+      const other = await preflight('/merchant/v1/anything', 'https://evil.example.com');
       expect(other.headers['access-control-allow-origin']).toBeUndefined();
 
       const admin = await preflight('/admin/v1/anything', DASHBOARD_ORIGIN);

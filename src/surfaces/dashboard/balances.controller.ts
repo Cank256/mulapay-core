@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/balances` and `/holds` (spec 7.2): the merchant's own balances and holds.
+ * `/merchant/v1/balances` and `/holds` (spec 7.2): the merchant's own balances and holds.
  * Read-only views of financial state already owned by the ledger and holds services.
  * The session is bound to one merchant; the environment is chosen per request.
  */

@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/settlements` (spec 7.2): the merchant's settlements, the itemised statement
+ * `/merchant/v1/settlements` (spec 7.2): the merchant's settlements, the itemised statement
  * and its CSV download. The session is bound to one merchant; only live money settles.
  */
 import { Controller, Get, Param, Query } from '@nestjs/common';

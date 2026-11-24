@@ -39,7 +39,7 @@ describe('register and login', () => {
   it('registers an owner of a draft merchant and returns tokens with cookies', async () => {
     const client = new Client(ctx.app);
     const email = uniqueEmail();
-    const res = await client.post('/dashboard/v1/auth/register', {
+    const res = await client.post('/merchant/v1/auth/register', {
       email: email.toUpperCase(),
       password: PASSWORD,
       name: 'Ada',
@@ -48,7 +48,7 @@ describe('register and login', () => {
     expect(res.statusCode).toBe(201);
     expect(res.json().data.user.email).toBe(email);
     expect(res.json().data.merchant.status).toBe('draft');
-    const login = await client.post('/dashboard/v1/auth/login', { email, password: PASSWORD });
+    const login = await client.post('/merchant/v1/auth/login', { email, password: PASSWORD });
     expect(login.json().data).toMatchObject({
       status: 'authenticated',
       merchant: { role: 'owner' },
@@ -70,15 +70,15 @@ describe('register and login', () => {
       merchant: { legalName: 'x', country: 'UG', defaultCurrency: 'UGX' },
     };
     expect(
-      (await new Client(ctx.app).post('/dashboard/v1/auth/register', body)).json().error.code
+      (await new Client(ctx.app).post('/merchant/v1/auth/register', body)).json().error.code
     ).toBe('EMAIL_ALREADY_REGISTERED');
-    const weak = await new Client(ctx.app).post('/dashboard/v1/auth/register', {
+    const weak = await new Client(ctx.app).post('/merchant/v1/auth/register', {
       ...body,
       email: uniqueEmail(),
       password: 'short',
     });
     expect(weak.statusCode).toBe(400);
-    const extra = await new Client(ctx.app).post('/dashboard/v1/auth/login', {
+    const extra = await new Client(ctx.app).post('/merchant/v1/auth/login', {
       email: owner.email,
       password: PASSWORD,
       admin: true,
@@ -88,11 +88,11 @@ describe('register and login', () => {
 
   it('gives an unknown email and a wrong password the same response', async () => {
     const owner = await registerMerchantUser(ctx);
-    const wrong = await new Client(ctx.app).post('/dashboard/v1/auth/login', {
+    const wrong = await new Client(ctx.app).post('/merchant/v1/auth/login', {
       email: owner.email,
       password: 'wrong-password-123',
     });
-    const unknown = await new Client(ctx.app).post('/dashboard/v1/auth/login', {
+    const unknown = await new Client(ctx.app).post('/merchant/v1/auth/login', {
       email: uniqueEmail(),
       password: 'wrong-password-123',
     });
@@ -107,14 +107,14 @@ describe('register and login', () => {
     for (const email of [owner.email, uniqueEmail()]) {
       const client = new Client(ctx.app);
       for (let i = 0; i < 5; i++) {
-        const res = await client.post('/dashboard/v1/auth/login', {
+        const res = await client.post('/merchant/v1/auth/login', {
           email,
           password: 'wrong-password-123',
         });
         expect(res.statusCode).toBe(401);
       }
       // A different IP still sees the account lock.
-      const locked = await new Client(ctx.app).post('/dashboard/v1/auth/login', {
+      const locked = await new Client(ctx.app).post('/merchant/v1/auth/login', {
         email,
         password: PASSWORD,
       });
@@ -133,12 +133,12 @@ describe('register and login', () => {
     const owner = await registerMerchantUser(ctx);
     const attacker = new Client(ctx.app);
     for (let i = 0; i < 5; i++) {
-      await attacker.post('/dashboard/v1/auth/login', {
+      await attacker.post('/merchant/v1/auth/login', {
         email: uniqueEmail(),
         password: 'wrong-password-123',
       });
     }
-    const blocked = await attacker.post('/dashboard/v1/auth/login', {
+    const blocked = await attacker.post('/merchant/v1/auth/login', {
       email: owner.email,
       password: PASSWORD,
     });
@@ -155,7 +155,7 @@ describe('register and login', () => {
     });
     try {
       const client = new Client(app);
-      await client.post('/dashboard/v1/auth/login', { email, password: 'wrong-password-123' });
+      await client.post('/merchant/v1/auth/login', { email, password: 'wrong-password-123' });
       expect(logs.raw.join('\n')).not.toContain(email);
       expect(logs.raw.join('\n')).not.toContain('wrong-password-123');
     } finally {
@@ -167,51 +167,51 @@ describe('register and login', () => {
 describe('MFA', () => {
   it('enrolls, then requires a code at login, and refuses replays', async () => {
     const owner = await registerMerchantUser(ctx);
-    const start = await owner.client.post('/dashboard/v1/auth/mfa/enroll', {});
+    const start = await owner.client.post('/merchant/v1/auth/mfa/enroll', {});
     expect(start.statusCode).toBe(200);
     const { secret, otpauthUri } = start.json().data;
     expect(otpauthUri).toMatch(/^otpauth:\/\/totp\//);
-    const notStartedWrong = await owner.client.post('/dashboard/v1/auth/mfa/enroll', {
+    const notStartedWrong = await owner.client.post('/merchant/v1/auth/mfa/enroll', {
       code: '000000',
     });
     expect(notStartedWrong.json().error.code).toBe('INVALID_MFA_CODE');
-    const confirm = await owner.client.post('/dashboard/v1/auth/mfa/enroll', {
+    const confirm = await owner.client.post('/merchant/v1/auth/mfa/enroll', {
       code: nextTotp(ctx.clock, secret),
     });
     expect(confirm.json().data).toEqual({ status: 'enabled' });
-    expect((await owner.client.post('/dashboard/v1/auth/mfa/enroll', {})).json().error.code).toBe(
+    expect((await owner.client.post('/merchant/v1/auth/mfa/enroll', {})).json().error.code).toBe(
       'MFA_ALREADY_ENABLED'
     );
 
     const client = new Client(ctx.app);
-    const login = await client.post('/dashboard/v1/auth/login', {
+    const login = await client.post('/merchant/v1/auth/login', {
       email: owner.email,
       password: PASSWORD,
     });
     expect(login.json().data.status).toBe('mfa_required');
     const code = nextTotp(ctx.clock, secret);
-    const verified = await client.post('/dashboard/v1/auth/mfa/verify', {
+    const verified = await client.post('/merchant/v1/auth/mfa/verify', {
       mfaToken: login.json().data.mfaToken,
       code,
     });
     expect(verified.json().data.status).toBe('authenticated');
     client.token = verified.json().data.accessToken;
-    expect((await client.get('/dashboard/v1/auth/me')).json().data.session).toMatchObject({
+    expect((await client.get('/merchant/v1/auth/me')).json().data.session).toMatchObject({
       mfa: true,
       amr: ['pwd', 'otp'],
     });
 
     // The challenge is single use and the code cannot be replayed.
-    const reuse = await client.post('/dashboard/v1/auth/mfa/verify', {
+    const reuse = await client.post('/merchant/v1/auth/mfa/verify', {
       mfaToken: login.json().data.mfaToken,
       code,
     });
     expect(reuse.json().error.code).toBe('MFA_CHALLENGE_INVALID');
-    const second = await client.post('/dashboard/v1/auth/login', {
+    const second = await client.post('/merchant/v1/auth/login', {
       email: owner.email,
       password: PASSWORD,
     });
-    const replay = await client.post('/dashboard/v1/auth/mfa/verify', {
+    const replay = await client.post('/merchant/v1/auth/mfa/verify', {
       mfaToken: second.json().data.mfaToken,
       code,
     });
@@ -220,10 +220,10 @@ describe('MFA', () => {
 
   it('discards a challenge after 5 wrong codes and refuses an admin challenge here', async () => {
     const owner = await registerMerchantUser(ctx);
-    const { secret } = (await owner.client.post('/dashboard/v1/auth/mfa/enroll', {})).json().data;
-    await owner.client.post('/dashboard/v1/auth/mfa/enroll', { code: nextTotp(ctx.clock, secret) });
+    const { secret } = (await owner.client.post('/merchant/v1/auth/mfa/enroll', {})).json().data;
+    await owner.client.post('/merchant/v1/auth/mfa/enroll', { code: nextTotp(ctx.clock, secret) });
     const client = new Client(ctx.app);
-    const login = await client.post('/dashboard/v1/auth/login', {
+    const login = await client.post('/merchant/v1/auth/login', {
       email: owner.email,
       password: PASSWORD,
     });
@@ -233,8 +233,8 @@ describe('MFA', () => {
         .code
     ).toBe('MFA_CHALLENGE_INVALID');
     for (let i = 0; i < 5; i++)
-      await client.post('/dashboard/v1/auth/mfa/verify', { mfaToken, code: '000000' });
-    const after = await client.post('/dashboard/v1/auth/mfa/verify', {
+      await client.post('/merchant/v1/auth/mfa/verify', { mfaToken, code: '000000' });
+    const after = await client.post('/merchant/v1/auth/mfa/verify', {
       mfaToken,
       code: nextTotp(ctx.clock, secret),
     });
@@ -244,28 +244,28 @@ describe('MFA', () => {
 
   it('disables MFA only with step-up and a valid code', async () => {
     const owner = await registerMerchantUser(ctx);
-    const { secret } = (await owner.client.post('/dashboard/v1/auth/mfa/enroll', {})).json().data;
-    await owner.client.post('/dashboard/v1/auth/mfa/enroll', { code: nextTotp(ctx.clock, secret) });
+    const { secret } = (await owner.client.post('/merchant/v1/auth/mfa/enroll', {})).json().data;
+    await owner.client.post('/merchant/v1/auth/mfa/enroll', { code: nextTotp(ctx.clock, secret) });
     expect(
-      (await owner.client.post('/dashboard/v1/auth/mfa/disable', { code: '000000' })).json().error
+      (await owner.client.post('/merchant/v1/auth/mfa/disable', { code: '000000' })).json().error
         .code
     ).toBe('INVALID_MFA_CODE');
     ctx.clock.advanceBy(5 * 60_000);
-    const stale = await owner.client.post('/dashboard/v1/auth/mfa/disable', {
+    const stale = await owner.client.post('/merchant/v1/auth/mfa/disable', {
       code: generateSync({ secret, epoch: Math.floor(ctx.clock.now().getTime() / 1000) }),
     });
     expect(stale.json().error.code).toBe('STEP_UP_REQUIRED');
     const fresh = new Client(ctx.app);
-    const login = await fresh.post('/dashboard/v1/auth/login', {
+    const login = await fresh.post('/merchant/v1/auth/login', {
       email: owner.email,
       password: PASSWORD,
     });
-    const verified = await fresh.post('/dashboard/v1/auth/mfa/verify', {
+    const verified = await fresh.post('/merchant/v1/auth/mfa/verify', {
       mfaToken: login.json().data.mfaToken,
       code: nextTotp(ctx.clock, secret),
     });
     fresh.token = verified.json().data.accessToken;
-    const disabled = await fresh.post('/dashboard/v1/auth/mfa/disable', {
+    const disabled = await fresh.post('/merchant/v1/auth/mfa/disable', {
       code: nextTotp(ctx.clock, secret),
     });
     expect(disabled.json().data).toEqual({ ok: true });
@@ -283,25 +283,25 @@ describe('sessions', () => {
     expect(refreshed.statusCode).toBe(200);
     expect(owner.client.cookies.mp_refresh).not.toBe(first);
     owner.client.token = refreshed.json().data.accessToken;
-    expect((await owner.client.get('/dashboard/v1/auth/me')).statusCode).toBe(200);
+    expect((await owner.client.get('/merchant/v1/auth/me')).statusCode).toBe(200);
 
     const attacker = new Client(ctx.app);
     attacker.cookies = { mp_refresh: first ?? '', mp_csrf: 'x' };
-    const reuse = await attacker.post('/dashboard/v1/auth/refresh', undefined, {
+    const reuse = await attacker.post('/merchant/v1/auth/refresh', undefined, {
       'x-csrf-token': 'x',
     });
     expect(reuse.json().error.code).toBe('REFRESH_TOKEN_INVALID');
     // The whole family is gone: the legitimate access token and refresh token both fail.
-    expect((await owner.client.get('/dashboard/v1/auth/me')).statusCode).toBe(401);
+    expect((await owner.client.get('/merchant/v1/auth/me')).statusCode).toBe(401);
     expect((await refreshWithCsrf(owner.client)).statusCode).toBe(401);
   });
 
   it('requires the double-submit CSRF header', async () => {
     const owner = await registerMerchantUser(ctx);
-    expect((await owner.client.post('/dashboard/v1/auth/refresh')).json().error.code).toBe(
+    expect((await owner.client.post('/merchant/v1/auth/refresh')).json().error.code).toBe(
       'CSRF_TOKEN_INVALID'
     );
-    const wrong = await owner.client.post('/dashboard/v1/auth/refresh', undefined, {
+    const wrong = await owner.client.post('/merchant/v1/auth/refresh', undefined, {
       'x-csrf-token': 'nope',
     });
     expect(wrong.statusCode).toBe(403);
@@ -316,30 +316,30 @@ describe('sessions', () => {
   it('expires access tokens after ACCESS_TOKEN_TTL', async () => {
     const owner = await registerMerchantUser(ctx);
     ctx.clock.advanceBy(ctx.config.ACCESS_TOKEN_TTL * 1000);
-    expect((await owner.client.get('/dashboard/v1/auth/me')).statusCode).toBe(401);
+    expect((await owner.client.get('/merchant/v1/auth/me')).statusCode).toBe(401);
     const refreshed = await refreshWithCsrf(owner.client);
     owner.client.token = refreshed.json().data.accessToken;
-    expect((await owner.client.get('/dashboard/v1/auth/me')).statusCode).toBe(200);
+    expect((await owner.client.get('/merchant/v1/auth/me')).statusCode).toBe(200);
   });
 
   it('lists sessions and revokes one, which kills its access token at once', async () => {
     const owner = await registerMerchantUser(ctx);
     const other = new Client(ctx.app);
     await loginMerchantUser(other, owner.email);
-    const list = await owner.client.get('/dashboard/v1/auth/sessions');
+    const list = await owner.client.get('/merchant/v1/auth/sessions');
     expect(list.json().data).toHaveLength(2);
     const target = list.json().data.find((s: { current: boolean }) => !s.current);
-    expect((await owner.client.delete(`/dashboard/v1/auth/sessions/${target.id}`)).statusCode).toBe(
+    expect((await owner.client.delete(`/merchant/v1/auth/sessions/${target.id}`)).statusCode).toBe(
       200
     );
-    expect((await other.get('/dashboard/v1/auth/me')).statusCode).toBe(401);
-    expect((await owner.client.delete(`/dashboard/v1/auth/sessions/${target.id}`)).statusCode).toBe(
+    expect((await other.get('/merchant/v1/auth/me')).statusCode).toBe(401);
+    expect((await owner.client.delete(`/merchant/v1/auth/sessions/${target.id}`)).statusCode).toBe(
       404
     );
 
     const stranger = await registerMerchantUser(ctx);
-    const mine = (await owner.client.get('/dashboard/v1/auth/sessions')).json().data[0].id;
-    expect((await stranger.client.delete(`/dashboard/v1/auth/sessions/${mine}`)).statusCode).toBe(
+    const mine = (await owner.client.get('/merchant/v1/auth/sessions')).json().data[0].id;
+    expect((await stranger.client.delete(`/merchant/v1/auth/sessions/${mine}`)).statusCode).toBe(
       404
     );
   });
@@ -348,8 +348,8 @@ describe('sessions', () => {
     const owner = await registerMerchantUser(ctx);
     const csrf = owner.client.cookies.mp_csrf ?? '';
     const refresh = owner.client.cookies.mp_refresh ?? '';
-    expect((await owner.client.post('/dashboard/v1/auth/logout')).statusCode).toBe(200);
-    expect((await owner.client.get('/dashboard/v1/auth/me')).statusCode).toBe(401);
+    expect((await owner.client.post('/merchant/v1/auth/logout')).statusCode).toBe(200);
+    expect((await owner.client.get('/merchant/v1/auth/me')).statusCode).toBe(401);
     owner.client.cookies = { mp_refresh: refresh, mp_csrf: csrf };
     expect((await refreshWithCsrf(owner.client)).statusCode).toBe(401);
   });
@@ -358,9 +358,9 @@ describe('sessions', () => {
     const client = new Client(ctx.app);
     for (const token of [undefined, 'garbage', 'a.b.c']) {
       client.token = token;
-      expect((await client.get('/dashboard/v1/auth/me')).statusCode).toBe(401);
+      expect((await client.get('/merchant/v1/auth/me')).statusCode).toBe(401);
     }
-    const res = await client.get('/dashboard/v1/auth/me', { authorization: 'Basic abc' });
+    const res = await client.get('/merchant/v1/auth/me', { authorization: 'Basic abc' });
     expect(res.json().error.code).toBe('UNAUTHORIZED');
   });
 });

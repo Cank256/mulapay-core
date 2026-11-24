@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "5c544434-9b24-41ed-806f-c5b01045a7dc",
     "name": "MulaPay Core API",
-    "description": "Full API collection for MulaPay Core API.\n\n**Surfaces**\n- `v1/` — Public merchant API (API key auth)\n- `dashboard/v1/` — Merchant dashboard (JWT session)\n- `admin/v1/` — Admin console (staff JWT, MFA required)\n\n**Variables** — set these in your Postman environment:\n- `baseUrl` — e.g. `https://api.mulapay.com` or `http://localhost:3000`\n- `accessToken` — dashboard or admin JWT access token\n- `apiKey` — live or test API key for the public API",
+    "description": "Full API collection for MulaPay Core API.\n\n**Surfaces**\n- `v1/` — Public merchant API (API key auth)\n- `merchant/v1/` — Merchant dashboard (JWT session)\n- `admin/v1/` — Admin console (staff JWT, MFA required)\n\n**Variables** — set these in your Postman environment:\n- `baseUrl` — e.g. `https://api.mulapay.com` or `http://localhost:3000`\n- `accessToken` — dashboard or admin JWT access token\n- `apiKey` — live or test API key for the public API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1252,7 +1252,7 @@
       "description": "Server-to-server merchant API. Authenticated with an API key via Authorization: Bearer <key> or X-Api-Key header."
     },
     {
-      "name": "Merchant Dashboard (dashboard/v1)",
+      "name": "Merchant Dashboard (merchant/v1)",
       "item": [
         {
           "name": "Auth",
@@ -1272,7 +1272,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/register",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/register",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1310,7 +1310,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/login",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/login",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1366,7 +1366,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/mfa/verify",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/mfa/verify",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1423,7 +1423,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/mfa/enroll",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/mfa/enroll",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1462,7 +1462,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/mfa/disable",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/mfa/disable",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1505,7 +1505,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/refresh",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/refresh",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1543,7 +1543,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/logout",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/logout",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1581,7 +1581,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/accept-invite",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/accept-invite",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1619,7 +1619,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/me",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/me",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1648,7 +1648,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/sessions",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/sessions",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1676,7 +1676,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/sessions/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/sessions/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1705,7 +1705,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/forgot-password",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/forgot-password",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1743,7 +1743,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/reset-password",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/reset-password",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1781,7 +1781,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/send-verification",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/send-verification",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1819,7 +1819,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/auth/verify-email",
+                  "raw": "{{baseUrl}}/merchant/v1/auth/verify-email",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1863,7 +1863,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/merchant",
+                  "raw": "{{baseUrl}}/merchant/v1/merchant",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1890,7 +1890,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/merchant",
+                  "raw": "{{baseUrl}}/merchant/v1/merchant",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1932,7 +1932,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/team",
+                  "raw": "{{baseUrl}}/merchant/v1/team",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1959,7 +1959,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/team/invites",
+                  "raw": "{{baseUrl}}/merchant/v1/team/invites",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1996,7 +1996,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/team/invites",
+                  "raw": "{{baseUrl}}/merchant/v1/team/invites",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2024,7 +2024,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/team/invites/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/team/invites/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2053,7 +2053,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/team/:userId",
+                  "raw": "{{baseUrl}}/merchant/v1/team/:userId",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2090,7 +2090,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/team/:userId",
+                  "raw": "{{baseUrl}}/merchant/v1/team/:userId",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2124,7 +2124,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/api-keys",
+                  "raw": "{{baseUrl}}/merchant/v1/api-keys",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2151,7 +2151,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/api-keys",
+                  "raw": "{{baseUrl}}/merchant/v1/api-keys",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2187,7 +2187,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/api-keys/:id/roll",
+                  "raw": "{{baseUrl}}/merchant/v1/api-keys/:id/roll",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2225,7 +2225,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/api-keys/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/api-keys/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2259,7 +2259,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/payments",
+                  "raw": "{{baseUrl}}/merchant/v1/payments",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2286,7 +2286,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/transactions",
+                  "raw": "{{baseUrl}}/merchant/v1/transactions",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2319,7 +2319,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2346,7 +2346,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/requirements",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/requirements",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2374,7 +2374,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/profile",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/profile",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2402,7 +2402,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/profile",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/profile",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2439,7 +2439,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/parties",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/parties",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2467,7 +2467,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/parties",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/parties",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2504,7 +2504,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/parties/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/parties/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2533,7 +2533,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/submit",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/submit",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2570,7 +2570,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/documents/presign",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/documents/presign",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2608,7 +2608,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/documents",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/documents",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2645,7 +2645,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/kyc/documents/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/kyc/documents/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2680,7 +2680,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/disputes",
+                  "raw": "{{baseUrl}}/merchant/v1/disputes",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2707,7 +2707,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/disputes/:ref",
+                  "raw": "{{baseUrl}}/merchant/v1/disputes/:ref",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2735,7 +2735,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/disputes/:ref/evidence",
+                  "raw": "{{baseUrl}}/merchant/v1/disputes/:ref/evidence",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2779,7 +2779,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/complaints/categories",
+                  "raw": "{{baseUrl}}/merchant/v1/complaints/categories",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2807,7 +2807,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/complaints",
+                  "raw": "{{baseUrl}}/merchant/v1/complaints",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2843,7 +2843,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/complaints",
+                  "raw": "{{baseUrl}}/merchant/v1/complaints",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2870,7 +2870,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/complaints/:ref",
+                  "raw": "{{baseUrl}}/merchant/v1/complaints/:ref",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2898,7 +2898,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/complaints/:ref/messages",
+                  "raw": "{{baseUrl}}/merchant/v1/complaints/:ref/messages",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2936,7 +2936,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/complaints/:ref/close",
+                  "raw": "{{baseUrl}}/merchant/v1/complaints/:ref/close",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2980,7 +2980,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notifications",
+                  "raw": "{{baseUrl}}/merchant/v1/notifications",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3007,7 +3007,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notifications/unread-count",
+                  "raw": "{{baseUrl}}/merchant/v1/notifications/unread-count",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3035,7 +3035,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notifications/read-all",
+                  "raw": "{{baseUrl}}/merchant/v1/notifications/read-all",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3072,7 +3072,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notifications/:ref/read",
+                  "raw": "{{baseUrl}}/merchant/v1/notifications/:ref/read",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3110,7 +3110,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notification-preferences",
+                  "raw": "{{baseUrl}}/merchant/v1/notification-preferences",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3137,7 +3137,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notification-preferences",
+                  "raw": "{{baseUrl}}/merchant/v1/notification-preferences",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3173,7 +3173,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notification-destinations",
+                  "raw": "{{baseUrl}}/merchant/v1/notification-destinations",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3200,7 +3200,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notification-destinations/:channel",
+                  "raw": "{{baseUrl}}/merchant/v1/notification-destinations/:channel",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3237,7 +3237,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/notification-destinations/:channel",
+                  "raw": "{{baseUrl}}/merchant/v1/notification-destinations/:channel",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3271,7 +3271,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-endpoints",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-endpoints",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3298,7 +3298,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-endpoints",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-endpoints",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3334,7 +3334,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-endpoints/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-endpoints/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3362,7 +3362,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-endpoints/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-endpoints/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3399,7 +3399,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-endpoints/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-endpoints/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3427,7 +3427,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-endpoints/:id/rotate-secret",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-endpoints/:id/rotate-secret",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3465,7 +3465,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-deliveries",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-deliveries",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3492,7 +3492,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-deliveries/replay",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-deliveries/replay",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3529,7 +3529,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-deliveries/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-deliveries/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3557,7 +3557,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/webhook-deliveries/:id/retry",
+                  "raw": "{{baseUrl}}/merchant/v1/webhook-deliveries/:id/retry",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3601,7 +3601,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/request-logs",
+                  "raw": "{{baseUrl}}/merchant/v1/request-logs",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3628,7 +3628,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/request-logs/:id",
+                  "raw": "{{baseUrl}}/merchant/v1/request-logs/:id",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3662,7 +3662,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/settlements",
+                  "raw": "{{baseUrl}}/merchant/v1/settlements",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3689,7 +3689,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/settlements/:ref",
+                  "raw": "{{baseUrl}}/merchant/v1/settlements/:ref",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3717,7 +3717,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/settlements/:ref/items",
+                  "raw": "{{baseUrl}}/merchant/v1/settlements/:ref/items",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3746,7 +3746,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/settlements/:ref/statement",
+                  "raw": "{{baseUrl}}/merchant/v1/settlements/:ref/statement",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3775,7 +3775,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/settlements/:ref/statement/csv",
+                  "raw": "{{baseUrl}}/merchant/v1/settlements/:ref/statement/csv",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3811,7 +3811,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/reports",
+                  "raw": "{{baseUrl}}/merchant/v1/reports",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3847,7 +3847,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/reports",
+                  "raw": "{{baseUrl}}/merchant/v1/reports",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3874,7 +3874,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/reports/:ref",
+                  "raw": "{{baseUrl}}/merchant/v1/reports/:ref",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3902,7 +3902,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/reports/:ref/download",
+                  "raw": "{{baseUrl}}/merchant/v1/reports/:ref/download",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3931,7 +3931,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/report-schedules",
+                  "raw": "{{baseUrl}}/merchant/v1/report-schedules",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3967,7 +3967,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/report-schedules",
+                  "raw": "{{baseUrl}}/merchant/v1/report-schedules",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3994,7 +3994,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/report-schedules/:ref",
+                  "raw": "{{baseUrl}}/merchant/v1/report-schedules/:ref",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4022,7 +4022,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/report-schedules/:ref",
+                  "raw": "{{baseUrl}}/merchant/v1/report-schedules/:ref",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4059,7 +4059,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/report-schedules/:ref",
+                  "raw": "{{baseUrl}}/merchant/v1/report-schedules/:ref",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4093,7 +4093,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/analytics/overview",
+                  "raw": "{{baseUrl}}/merchant/v1/analytics/overview",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4121,7 +4121,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/analytics/volume",
+                  "raw": "{{baseUrl}}/merchant/v1/analytics/volume",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4149,7 +4149,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/analytics/success-rate",
+                  "raw": "{{baseUrl}}/merchant/v1/analytics/success-rate",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4177,7 +4177,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/analytics/channels",
+                  "raw": "{{baseUrl}}/merchant/v1/analytics/channels",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4211,7 +4211,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{baseUrl}}/dashboard/v1/status",
+                  "raw": "{{baseUrl}}/merchant/v1/status",
                   "host": [
                     "{{baseUrl}}"
                   ],

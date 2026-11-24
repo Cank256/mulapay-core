@@ -108,7 +108,7 @@ export function toIncidentDetail(detail: IncidentDetail): z.infer<typeof inciden
   };
 }
 
-/** The public status feed (`GET /v1/status`, `GET /dashboard/v1/status`). No auth, no internals. */
+/** The public status feed (`GET /v1/status`, `GET /merchant/v1/status`). No auth, no internals. */
 export const publicStatusSchema = z.object({
   status: z.enum(['operational', 'degraded', 'major_outage']),
   updatedAt: iso,

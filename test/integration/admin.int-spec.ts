@@ -130,7 +130,7 @@ describe('admin bootstrap and login', () => {
   });
 
   it('refuses an admin token on the dashboard', async () => {
-    expect((await admin.client.get('/dashboard/v1/auth/me')).statusCode).toBe(401);
+    expect((await admin.client.get('/merchant/v1/auth/me')).statusCode).toBe(401);
   });
 });
 
@@ -157,7 +157,7 @@ describe('merchants', () => {
     });
 
     const owner = new Client(ctx.app);
-    const accepted = await owner.post('/dashboard/v1/auth/accept-invite', {
+    const accepted = await owner.post('/merchant/v1/auth/accept-invite', {
       token: ownerInvitation.token,
       name: 'Owner',
       password: PASSWORD,
@@ -165,7 +165,7 @@ describe('merchants', () => {
     expect(accepted.statusCode).toBe(200);
     expect(accepted.json().data).toMatchObject({ merchantId: merchant.id, role: 'owner' });
     await loginMerchantUser(owner, ownerEmail);
-    expect((await owner.get('/dashboard/v1/merchant')).json().data.id).toBe(merchant.id);
+    expect((await owner.get('/merchant/v1/merchant')).json().data.id).toBe(merchant.id);
 
     const users = await admin.client.get(`/admin/v1/merchants/${merchant.id}/users`);
     expect(users.json().data).toEqual([

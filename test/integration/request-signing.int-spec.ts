@@ -78,7 +78,7 @@ function signedPayout(
 
 describe('mandatory signing for live payouts:write keys', () => {
   it('forces signing on at issue, whatever the request asked', async () => {
-    const view = (await merchant.owner.client.get('/dashboard/v1/api-keys'))
+    const view = (await merchant.owner.client.get('/merchant/v1/api-keys'))
       .json()
       .data.find((k: { id: string }) => k.id === payoutKey.ref);
     expect(view).toMatchObject({
@@ -195,7 +195,7 @@ describe('mandatory signing for live payouts:write keys', () => {
       scopes: ['payouts:write'],
     });
     const rolled = (
-      await merchant.owner.client.post(`/dashboard/v1/api-keys/${key.ref}/roll`, {
+      await merchant.owner.client.post(`/merchant/v1/api-keys/${key.ref}/roll`, {
         gracePeriodHours: 1,
       })
     ).json().data;

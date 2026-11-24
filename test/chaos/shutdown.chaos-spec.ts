@@ -38,7 +38,7 @@ describe.skipIf(!BUILT)('graceful shutdown of the API process', () => {
     socket.on('data', (chunk) => received.push(chunk));
     await new Promise<void>((resolve) => socket.once('connect', () => resolve()));
     socket.write(
-      `POST /dashboard/v1/auth/login HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n${body.slice(0, half)}`
+      `POST /merchant/v1/auth/login HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n${body.slice(0, half)}`
     );
     await sleep(500);
 

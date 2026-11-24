@@ -1,5 +1,5 @@
 /**
- * Webhook endpoint management on `/v1/webhook-endpoints` and `/dashboard/v1/webhook-endpoints`
+ * Webhook endpoint management on `/v1/webhook-endpoints` and `/merchant/v1/webhook-endpoints`
  * (spec 6.11, 7.1, 7.2): registration, subscriptions, secrets, authorization, isolation and
  * the SSRF rules for URLs.
  */
@@ -409,12 +409,12 @@ describe('authorization', () => {
   });
 });
 
-describe('dashboard mirror (/dashboard/v1/webhook-endpoints)', () => {
+describe('dashboard mirror (/merchant/v1/webhook-endpoints)', () => {
   it('lets a developer manage endpoints in either environment, and read-only roles only read', async () => {
     const dev = await addTeamMember(ctx, merchant.owner, 'developer');
     // `support` reads webhooks; `viewer` is edited by the admin suite, which runs in parallel.
     const viewer = await addTeamMember(ctx, merchant.owner, 'support');
-    const created = await dev.client.post('/dashboard/v1/webhook-endpoints?environment=test', {
+    const created = await dev.client.post('/merchant/v1/webhook-endpoints?environment=test', {
       url: URL_OK,
       enabledEvents: ['*'],
     });
@@ -422,46 +422,46 @@ describe('dashboard mirror (/dashboard/v1/webhook-endpoints)', () => {
     const id = created.json().data.id as string;
     expect(created.json().data.secret).toMatch(/^whsec_/);
     expect(
-      (await dev.client.get(`/dashboard/v1/webhook-endpoints/${id}?environment=test`)).statusCode
+      (await dev.client.get(`/merchant/v1/webhook-endpoints/${id}?environment=test`)).statusCode
     ).toBe(200);
     expect(
-      (await dev.client.get(`/dashboard/v1/webhook-endpoints/${id}?environment=live`)).statusCode
+      (await dev.client.get(`/merchant/v1/webhook-endpoints/${id}?environment=live`)).statusCode
     ).toBe(404);
-    const list = await dev.client.get('/dashboard/v1/webhook-endpoints?environment=test');
+    const list = await dev.client.get('/merchant/v1/webhook-endpoints?environment=test');
     expect((list.json().data as Array<{ id: string }>).some((e) => e.id === id)).toBe(true);
     expect(
-      (await viewer.client.get('/dashboard/v1/webhook-endpoints?environment=test')).statusCode
+      (await viewer.client.get('/merchant/v1/webhook-endpoints?environment=test')).statusCode
     ).toBe(200);
     expect(
       (
-        await viewer.client.post('/dashboard/v1/webhook-endpoints?environment=test', {
+        await viewer.client.post('/merchant/v1/webhook-endpoints?environment=test', {
           url: URL_OK,
           enabledEvents: ['*'],
         })
       ).statusCode
     ).toBe(403);
     expect(
-      (await viewer.client.delete(`/dashboard/v1/webhook-endpoints/${id}?environment=test`))
+      (await viewer.client.delete(`/merchant/v1/webhook-endpoints/${id}?environment=test`))
         .statusCode
     ).toBe(403);
     const patched = await dev.client.patch(
-      `/dashboard/v1/webhook-endpoints/${id}?environment=test`,
+      `/merchant/v1/webhook-endpoints/${id}?environment=test`,
       { description: 'via dashboard' }
     );
     expect(patched.json().data.description).toBe('via dashboard');
     expect(
       (
         await dev.client.post(
-          `/dashboard/v1/webhook-endpoints/${id}/rotate-secret?environment=test`,
+          `/merchant/v1/webhook-endpoints/${id}/rotate-secret?environment=test`,
           {}
         )
       ).statusCode
     ).toBe(200);
     expect(
-      (await dev.client.delete(`/dashboard/v1/webhook-endpoints/${id}?environment=test`)).statusCode
+      (await dev.client.delete(`/merchant/v1/webhook-endpoints/${id}?environment=test`)).statusCode
     ).toBe(200);
     expect(
-      (await dev.client.get(`/dashboard/v1/webhook-endpoints/${id}?environment=test`)).statusCode
+      (await dev.client.get(`/merchant/v1/webhook-endpoints/${id}?environment=test`)).statusCode
     ).toBe(404);
   });
 
@@ -469,12 +469,12 @@ describe('dashboard mirror (/dashboard/v1/webhook-endpoints)', () => {
     const other = await createMerchant(ctx, { label: 'hooks-dash-other' });
     const mine = (await register()).json().data;
     expect(
-      (await other.owner.client.get(`/dashboard/v1/webhook-endpoints/${mine.id}?environment=test`))
+      (await other.owner.client.get(`/merchant/v1/webhook-endpoints/${mine.id}?environment=test`))
         .statusCode
     ).toBe(404);
     const anon = await ctx.app.inject({
       method: 'GET',
-      url: '/dashboard/v1/webhook-endpoints',
+      url: '/merchant/v1/webhook-endpoints',
       remoteAddress: '10.8.8.10',
     });
     expect(anon.statusCode).toBe(401);

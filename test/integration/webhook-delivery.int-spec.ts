@@ -373,13 +373,13 @@ describe('endpoints that are not active', () => {
     });
     // Not replayable while disabled.
     const refused = await dev.client.post(
-      `/dashboard/v1/webhook-deliveries/${row?.ref}/retry?environment=test`
+      `/merchant/v1/webhook-deliveries/${row?.ref}/retry?environment=test`
     );
     expect(refused.statusCode).toBe(409);
     expect(refused.json().error.code).toBe('WEBHOOK_ENDPOINT_NOT_ACTIVE');
     await key.client.patch(`/v1/webhook-endpoints/${h.ref}`, { status: 'active' });
     const replayed = await dev.client.post(
-      `/dashboard/v1/webhook-deliveries/${row?.ref}/retry?environment=test`
+      `/merchant/v1/webhook-deliveries/${row?.ref}/retry?environment=test`
     );
     expect(replayed.statusCode).toBe(200);
   });
@@ -479,7 +479,7 @@ describe('replay', () => {
     const { event, delivery } = await publish(h);
     await ctx.deliveryService.attempt(delivery?.ref as string);
     const res = await dev.client.post(
-      `/dashboard/v1/webhook-deliveries/${delivery?.ref}/retry?environment=test`
+      `/merchant/v1/webhook-deliveries/${delivery?.ref}/retry?environment=test`
     );
     expect(res.statusCode).toBe(200);
     const replay = res.json().data;
@@ -508,19 +508,19 @@ describe('replay', () => {
     const h = await track(await hook(['*'], 500));
     const { delivery } = await publish(h);
     const pending = await dev.client.post(
-      `/dashboard/v1/webhook-deliveries/${delivery?.ref}/retry?environment=test`
+      `/merchant/v1/webhook-deliveries/${delivery?.ref}/retry?environment=test`
     );
     expect(pending.statusCode).toBe(409);
     expect(pending.json().error.code).toBe('WEBHOOK_DELIVERY_NOT_REPLAYABLE');
     expect(
       (
         await dev.client.post(
-          '/dashboard/v1/webhook-deliveries/whd_01JBX7Q2M4N8R5T6V9W0XYZABC/retry?environment=test'
+          '/merchant/v1/webhook-deliveries/whd_01JBX7Q2M4N8R5T6V9W0XYZABC/retry?environment=test'
         )
       ).statusCode
     ).toBe(404);
     expect(
-      (await dev.client.post('/dashboard/v1/webhook-deliveries/not-an-id/retry?environment=test'))
+      (await dev.client.post('/merchant/v1/webhook-deliveries/not-an-id/retry?environment=test'))
         .statusCode
     ).toBe(404);
     const other = await createMerchant(ctx, { label: 'delivery-replay-other' });
@@ -531,7 +531,7 @@ describe('replay', () => {
     expect(
       (
         await other.owner.client.post(
-          `/dashboard/v1/webhook-deliveries/${delivery?.ref}/retry?environment=test`
+          `/merchant/v1/webhook-deliveries/${delivery?.ref}/retry?environment=test`
         )
       ).statusCode
     ).toBe(404);
@@ -558,18 +558,18 @@ describe('replay', () => {
     };
     expect(
       (
-        await dev.client.post('/dashboard/v1/webhook-deliveries/replay?environment=test', {
+        await dev.client.post('/merchant/v1/webhook-deliveries/replay?environment=test', {
           ...window,
         })
       ).statusCode
     ).toBe(400);
     const byType = await dev.client.post(
-      '/dashboard/v1/webhook-deliveries/replay?environment=test',
+      '/merchant/v1/webhook-deliveries/replay?environment=test',
       { ...recent, eventType: 'payment.failed', endpoint: h.ref }
     );
     expect(byType.statusCode).toBe(200);
     expect(byType.json().data).toEqual({ replayed: 1, truncated: false });
-    const rest = await dev.client.post('/dashboard/v1/webhook-deliveries/replay?environment=test', {
+    const rest = await dev.client.post('/merchant/v1/webhook-deliveries/replay?environment=test', {
       ...recent,
       endpoint: h.ref,
     });
@@ -577,17 +577,17 @@ describe('replay', () => {
     // (replays are not deduplicated), as is the exhausted payment.created. The succeeded one is not.
     expect(rest.json().data.replayed).toBe(2);
     const succeeded = await dev.client.post(
-      '/dashboard/v1/webhook-deliveries/replay?environment=test',
+      '/merchant/v1/webhook-deliveries/replay?environment=test',
       { ...recent, endpoint: h.ref, statuses: ['succeeded'] }
     );
     expect(succeeded.json().data.replayed).toBe(1);
     const foreign = await dev.client.post(
-      '/dashboard/v1/webhook-deliveries/replay?environment=test',
+      '/merchant/v1/webhook-deliveries/replay?environment=test',
       { ...recent, endpoint: 'wh_01JBX7Q2M4N8R5T6V9W0XYZABC' }
     );
     expect(foreign.json().data).toEqual({ replayed: 0, truncated: false });
     const wrongType = await dev.client.post(
-      '/dashboard/v1/webhook-deliveries/replay?environment=test',
+      '/merchant/v1/webhook-deliveries/replay?environment=test',
       { ...recent, eventType: 'refund.failed', endpoint: h.ref }
     );
     expect(wrongType.json().data.replayed).toBe(0);
@@ -606,14 +606,14 @@ describe('replay', () => {
       to: new Date(Date.now() + 86_400_000).toISOString(),
     };
     const skipped = await dev.client.post(
-      '/dashboard/v1/webhook-deliveries/replay?environment=test',
+      '/merchant/v1/webhook-deliveries/replay?environment=test',
       { ...recent, endpoint: h.ref }
     );
     expect(skipped.json().data.replayed).toBe(0);
     const viewer = await addTeamMember(ctx, merchant.owner, 'viewer');
     expect(
       (
-        await viewer.client.post('/dashboard/v1/webhook-deliveries/replay?environment=test', {
+        await viewer.client.post('/merchant/v1/webhook-deliveries/replay?environment=test', {
           ...recent,
         })
       ).statusCode
@@ -621,7 +621,7 @@ describe('replay', () => {
     expect(
       (
         await viewer.client.post(
-          `/dashboard/v1/webhook-deliveries/${delivery?.ref}/retry?environment=test`
+          `/merchant/v1/webhook-deliveries/${delivery?.ref}/retry?environment=test`
         )
       ).statusCode
     ).toBe(403);
@@ -649,7 +649,7 @@ describe('replay', () => {
   });
 });
 
-describe('the delivery log (/dashboard/v1/webhook-deliveries)', () => {
+describe('the delivery log (/merchant/v1/webhook-deliveries)', () => {
   it('lists newest first with a cursor, filters, and shows one delivery', async () => {
     const h = await track(await hook(['*'], 500));
     const refs: string[] = [];
@@ -660,16 +660,16 @@ describe('the delivery log (/dashboard/v1/webhook-deliveries)', () => {
       );
     await ctx.deliveryService.attempt(refs[0] as string);
     const page1 = await dev.client.get(
-      `/dashboard/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&limit=2`
+      `/merchant/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&limit=2`
     );
     expect(page1.statusCode).toBe(200);
     expect(page1.json().data.items).toHaveLength(2);
     expect(page1.json().data.nextCursor).toEqual(expect.any(String));
     const page2 = await dev.client.get(
-      `/dashboard/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&limit=2&cursor=${page1.json().data.nextCursor}`
+      `/merchant/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&limit=2&cursor=${page1.json().data.nextCursor}`
     );
     const page3 = await dev.client.get(
-      `/dashboard/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&limit=2&cursor=${page2.json().data.nextCursor}`
+      `/merchant/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&limit=2&cursor=${page2.json().data.nextCursor}`
     );
     const seen = [
       ...page1.json().data.items,
@@ -680,20 +680,20 @@ describe('the delivery log (/dashboard/v1/webhook-deliveries)', () => {
     expect(page3.json().data.nextCursor).toBeNull();
     // Changing a filter invalidates the cursor.
     const changed = await dev.client.get(
-      `/dashboard/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&limit=2&eventType=payment.failed&cursor=${page1.json().data.nextCursor}`
+      `/merchant/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&limit=2&eventType=payment.failed&cursor=${page1.json().data.nextCursor}`
     );
     expect(changed.statusCode).toBe(400);
     expect(changed.json().error.code).toBe('INVALID_CURSOR');
     const failedOnly = await dev.client.get(
-      `/dashboard/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&eventType=payment.failed`
+      `/merchant/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&eventType=payment.failed`
     );
     expect(failedOnly.json().data.items).toHaveLength(2);
     const pending = await dev.client.get(
-      `/dashboard/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&status=pending`
+      `/merchant/v1/webhook-deliveries?environment=test&endpoint=${h.ref}&status=pending`
     );
     expect(pending.json().data.items).toHaveLength(5);
     const one = await dev.client.get(
-      `/dashboard/v1/webhook-deliveries/${refs[0]}?environment=test`
+      `/merchant/v1/webhook-deliveries/${refs[0]}?environment=test`
     );
     expect(one.json().data).toMatchObject({
       id: refs[0],
@@ -707,18 +707,18 @@ describe('the delivery log (/dashboard/v1/webhook-deliveries)', () => {
     // Another merchant sees nothing of it.
     const other = await createMerchant(ctx, { label: 'delivery-log-other' });
     expect(
-      (await other.owner.client.get(`/dashboard/v1/webhook-deliveries/${refs[0]}?environment=test`))
+      (await other.owner.client.get(`/merchant/v1/webhook-deliveries/${refs[0]}?environment=test`))
         .statusCode
     ).toBe(404);
     expect(
       (
         await other.owner.client.get(
-          `/dashboard/v1/webhook-deliveries?environment=test&endpoint=${h.ref}`
+          `/merchant/v1/webhook-deliveries?environment=test&endpoint=${h.ref}`
         )
       ).json().data.items
     ).toEqual([]);
     expect(
-      (await dev.client.get(`/dashboard/v1/webhook-deliveries/${refs[0]}?environment=live`))
+      (await dev.client.get(`/merchant/v1/webhook-deliveries/${refs[0]}?environment=live`))
         .statusCode
     ).toBe(404);
   });

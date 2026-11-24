@@ -50,7 +50,7 @@ const one = async <T>(text: string, values: unknown[] = []) =>
 
 describe('complaints', () => {
   it('keeps what a complaint is about and its deadline fixed, and closes for good', async () => {
-    const filed = await merchant.owner.client.post('/dashboard/v1/complaints', {
+    const filed = await merchant.owner.client.post('/merchant/v1/complaints', {
       category: 'other',
       subject: 'Schema complaint',
       description: 'd',
@@ -78,13 +78,13 @@ describe('complaints', () => {
   });
 
   it('never changes a message once written', async () => {
-    const filed = await merchant.owner.client.post('/dashboard/v1/complaints', {
+    const filed = await merchant.owner.client.post('/merchant/v1/complaints', {
       category: 'other',
       subject: 'Thread',
       description: 'first message',
     });
     const ref = filed.json().data.id as string;
-    const reply = await merchant.owner.client.post(`/dashboard/v1/complaints/${ref}/messages`, {
+    const reply = await merchant.owner.client.post(`/merchant/v1/complaints/${ref}/messages`, {
       body: 'a reply',
     });
     expect(reply.statusCode, reply.body).toBeLessThan(300);
@@ -105,7 +105,7 @@ describe('complaints', () => {
 describe('reports', () => {
   it('keeps a report what it was asked to be, and moves it along its states only', async () => {
     const now = Date.now();
-    const res = await merchant.owner.client.post('/dashboard/v1/reports', {
+    const res = await merchant.owner.client.post('/merchant/v1/reports', {
       type: 'payments',
       environment: 'test',
       params: {

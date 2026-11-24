@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/events` (spec 7.2): the merchant's own event feed — list and detail.
+ * `/merchant/v1/events` (spec 7.2): the merchant's own event feed — list and detail.
  * Read-only views of the events the merchant subscribed to (for webhook catch-up and
  * audit). The session is bound to one merchant; the environment is chosen per request.
  */

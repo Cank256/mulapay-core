@@ -168,7 +168,7 @@ export async function uploadDocument(
   contentType = 'application/pdf'
 ): Promise<UploadedDocument> {
   const declared = declare(type, bytes, contentType);
-  const presign = await owner.client.post('/dashboard/v1/kyc/documents/presign', declared);
+  const presign = await owner.client.post('/merchant/v1/kyc/documents/presign', declared);
   if (presign.statusCode !== 200) throw new Error(`presign failed: ${presign.body}`);
   const { documentId, upload } = presign.json().data as {
     documentId: string;
@@ -176,7 +176,7 @@ export async function uploadDocument(
   };
   const status = await putToStore(upload, bytes);
   if (status !== 200) throw new Error(`upload failed with ${status}`);
-  const confirm = await owner.client.post('/dashboard/v1/kyc/documents', {
+  const confirm = await owner.client.post('/merchant/v1/kyc/documents', {
     ...declared,
     documentId,
   });
@@ -185,13 +185,13 @@ export async function uploadDocument(
 }
 
 export async function putProfile(owner: MerchantUser, body: Record<string, unknown>) {
-  const res = await owner.client.put('/dashboard/v1/kyc/profile', body);
+  const res = await owner.client.put('/merchant/v1/kyc/profile', body);
   if (res.statusCode !== 200) throw new Error(`profile failed: ${res.body}`);
   return res.json().data;
 }
 
 export async function submitKyc(owner: MerchantUser, level?: number) {
-  return owner.client.post('/dashboard/v1/kyc/submit', level === undefined ? {} : { level });
+  return owner.client.post('/merchant/v1/kyc/submit', level === undefined ? {} : { level });
 }
 
 /** A fresh merchant (draft, country UG) that has done everything level 1 asks of the merchant. */

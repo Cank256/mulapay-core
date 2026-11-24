@@ -51,11 +51,11 @@ describe('API docs', () => {
       ]);
       const dashboardPaths = Object.keys(docs.dashboard.paths);
       const adminPaths = Object.keys(docs.admin.paths);
-      expect(dashboardPaths).toContain('/dashboard/v1/auth/login');
-      expect(dashboardPaths).toContain('/dashboard/v1/api-keys');
+      expect(dashboardPaths).toContain('/merchant/v1/auth/login');
+      expect(dashboardPaths).toContain('/merchant/v1/api-keys');
       expect(adminPaths).toContain('/admin/v1/merchants');
       expect(adminPaths).toContain('/admin/v1/audit-logs/verify');
-      expect(dashboardPaths.every((p) => p.startsWith('/dashboard/v1/'))).toBe(true);
+      expect(dashboardPaths.every((p) => p.startsWith('/merchant/v1/'))).toBe(true);
       expect(adminPaths.every((p) => p.startsWith('/admin/v1/'))).toBe(true);
       expect(JSON.stringify(docs.public)).not.toContain('/metrics');
     } finally {

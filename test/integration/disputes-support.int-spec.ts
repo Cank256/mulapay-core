@@ -106,7 +106,7 @@ describe('investigators and notes', () => {
       'Called the scheme, ref 7781.',
       'Scheme wants the receipt.',
     ]);
-    const asMerchant = await merchant.owner.client.get(`/dashboard/v1/disputes/${dispute.id}`);
+    const asMerchant = await merchant.owner.client.get(`/merchant/v1/disputes/${dispute.id}`);
     expect(asMerchant.statusCode).toBe(200);
     expect(asMerchant.body).not.toContain('scheme');
     await expect(ctx.query(`update core.dispute_notes set body = 'edited'`)).rejects.toThrow();

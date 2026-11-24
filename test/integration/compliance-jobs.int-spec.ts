@@ -49,11 +49,11 @@ const job = (name: string, data: unknown = {}) => ({ name, data }) as unknown as
 describe('screening is queued by the outbox when KYC is submitted', () => {
   it('writes one outbox row per submission, and turns it into one job per person', async () => {
     const { owner } = await merchantReadyForLevel1(ctx, 'queued-screening');
-    await owner.client.post('/dashboard/v1/kyc/parties', {
+    await owner.client.post('/merchant/v1/kyc/parties', {
       kind: 'director',
       fullName: 'Dina Director',
     });
-    await owner.client.post('/dashboard/v1/kyc/parties', {
+    await owner.client.post('/merchant/v1/kyc/parties', {
       kind: 'ubo',
       fullName: 'Uma Owner',
       ownershipBps: 5000,

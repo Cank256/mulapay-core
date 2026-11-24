@@ -37,7 +37,7 @@ afterAll(async () => {
 });
 
 const file = (user: MerchantUser, body: Record<string, unknown> = {}) =>
-  user.client.post('/dashboard/v1/complaints', {
+  user.client.post('/merchant/v1/complaints', {
     category: 'payment_issue',
     subject: 'Payment stuck',
     description: 'A customer paid and nothing happened.',
@@ -75,7 +75,7 @@ describe('filing a complaint', () => {
     expect(await staffNotifications(agent.admin.userId, 'complaint.created', c.id)).toHaveLength(1);
     expect((await audit(c.id)).map((a) => a.action)).toEqual(['complaint.created']);
     // The merchant's own listing and detail show it.
-    const list = await merchant.owner.client.get('/dashboard/v1/complaints');
+    const list = await merchant.owner.client.get('/merchant/v1/complaints');
     expect(list.json().data.items.map((i: { id: string }) => i.id)).toContain(c.id);
   });
 
@@ -95,14 +95,14 @@ describe('filing a complaint', () => {
 
   it('needs the permission to file, though not to read', async () => {
     expect((await file(viewer)).statusCode).toBe(403);
-    expect((await viewer.client.get('/dashboard/v1/complaints')).statusCode).toBe(200);
-    const categories = await viewer.client.get('/dashboard/v1/complaints/categories');
+    expect((await viewer.client.get('/merchant/v1/complaints')).statusCode).toBe(200);
+    const categories = await viewer.client.get('/merchant/v1/complaints/categories');
     expect(categories.json().data.items.map((c: { code: string }) => c.code)).toContain(
       'unauthorized_transaction'
     );
     const anonymous = await ctx.app.inject({
       method: 'POST',
-      url: '/dashboard/v1/complaints',
+      url: '/merchant/v1/complaints',
       payload: {},
     });
     expect(anonymous.statusCode).toBe(401);
@@ -137,7 +137,7 @@ describe('the thread and the work', () => {
     expect(reply.json().data.status).toBe('awaiting_customer');
 
     // The merchant sees the reply and never the internal note.
-    const asMerchant = await merchant.owner.client.get(`/dashboard/v1/complaints/${c.id}`);
+    const asMerchant = await merchant.owner.client.get(`/merchant/v1/complaints/${c.id}`);
     expect(asMerchant.json().data.messages.map((m: { body: string }) => m.body)).toEqual([
       'We are looking into it. Can you share the customer’s phone number?',
     ]);
@@ -157,12 +157,12 @@ describe('the thread and the work', () => {
       [owner, c.id]
     );
     expect(told.length).toBeGreaterThanOrEqual(1);
-    const answer = await merchant.owner.client.post(`/dashboard/v1/complaints/${c.id}/messages`, {
+    const answer = await merchant.owner.client.post(`/merchant/v1/complaints/${c.id}/messages`, {
       body: '+256700000009',
     });
     expect(answer.json().data.status).toBe('in_progress');
     const staffOnly = await merchant.owner.client.post(
-      `/dashboard/v1/complaints/${c.id}/messages`,
+      `/merchant/v1/complaints/${c.id}/messages`,
       {
         body: 'x',
         internal: true,
@@ -195,7 +195,7 @@ describe('the thread and the work', () => {
       resolution: 'Refunded by hand.',
       breached: false,
     });
-    const scored = await merchant.owner.client.post(`/dashboard/v1/complaints/${c.id}/close`, {
+    const scored = await merchant.owner.client.post(`/merchant/v1/complaints/${c.id}/close`, {
       satisfactionScore: 5,
     });
     expect(scored.json().data).toMatchObject({ status: 'closed', satisfactionScore: 5 });
@@ -271,13 +271,13 @@ describe('customer complaints and other merchants', () => {
     expect(stored[0]?.customer_contact_enc).not.toContain('555123');
 
     // Not in the merchant's list, and "not found" if asked for.
-    expect((await merchant.owner.client.get(`/dashboard/v1/complaints/${c.id}`)).statusCode).toBe(
+    expect((await merchant.owner.client.get(`/merchant/v1/complaints/${c.id}`)).statusCode).toBe(
       404
     );
-    const merchantList = await merchant.owner.client.get('/dashboard/v1/complaints?limit=100');
+    const merchantList = await merchant.owner.client.get('/merchant/v1/complaints?limit=100');
     expect(merchantList.json().data.items.map((i: { id: string }) => i.id)).not.toContain(c.id);
     expect(
-      (await merchant.owner.client.post(`/dashboard/v1/complaints/${c.id}/messages`, { body: 'x' }))
+      (await merchant.owner.client.post(`/merchant/v1/complaints/${c.id}/messages`, { body: 'x' }))
         .statusCode
     ).toBe(404);
 
@@ -294,14 +294,14 @@ describe('customer complaints and other merchants', () => {
   it('never lets one merchant read, answer or close another’s complaint', async () => {
     const c = (await file(merchant.owner)).json().data;
     for (const [method, path, body] of [
-      ['get', `/dashboard/v1/complaints/${c.id}`, undefined],
-      ['post', `/dashboard/v1/complaints/${c.id}/messages`, { body: 'hello' }],
-      ['post', `/dashboard/v1/complaints/${c.id}/close`, {}],
+      ['get', `/merchant/v1/complaints/${c.id}`, undefined],
+      ['post', `/merchant/v1/complaints/${c.id}/messages`, { body: 'hello' }],
+      ['post', `/merchant/v1/complaints/${c.id}/close`, {}],
     ] as const) {
       const res = await other.owner.client[method](path, body);
       expect(res.statusCode).toBe(404);
     }
-    const theirs = await other.owner.client.get('/dashboard/v1/complaints?limit=100');
+    const theirs = await other.owner.client.get('/merchant/v1/complaints?limit=100');
     expect(theirs.json().data.items.map((i: { id: string }) => i.id)).not.toContain(c.id);
   });
 

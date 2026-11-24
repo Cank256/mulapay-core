@@ -58,11 +58,11 @@ async function tryUpload(
   declared: ReturnType<typeof declare>,
   bytes: Buffer
 ) {
-  const presign = await owner.client.post('/dashboard/v1/kyc/documents/presign', declared);
+  const presign = await owner.client.post('/merchant/v1/kyc/documents/presign', declared);
   expect(presign.statusCode).toBe(200);
   const { documentId, upload } = presign.json().data;
   const stored = await putToStore(upload, bytes);
-  const confirm = await owner.client.post('/dashboard/v1/kyc/documents', {
+  const confirm = await owner.client.post('/merchant/v1/kyc/documents', {
     ...declared,
     documentId,
   });
@@ -108,7 +108,7 @@ describe('document upload', () => {
     expect(ctx.s3.requests.slice(before).some((r) => r.presigned && r.method === 'PUT')).toBe(true);
 
     // The merchant sees the document without its key or hash.
-    const status = (await owner.client.get('/dashboard/v1/kyc')).json().data;
+    const status = (await owner.client.get('/merchant/v1/kyc')).json().data;
     const shown = status.documents.find((d: { id: string }) => d.id === doc.id);
     expect(shown).toMatchObject({
       type: 'proof_of_address',
@@ -122,41 +122,41 @@ describe('document upload', () => {
   it('accepts exactly PDF, JPEG and PNG up to 10 MB, at presign time', async () => {
     const { owner } = await merchantReadyForLevel1(ctx, 'presign');
     const ok = declare('other', FILES.pdf(), 'application/pdf');
-    expect((await owner.client.post('/dashboard/v1/kyc/documents/presign', ok)).statusCode).toBe(
+    expect((await owner.client.post('/merchant/v1/kyc/documents/presign', ok)).statusCode).toBe(
       200
     );
     const exactly = { ...ok, sizeBytes: 10 * 1024 * 1024 };
     expect(
-      (await owner.client.post('/dashboard/v1/kyc/documents/presign', exactly)).statusCode
+      (await owner.client.post('/merchant/v1/kyc/documents/presign', exactly)).statusCode
     ).toBe(200);
 
-    const gif = await owner.client.post('/dashboard/v1/kyc/documents/presign', {
+    const gif = await owner.client.post('/merchant/v1/kyc/documents/presign', {
       ...ok,
       contentType: 'image/gif',
     });
     expect(gif.statusCode).toBe(422);
     expect(gif.json().error.details.reason).toBe('unsupported_file_type');
-    const zip = await owner.client.post('/dashboard/v1/kyc/documents/presign', {
+    const zip = await owner.client.post('/merchant/v1/kyc/documents/presign', {
       ...ok,
       contentType: 'application/zip',
     });
     expect(zip.json().error.details.reason).toBe('unsupported_file_type');
-    const big = await owner.client.post('/dashboard/v1/kyc/documents/presign', {
+    const big = await owner.client.post('/merchant/v1/kyc/documents/presign', {
       ...ok,
       sizeBytes: 10 * 1024 * 1024 + 1,
     });
     expect(big.statusCode).toBe(400);
-    const empty = await owner.client.post('/dashboard/v1/kyc/documents/presign', {
+    const empty = await owner.client.post('/merchant/v1/kyc/documents/presign', {
       ...ok,
       sizeBytes: 0,
     });
     expect(empty.statusCode).toBe(400);
-    const badHash = await owner.client.post('/dashboard/v1/kyc/documents/presign', {
+    const badHash = await owner.client.post('/merchant/v1/kyc/documents/presign', {
       ...ok,
       sha256: 'abc',
     });
     expect(badHash.statusCode).toBe(400);
-    const unknownType = await owner.client.post('/dashboard/v1/kyc/documents/presign', {
+    const unknownType = await owner.client.post('/merchant/v1/kyc/documents/presign', {
       ...ok,
       type: 'selfie_with_cat',
     });
@@ -168,7 +168,7 @@ describe('document upload', () => {
     const { owner } = await merchantReadyForLevel1(ctx, 'signed');
     const bytes = FILES.png();
     const presign = await owner.client.post(
-      '/dashboard/v1/kyc/documents/presign',
+      '/merchant/v1/kyc/documents/presign',
       declare('other', bytes, 'image/png')
     );
     const { upload } = presign.json().data;
@@ -222,8 +222,8 @@ describe('document upload', () => {
     const declared = declare('other', bytes, 'application/pdf');
 
     // Never uploaded.
-    const presign = await owner.client.post('/dashboard/v1/kyc/documents/presign', declared);
-    const nothing = await owner.client.post('/dashboard/v1/kyc/documents', {
+    const presign = await owner.client.post('/merchant/v1/kyc/documents/presign', declared);
+    const nothing = await owner.client.post('/merchant/v1/kyc/documents', {
       ...declared,
       documentId: presign.json().data.documentId,
     });
@@ -231,10 +231,10 @@ describe('document upload', () => {
     expect(nothing.json().error.details.reason).toBe('upload_not_found');
 
     // The store holds something other than what was declared.
-    const other = await owner.client.post('/dashboard/v1/kyc/documents/presign', declared);
+    const other = await owner.client.post('/merchant/v1/kyc/documents/presign', declared);
     const id = other.json().data.documentId as string;
     ctx.s3.seed(FAKE_S3.documents, `kyc/${uuid}/${id}`, FILES.pdf(900), 'application/pdf');
-    const wrong = await owner.client.post('/dashboard/v1/kyc/documents', {
+    const wrong = await owner.client.post('/merchant/v1/kyc/documents', {
       ...declared,
       documentId: id,
     });
@@ -242,11 +242,11 @@ describe('document upload', () => {
     expect(ctx.s3.objects.has(keyOf(uuid, id))).toBe(false);
 
     // Same size, different content: the checksum the store holds does not match the declaration.
-    const third = await owner.client.post('/dashboard/v1/kyc/documents/presign', declared);
+    const third = await owner.client.post('/merchant/v1/kyc/documents/presign', declared);
     const thirdId = third.json().data.documentId as string;
     const swapped = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(bytes.length - 9, 1)]);
     ctx.s3.seed(FAKE_S3.documents, `kyc/${uuid}/${thirdId}`, swapped, 'application/pdf');
-    const mismatch = await owner.client.post('/dashboard/v1/kyc/documents', {
+    const mismatch = await owner.client.post('/merchant/v1/kyc/documents', {
       ...declared,
       documentId: thirdId,
     });
@@ -262,7 +262,7 @@ describe('document upload', () => {
     const declared = declare('other', bytes, 'image/jpeg');
     const { documentId, confirm } = await tryUpload(owner, declared, bytes);
     expect(confirm.statusCode).toBe(201);
-    const again = await owner.client.post('/dashboard/v1/kyc/documents', {
+    const again = await owner.client.post('/merchant/v1/kyc/documents', {
       ...declared,
       documentId,
     });
@@ -271,14 +271,14 @@ describe('document upload', () => {
     expect(await rowsFor(uuid)).toHaveLength(existing + 1);
 
     const second = await owner.client.post(
-      '/dashboard/v1/kyc/documents/presign',
+      '/merchant/v1/kyc/documents/presign',
       declare('other', bytes, 'image/jpeg')
     );
     const secondId = second.json().data.documentId;
     await putToStore(second.json().data.upload, bytes);
     ctx.s3.failWith = 503;
     try {
-      const down = await owner.client.post('/dashboard/v1/kyc/documents', {
+      const down = await owner.client.post('/merchant/v1/kyc/documents', {
         ...declare('other', bytes, 'image/jpeg'),
         documentId: secondId,
       });
@@ -288,7 +288,7 @@ describe('document upload', () => {
     }
     expect(await rowsFor(uuid)).toHaveLength(existing + 1);
     // Once the store is back the same confirmation succeeds.
-    const retried = await owner.client.post('/dashboard/v1/kyc/documents', {
+    const retried = await owner.client.post('/merchant/v1/kyc/documents', {
       ...declare('other', bytes, 'image/jpeg'),
       documentId: secondId,
     });
@@ -302,29 +302,29 @@ describe('document upload', () => {
     const bytes = doc.bytes;
 
     // Confirming another merchant's document id looks in the thief's own key space: nothing there.
-    const confirm = await thief.client.post('/dashboard/v1/kyc/documents', {
+    const confirm = await thief.client.post('/merchant/v1/kyc/documents', {
       ...declare('other', bytes, 'application/pdf'),
       documentId: doc.id,
     });
     expect(confirm.statusCode).toBe(422);
     expect(confirm.json().error.details.reason).toBe('upload_not_found');
-    expect((await thief.client.delete(`/dashboard/v1/kyc/documents/${doc.id}`)).statusCode).toBe(
+    expect((await thief.client.delete(`/merchant/v1/kyc/documents/${doc.id}`)).statusCode).toBe(
       404
     );
-    expect((await owner.client.delete(`/dashboard/v1/kyc/documents/${doc.id}`)).statusCode).toBe(
+    expect((await owner.client.delete(`/merchant/v1/kyc/documents/${doc.id}`)).statusCode).toBe(
       200
     );
-    expect((await owner.client.delete(`/dashboard/v1/kyc/documents/${doc.id}`)).statusCode).toBe(
+    expect((await owner.client.delete(`/merchant/v1/kyc/documents/${doc.id}`)).statusCode).toBe(
       404
     );
-    expect((await thief.client.get('/dashboard/v1/kyc')).json().data.documents).toEqual([]);
+    expect((await thief.client.get('/merchant/v1/kyc')).json().data.documents).toEqual([]);
   });
 
   it('does not let a verified document be removed, or documents change during review', async () => {
     const { owner, identity } = await merchantReadyForLevel1(ctx, 'frozen');
     await submitKyc(owner);
     const during = await owner.client.post(
-      '/dashboard/v1/kyc/documents/presign',
+      '/merchant/v1/kyc/documents/presign',
       declare('other', FILES.pdf(), 'application/pdf')
     );
     expect(during.statusCode).toBe(200); // presigning writes nothing
@@ -332,12 +332,12 @@ describe('document upload', () => {
     const upload = await tryUpload(owner, declare('other', bytes, 'application/pdf'), bytes);
     expect(upload.confirm.statusCode).toBe(409);
     expect(
-      (await owner.client.delete(`/dashboard/v1/kyc/documents/${identity.id}`)).statusCode
+      (await owner.client.delete(`/merchant/v1/kyc/documents/${identity.id}`)).statusCode
     ).toBe(409);
     const staff = await reviewers(ctx);
     await verifyEverything(staff.maker, owner.merchantId, [identity], []);
     expect(
-      (await owner.client.delete(`/dashboard/v1/kyc/documents/${identity.id}`)).statusCode
+      (await owner.client.delete(`/merchant/v1/kyc/documents/${identity.id}`)).statusCode
     ).toBe(409);
   });
 });
@@ -431,7 +431,7 @@ describe('requirements are data', () => {
   it('lets an administrator change what one country must provide, without a deploy', async () => {
     const staff = await staffSession(ctx, 'compliance');
     const ug = await registerMerchantUser(ctx, 'req-ug');
-    const ke = await new Client(ctx.app).post('/dashboard/v1/auth/register', {
+    const ke = await new Client(ctx.app).post('/merchant/v1/auth/register', {
       email: `ke.${Math.random().toString(16).slice(2)}@example.com`,
       password: 'correct-horse-battery-staple',
       name: 'Kenyan Owner',
@@ -439,7 +439,7 @@ describe('requirements are data', () => {
     });
     expect(ke.statusCode).toBe(201);
     const kenyan = new Client(ctx.app);
-    const login = await kenyan.post('/dashboard/v1/auth/login', {
+    const login = await kenyan.post('/merchant/v1/auth/login', {
       email: ke.json().data.user.email,
       password: 'correct-horse-battery-staple',
     });
@@ -447,7 +447,7 @@ describe('requirements are data', () => {
 
     const codesOf = async (client: Client, level: number) =>
       (
-        (await client.get(`/dashboard/v1/kyc/requirements?level=${level}`)).json().data
+        (await client.get(`/merchant/v1/kyc/requirements?level=${level}`)).json().data
           .requirements as Array<{
           code: string;
         }>
@@ -471,7 +471,7 @@ describe('requirements are data', () => {
     // The new document type is now accepted for upload.
     const bytes = FILES.pdf();
     const accepted = await kenyan.post(
-      '/dashboard/v1/kyc/documents/presign',
+      '/merchant/v1/kyc/documents/presign',
       declare('kra_pin_certificate', bytes, 'application/pdf')
     );
     expect(accepted.statusCode).toBe(200);
@@ -514,16 +514,16 @@ describe('requirements are data', () => {
 
   it('relaxes a requirement for one business type', async () => {
     const owner = await registerMerchantUser(ctx, 'sole');
-    await owner.client.put('/dashboard/v1/kyc/profile', { businessType: 'sole_proprietor' });
-    const level2 = (await owner.client.get('/dashboard/v1/kyc/requirements?level=2')).json().data
+    await owner.client.put('/merchant/v1/kyc/profile', { businessType: 'sole_proprietor' });
+    const level2 = (await owner.client.get('/merchant/v1/kyc/requirements?level=2')).json().data
       .requirements;
     const cert = level2.find(
       (r: { code: string }) => r.code === 'business_registration_certificate'
     );
     expect(cert.mandatory).toBe(false);
     const company = await registerMerchantUser(ctx, 'company');
-    await company.client.put('/dashboard/v1/kyc/profile', { businessType: 'limited_company' });
-    const asked = (await company.client.get('/dashboard/v1/kyc/requirements?level=2')).json().data
+    await company.client.put('/merchant/v1/kyc/profile', { businessType: 'limited_company' });
+    const asked = (await company.client.get('/merchant/v1/kyc/requirements?level=2')).json().data
       .requirements;
     expect(
       asked.find((r: { code: string }) => r.code === 'business_registration_certificate').mandatory

@@ -4,7 +4,7 @@
 **Last Updated**: 2024-11-18  
 **Base URLs**:
 - Public API: `/v1/*`
-- Dashboard API: `/dashboard/v1/*`
+- Dashboard API: `/merchant/v1/*`
 - Admin API: `/admin/v1/*`
 
 ---
@@ -166,7 +166,7 @@ Idempotency-Key: <uuid>
 
 ---
 
-## Dashboard API (`/dashboard/v1`)
+## Dashboard API (`/merchant/v1`)
 
 **Authentication**: JWT (cookie or `Authorization: Bearer`)  
 **Audience**: Merchant team members via web interface  
@@ -176,171 +176,171 @@ Idempotency-Key: <uuid>
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/dashboard/v1/auth/register` | Register new merchant |
-| `POST` | `/dashboard/v1/auth/login` | Login with email/password |
-| `POST` | `/dashboard/v1/auth/mfa/verify` | Verify MFA code |
-| `POST` | `/dashboard/v1/auth/mfa/enroll` | Enroll in MFA |
-| `POST` | `/dashboard/v1/auth/mfa/disable` | Disable MFA |
-| `POST` | `/dashboard/v1/auth/refresh` | Refresh access token |
-| `POST` | `/dashboard/v1/auth/logout` | Logout |
-| `POST` | `/dashboard/v1/auth/accept-invite` | Accept team invitation |
-| `GET` | `/dashboard/v1/auth/me` | Get current user |
-| `GET` | `/dashboard/v1/auth/sessions` | List active sessions |
-| `DELETE` | `/dashboard/v1/auth/sessions/:id` | Revoke a session |
+| `POST` | `/merchant/v1/auth/register` | Register new merchant |
+| `POST` | `/merchant/v1/auth/login` | Login with email/password |
+| `POST` | `/merchant/v1/auth/mfa/verify` | Verify MFA code |
+| `POST` | `/merchant/v1/auth/mfa/enroll` | Enroll in MFA |
+| `POST` | `/merchant/v1/auth/mfa/disable` | Disable MFA |
+| `POST` | `/merchant/v1/auth/refresh` | Refresh access token |
+| `POST` | `/merchant/v1/auth/logout` | Logout |
+| `POST` | `/merchant/v1/auth/accept-invite` | Accept team invitation |
+| `GET` | `/merchant/v1/auth/me` | Get current user |
+| `GET` | `/merchant/v1/auth/sessions` | List active sessions |
+| `DELETE` | `/merchant/v1/auth/sessions/:id` | Revoke a session |
 
 ### Merchant Settings
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/merchant` | Get merchant profile |
-| `PATCH` | `/dashboard/v1/merchant` | Update merchant profile |
+| `GET` | `/merchant/v1/merchant` | Get merchant profile |
+| `PATCH` | `/merchant/v1/merchant` | Update merchant profile |
 
 ### API Keys
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/api-keys` | List API keys |
-| `POST` | `/dashboard/v1/api-keys` | Create an API key |
-| `POST` | `/dashboard/v1/api-keys/:id/roll` | Roll an API key |
-| `DELETE` | `/dashboard/v1/api-keys/:id` | Revoke an API key |
+| `GET` | `/merchant/v1/api-keys` | List API keys |
+| `POST` | `/merchant/v1/api-keys` | Create an API key |
+| `POST` | `/merchant/v1/api-keys/:id/roll` | Roll an API key |
+| `DELETE` | `/merchant/v1/api-keys/:id` | Revoke an API key |
 
 ### Team Management
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/team` | List team members |
-| `POST` | `/dashboard/v1/team/invites` | Invite team member |
-| `GET` | `/dashboard/v1/team/invites` | List pending invites |
-| `DELETE` | `/dashboard/v1/team/invites/:id` | Cancel invitation |
-| `PATCH` | `/dashboard/v1/team/:userId` | Update team member role |
-| `DELETE` | `/dashboard/v1/team/:userId` | Remove team member |
+| `GET` | `/merchant/v1/team` | List team members |
+| `POST` | `/merchant/v1/team/invites` | Invite team member |
+| `GET` | `/merchant/v1/team/invites` | List pending invites |
+| `DELETE` | `/merchant/v1/team/invites/:id` | Cancel invitation |
+| `PATCH` | `/merchant/v1/team/:userId` | Update team member role |
+| `DELETE` | `/merchant/v1/team/:userId` | Remove team member |
 
 ### Payments & Transactions
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/payments` | List payments (read-only view) |
-| `GET` | `/dashboard/v1/transactions` | List transactions (read-only view) |
+| `GET` | `/merchant/v1/payments` | List payments (read-only view) |
+| `GET` | `/merchant/v1/transactions` | List transactions (read-only view) |
 
 ### KYC (Know Your Customer)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/kyc` | Get KYC status |
-| `GET` | `/dashboard/v1/kyc/requirements` | Get required documents |
-| `GET` | `/dashboard/v1/kyc/profile` | Get business profile |
-| `PUT` | `/dashboard/v1/kyc/profile` | Update business profile |
-| `GET` | `/dashboard/v1/kyc/parties` | List beneficial owners |
-| `POST` | `/dashboard/v1/kyc/parties` | Add beneficial owner |
-| `DELETE` | `/dashboard/v1/kyc/parties/:id` | Remove beneficial owner |
-| `POST` | `/dashboard/v1/kyc/submit` | Submit for KYC review |
-| `POST` | `/dashboard/v1/kyc/documents/presign` | Get S3 upload URL |
-| `POST` | `/dashboard/v1/kyc/documents` | Register uploaded document |
-| `DELETE` | `/dashboard/v1/kyc/documents/:id` | Delete document |
+| `GET` | `/merchant/v1/kyc` | Get KYC status |
+| `GET` | `/merchant/v1/kyc/requirements` | Get required documents |
+| `GET` | `/merchant/v1/kyc/profile` | Get business profile |
+| `PUT` | `/merchant/v1/kyc/profile` | Update business profile |
+| `GET` | `/merchant/v1/kyc/parties` | List beneficial owners |
+| `POST` | `/merchant/v1/kyc/parties` | Add beneficial owner |
+| `DELETE` | `/merchant/v1/kyc/parties/:id` | Remove beneficial owner |
+| `POST` | `/merchant/v1/kyc/submit` | Submit for KYC review |
+| `POST` | `/merchant/v1/kyc/documents/presign` | Get S3 upload URL |
+| `POST` | `/merchant/v1/kyc/documents` | Register uploaded document |
+| `DELETE` | `/merchant/v1/kyc/documents/:id` | Delete document |
 
 ### Analytics
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/analytics/overview` | Dashboard overview metrics |
-| `GET` | `/dashboard/v1/analytics/volume` | Transaction volume over time |
-| `GET` | `/dashboard/v1/analytics/success-rate` | Success rate by channel |
-| `GET` | `/dashboard/v1/analytics/channels` | Channel breakdown |
+| `GET` | `/merchant/v1/analytics/overview` | Dashboard overview metrics |
+| `GET` | `/merchant/v1/analytics/volume` | Transaction volume over time |
+| `GET` | `/merchant/v1/analytics/success-rate` | Success rate by channel |
+| `GET` | `/merchant/v1/analytics/channels` | Channel breakdown |
 
 ### Settlements
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/settlements` | List settlements |
-| `GET` | `/dashboard/v1/settlements/:ref` | Get settlement details |
-| `GET` | `/dashboard/v1/settlements/:ref/items` | List settlement items |
-| `GET` | `/dashboard/v1/settlements/:ref/statement` | Get settlement statement (PDF) |
-| `GET` | `/dashboard/v1/settlements/:ref/statement/csv` | Get settlement statement (CSV) |
+| `GET` | `/merchant/v1/settlements` | List settlements |
+| `GET` | `/merchant/v1/settlements/:ref` | Get settlement details |
+| `GET` | `/merchant/v1/settlements/:ref/items` | List settlement items |
+| `GET` | `/merchant/v1/settlements/:ref/statement` | Get settlement statement (PDF) |
+| `GET` | `/merchant/v1/settlements/:ref/statement/csv` | Get settlement statement (CSV) |
 
 ### Reports
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/dashboard/v1/reports` | Request a report |
-| `GET` | `/dashboard/v1/reports` | List reports |
-| `GET` | `/dashboard/v1/reports/:ref` | Get report status |
-| `GET` | `/dashboard/v1/reports/:ref/download` | Download completed report |
+| `POST` | `/merchant/v1/reports` | Request a report |
+| `GET` | `/merchant/v1/reports` | List reports |
+| `GET` | `/merchant/v1/reports/:ref` | Get report status |
+| `GET` | `/merchant/v1/reports/:ref/download` | Download completed report |
 
 **Report Schedules**:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/dashboard/v1/report-schedules` | Create scheduled report |
-| `GET` | `/dashboard/v1/report-schedules` | List schedules |
-| `GET` | `/dashboard/v1/report-schedules/:ref` | Get schedule |
-| `PATCH` | `/dashboard/v1/report-schedules/:ref` | Update schedule |
-| `DELETE` | `/dashboard/v1/report-schedules/:ref` | Delete schedule |
+| `POST` | `/merchant/v1/report-schedules` | Create scheduled report |
+| `GET` | `/merchant/v1/report-schedules` | List schedules |
+| `GET` | `/merchant/v1/report-schedules/:ref` | Get schedule |
+| `PATCH` | `/merchant/v1/report-schedules/:ref` | Update schedule |
+| `DELETE` | `/merchant/v1/report-schedules/:ref` | Delete schedule |
 
 ### Complaints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/complaints/categories` | List complaint categories |
-| `POST` | `/dashboard/v1/complaints` | File a complaint |
-| `GET` | `/dashboard/v1/complaints` | List your complaints |
-| `GET` | `/dashboard/v1/complaints/:ref` | Get complaint details |
-| `POST` | `/dashboard/v1/complaints/:ref/messages` | Add message to complaint |
-| `POST` | `/dashboard/v1/complaints/:ref/close` | Close complaint |
+| `GET` | `/merchant/v1/complaints/categories` | List complaint categories |
+| `POST` | `/merchant/v1/complaints` | File a complaint |
+| `GET` | `/merchant/v1/complaints` | List your complaints |
+| `GET` | `/merchant/v1/complaints/:ref` | Get complaint details |
+| `POST` | `/merchant/v1/complaints/:ref/messages` | Add message to complaint |
+| `POST` | `/merchant/v1/complaints/:ref/close` | Close complaint |
 
 ### Disputes
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/disputes` | List disputes |
-| `GET` | `/dashboard/v1/disputes/:ref` | Get dispute details |
-| `POST` | `/dashboard/v1/disputes/:ref/evidence` | Submit evidence |
+| `GET` | `/merchant/v1/disputes` | List disputes |
+| `GET` | `/merchant/v1/disputes/:ref` | Get dispute details |
+| `POST` | `/merchant/v1/disputes/:ref/evidence` | Submit evidence |
 
 ### Webhooks (Dashboard)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/webhook-endpoints` | List webhook endpoints |
-| `POST` | `/dashboard/v1/webhook-endpoints` | Create webhook endpoint |
-| `GET` | `/dashboard/v1/webhook-endpoints/:id` | Get endpoint |
-| `PATCH` | `/dashboard/v1/webhook-endpoints/:id` | Update endpoint |
-| `DELETE` | `/dashboard/v1/webhook-endpoints/:id` | Delete endpoint |
-| `POST` | `/dashboard/v1/webhook-endpoints/:id/rotate-secret` | Rotate secret |
+| `GET` | `/merchant/v1/webhook-endpoints` | List webhook endpoints |
+| `POST` | `/merchant/v1/webhook-endpoints` | Create webhook endpoint |
+| `GET` | `/merchant/v1/webhook-endpoints/:id` | Get endpoint |
+| `PATCH` | `/merchant/v1/webhook-endpoints/:id` | Update endpoint |
+| `DELETE` | `/merchant/v1/webhook-endpoints/:id` | Delete endpoint |
+| `POST` | `/merchant/v1/webhook-endpoints/:id/rotate-secret` | Rotate secret |
 
 **Webhook Deliveries**:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/webhook-deliveries` | List delivery attempts |
-| `POST` | `/dashboard/v1/webhook-deliveries/replay` | Replay events |
-| `GET` | `/dashboard/v1/webhook-deliveries/:id` | Get delivery details |
-| `POST` | `/dashboard/v1/webhook-deliveries/:id/retry` | Retry failed delivery |
+| `GET` | `/merchant/v1/webhook-deliveries` | List delivery attempts |
+| `POST` | `/merchant/v1/webhook-deliveries/replay` | Replay events |
+| `GET` | `/merchant/v1/webhook-deliveries/:id` | Get delivery details |
+| `POST` | `/merchant/v1/webhook-deliveries/:id/retry` | Retry failed delivery |
 
 ### Notifications
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/notifications` | List notifications |
-| `GET` | `/dashboard/v1/notifications/unread-count` | Count unread |
-| `POST` | `/dashboard/v1/notifications/read-all` | Mark all as read |
-| `POST` | `/dashboard/v1/notifications/:ref/read` | Mark as read |
-| `GET` | `/dashboard/v1/notification-preferences` | Get preferences |
-| `PATCH` | `/dashboard/v1/notification-preferences` | Update preferences |
-| `GET` | `/dashboard/v1/notification-destinations` | List destinations |
-| `PUT` | `/dashboard/v1/notification-destinations/:channel` | Set destination |
-| `DELETE` | `/dashboard/v1/notification-destinations/:channel` | Remove destination |
+| `GET` | `/merchant/v1/notifications` | List notifications |
+| `GET` | `/merchant/v1/notifications/unread-count` | Count unread |
+| `POST` | `/merchant/v1/notifications/read-all` | Mark all as read |
+| `POST` | `/merchant/v1/notifications/:ref/read` | Mark as read |
+| `GET` | `/merchant/v1/notification-preferences` | Get preferences |
+| `PATCH` | `/merchant/v1/notification-preferences` | Update preferences |
+| `GET` | `/merchant/v1/notification-destinations` | List destinations |
+| `PUT` | `/merchant/v1/notification-destinations/:channel` | Set destination |
+| `DELETE` | `/merchant/v1/notification-destinations/:channel` | Remove destination |
 
 ### Request Logs
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/request-logs` | List API requests |
-| `GET` | `/dashboard/v1/request-logs/:id` | Get request details |
+| `GET` | `/merchant/v1/request-logs` | List API requests |
+| `GET` | `/merchant/v1/request-logs/:id` | Get request details |
 
 ### System
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/dashboard/v1/status` | System status |
+| `GET` | `/merchant/v1/status` | System status |
 
 ---
 

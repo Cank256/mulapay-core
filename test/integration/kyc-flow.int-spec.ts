@@ -107,14 +107,14 @@ describe('KYC progression (exit criterion)', () => {
     expect(await limitsOf(before.id)).toEqual([]);
 
     // Level 0 is test mode only: a live key cannot be issued yet.
-    const early = await owner.client.post('/dashboard/v1/api-keys', {
+    const early = await owner.client.post('/merchant/v1/api-keys', {
       name: 'live',
       environment: 'live',
       scopes: ['payments:read'],
     });
     expect(early.statusCode).toBeGreaterThanOrEqual(400);
 
-    const status = (await owner.client.get('/dashboard/v1/kyc')).json().data;
+    const status = (await owner.client.get('/merchant/v1/kyc')).json().data;
     expect(status).toMatchObject({
       level: 0,
       status: 'not_started',
@@ -197,7 +197,7 @@ describe('KYC progression (exit criterion)', () => {
     );
 
     // The merchant can now take live keys.
-    const live = await owner.client.post('/dashboard/v1/api-keys', {
+    const live = await owner.client.post('/merchant/v1/api-keys', {
       name: 'live',
       environment: 'live',
       scopes: ['payments:read'],
@@ -211,7 +211,7 @@ describe('KYC progression (exit criterion)', () => {
     const level1 = (await limitsOf(merchant.id)).find((l) => l.currency === 'UGX');
 
     // Level 2 for a Ugandan limited company asks for a TIN certificate; nothing is hard-coded.
-    const need = (await owner.client.get('/dashboard/v1/kyc/requirements?level=2')).json().data;
+    const need = (await owner.client.get('/merchant/v1/kyc/requirements?level=2')).json().data;
     const codes = need.requirements.map((r: { code: string }) => r.code);
     expect(codes).toEqual(
       expect.arrayContaining([
@@ -261,14 +261,14 @@ describe('KYC progression (exit criterion)', () => {
     expect(level2?.kyc_level).toBe(2);
 
     // Level 3: directors, a beneficial owner and a source of funds statement.
-    await owner.client.post('/dashboard/v1/kyc/parties', {
+    await owner.client.post('/merchant/v1/kyc/parties', {
       kind: 'director',
       fullName: 'Amina Director',
       dateOfBirth: '1980-04-02',
       nationality: 'UG',
       idNumber: 'CM80012345678',
     });
-    await owner.client.post('/dashboard/v1/kyc/parties', {
+    await owner.client.post('/merchant/v1/kyc/parties', {
       kind: 'ubo',
       fullName: 'Okello Owner',
       nationality: 'UG',
@@ -310,7 +310,7 @@ describe('KYC progression (exit criterion)', () => {
 
   it('keeps personal data of directors out of the database, the API and the audit trail', async () => {
     const { owner, merchantRef } = await activateThroughKyc(ctx, 'pii');
-    await owner.client.post('/dashboard/v1/kyc/parties', {
+    await owner.client.post('/merchant/v1/kyc/parties', {
       kind: 'director',
       fullName: 'Zed Secretperson',
       dateOfBirth: '1971-01-01',
@@ -331,7 +331,7 @@ describe('KYC progression (exit criterion)', () => {
     expect(JSON.stringify(stored)).not.toContain('987654321');
     expect(stored[0]?.id_number_hmac).toMatch(/^[0-9a-f]{64}$/);
 
-    const listed = (await owner.client.get('/dashboard/v1/kyc/parties')).json().data.items[0];
+    const listed = (await owner.client.get('/merchant/v1/kyc/parties')).json().data.items[0];
     expect(listed).toMatchObject({ fullName: 'Zed Secretperson', idNumberLast4: '4321' });
     expect(JSON.stringify(listed)).not.toContain('ID-987654321');
 
@@ -371,7 +371,7 @@ describe('rejected KYC', () => {
     });
     expect(rejected.statusCode).toBe(200);
 
-    const status = (await owner.client.get('/dashboard/v1/kyc')).json().data;
+    const status = (await owner.client.get('/merchant/v1/kyc')).json().data;
     expect(status.status).toBe('rejected');
     expect(status.rejection.reasons).toEqual(['illegible', 'contact_not_verified']);
     expect(status.rejection.details[0]).toMatchObject({ code: 'illegible', target: identity.id });
@@ -438,7 +438,7 @@ describe('request for information', () => {
     });
     expect(asked.statusCode).toBe(200);
 
-    const status = (await owner.client.get('/dashboard/v1/kyc')).json().data;
+    const status = (await owner.client.get('/merchant/v1/kyc')).json().data;
     expect(status.status).toBe('in_review');
     expect(status.infoRequest.note).toBe('Please add a utility bill.');
     const merchant = await merchantOf(owner.merchantId);
@@ -449,16 +449,16 @@ describe('request for information', () => {
     expect(extra.id).toMatch(/^kdoc_/);
     const answer = await submitKyc(owner);
     expect(answer.json().data).toMatchObject({ kind: 'resubmission', submissionNo: 2 });
-    expect((await owner.client.get('/dashboard/v1/kyc')).json().data.status).toBe('pending');
+    expect((await owner.client.get('/merchant/v1/kyc')).json().data.status).toBe('pending');
   });
 
   it('does not let the merchant change a submission that is waiting for review', async () => {
     const { owner } = await merchantReadyForLevel1(ctx, 'locked');
     await submitKyc(owner);
-    const edit = await owner.client.put('/dashboard/v1/kyc/profile', { registrationNumber: 'X-1' });
+    const edit = await owner.client.put('/merchant/v1/kyc/profile', { registrationNumber: 'X-1' });
     expect(edit.statusCode).toBe(409);
     expect(edit.json().error.code).toBe('KYC_NOT_ALLOWED');
-    const party = await owner.client.post('/dashboard/v1/kyc/parties', {
+    const party = await owner.client.post('/merchant/v1/kyc/parties', {
       kind: 'director',
       fullName: 'Late Director',
     });
@@ -642,15 +642,15 @@ describe('authorization', () => {
     const { owner } = await merchantReadyForLevel1(ctx, 'authz');
     const other = await registerMerchantUser(ctx, 'bystander');
     const viewer = await addTeamMember(ctx, owner, 'viewer');
-    expect((await viewer.client.get('/dashboard/v1/kyc')).statusCode).toBe(200);
-    expect((await viewer.client.post('/dashboard/v1/kyc/submit', {})).statusCode).toBe(403);
+    expect((await viewer.client.get('/merchant/v1/kyc')).statusCode).toBe(200);
+    expect((await viewer.client.post('/merchant/v1/kyc/submit', {})).statusCode).toBe(403);
     expect(
-      (await viewer.client.put('/dashboard/v1/kyc/profile', { tin: '123456' })).statusCode
+      (await viewer.client.put('/merchant/v1/kyc/profile', { tin: '123456' })).statusCode
     ).toBe(403);
 
     // Another merchant sees none of this merchant's documents, and nothing of its own yet.
-    const mine = (await owner.client.get('/dashboard/v1/kyc')).json().data;
-    const theirs = (await other.client.get('/dashboard/v1/kyc')).json().data;
+    const mine = (await owner.client.get('/merchant/v1/kyc')).json().data;
+    const theirs = (await other.client.get('/merchant/v1/kyc')).json().data;
     expect(mine.documents).toHaveLength(1);
     expect(theirs.documents).toEqual([]);
 

@@ -131,7 +131,7 @@ const REQUIRED = [
 
 const OPENAPI: Record<string, { paths: Record<string, Record<string, unknown>> }> = {
   '/admin/v1': JSON.parse(readFileSync(join(ROOT, 'docs/openapi/admin.json'), 'utf8')),
-  '/dashboard/v1': JSON.parse(readFileSync(join(ROOT, 'docs/openapi/dashboard.json'), 'utf8')),
+  '/merchant/v1': JSON.parse(readFileSync(join(ROOT, 'docs/openapi/dashboard.json'), 'utf8')),
   '/v1': JSON.parse(readFileSync(join(ROOT, 'docs/openapi/public.json'), 'utf8')),
 };
 function documented(block: HttpBlock): boolean {
@@ -615,7 +615,7 @@ describe('notifications, reports and complaints', () => {
   it('finds a report that failed', async () => {
     const owner = await ownerClient();
     const now = ctx.clock.now().getTime();
-    const res = await owner.post('/dashboard/v1/reports', {
+    const res = await owner.post('/merchant/v1/reports', {
       type: 'payments',
       environment: 'test',
       params: {
@@ -641,7 +641,7 @@ describe('notifications, reports and complaints', () => {
 
   it('finds a complaint past its deadline, and the unassigned ones first', async () => {
     const owner = await ownerClient();
-    const filed = await owner.post('/dashboard/v1/complaints', {
+    const filed = await owner.post('/merchant/v1/complaints', {
       category: 'other',
       subject: 'Runbook complaint',
       description: 'A complaint that nobody answered',
@@ -673,7 +673,7 @@ describe('maintenance mode and providers', () => {
     const enabled = await call(a.client, on);
     expect(enabled.statusCode, enabled.body).toBe(200);
     const owner = await ownerClient();
-    const refused = await owner.post('/dashboard/v1/complaints', {
+    const refused = await owner.post('/merchant/v1/complaints', {
       category: 'other',
       subject: 'x',
       description: 'd',
@@ -686,10 +686,10 @@ describe('maintenance mode and providers', () => {
       http('maintenance-mode', 'GET', '/admin/v1/ops/maintenance-mode')
     );
     expect(state.json().data.enabled).toBe(true);
-    expect((await owner.get('/dashboard/v1/notifications/unread-count')).statusCode).toBe(200);
+    expect((await owner.get('/merchant/v1/notifications/unread-count')).statusCode).toBe(200);
     const off = await call(a.client, on, {}, { enabled: false });
     expect(off.statusCode, off.body).toBe(200);
-    const again = await owner.post('/dashboard/v1/complaints', {
+    const again = await owner.post('/merchant/v1/complaints', {
       category: 'other',
       subject: 'y',
       description: 'd',
@@ -770,7 +770,7 @@ describe('incidents and API keys', () => {
 
   it('revokes a key as the compromised key runbook says, and the key stops working', async () => {
     const owner = await ownerClient();
-    const key = await owner.post('/dashboard/v1/api-keys', {
+    const key = await owner.post('/merchant/v1/api-keys', {
       name: 'to revoke',
       environment: 'test',
       scopes: ['payments:read'],
@@ -780,7 +780,7 @@ describe('incidents and API keys', () => {
     expect((await client.get('/v1/ping')).statusCode).toBe(200);
     const revoked = await call(
       owner,
-      http('api-key-compromise', 'DELETE', '/dashboard/v1/api-keys/{id}'),
+      http('api-key-compromise', 'DELETE', '/merchant/v1/api-keys/{id}'),
       { id: key.json().data.id as string }
     );
     expect(revoked.statusCode, revoked.body).toBeLessThan(300);

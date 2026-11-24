@@ -1,4 +1,4 @@
-/** `/dashboard/v1/team` (spec 7.2): members and invitations of the caller's merchant. */
+/** `/merchant/v1/team` (spec 7.2): members and invitations of the caller's merchant. */
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';

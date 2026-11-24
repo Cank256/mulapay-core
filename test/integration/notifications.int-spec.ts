@@ -96,7 +96,7 @@ describe('who is notified, and on which channels', () => {
   });
 
   it('respects a switched-off channel, but never for a required notification', async () => {
-    const prefs = await viewer.client.patch('/dashboard/v1/notification-preferences', {
+    const prefs = await viewer.client.patch('/merchant/v1/notification-preferences', {
       preferences: [{ template: 'complaint.resolved', channel: 'email', enabled: false }],
     });
     expect(prefs.statusCode).toBe(200);
@@ -107,14 +107,14 @@ describe('who is notified, and on which channels', () => {
     );
     expect(rows.map((r) => r.channel)).toEqual(['in_app']);
 
-    const locked = await viewer.client.patch('/dashboard/v1/notification-preferences', {
+    const locked = await viewer.client.patch('/merchant/v1/notification-preferences', {
       preferences: [{ template: 'dispute.created', channel: 'email', enabled: false }],
     });
     expect(locked.statusCode).toBe(422);
     expect(locked.json().error.code).toBe('NOTIFICATION_PREFERENCE_LOCKED');
 
     // A channel-wide switch-off is ignored for a required template.
-    await viewer.client.patch('/dashboard/v1/notification-preferences', {
+    await viewer.client.patch('/merchant/v1/notification-preferences', {
       preferences: [{ template: '*', channel: 'email', enabled: false }],
     });
     const required = resource();
@@ -135,7 +135,7 @@ describe('who is notified, and on which channels', () => {
       (r) => r.resource_key === required
     );
     expect(got.map((r) => r.channel).sort()).toEqual(['email', 'in_app']);
-    const listed = await viewer.client.get('/dashboard/v1/notification-preferences');
+    const listed = await viewer.client.get('/merchant/v1/notification-preferences');
     expect(listed.json().data.items).toEqual(
       expect.arrayContaining([{ template: '*', channel: 'email', enabled: false }])
     );
@@ -206,7 +206,7 @@ describe('the in-app inbox', () => {
     await signIn(user);
     await signIn(merchant.owner);
     const supportId = await idOf(user.userId);
-    const baseline = (await user.client.get('/dashboard/v1/notifications/unread-count')).json().data
+    const baseline = (await user.client.get('/merchant/v1/notifications/unread-count')).json().data
       .unread as number;
     for (const k of [resource(), resource(), resource()]) {
       await ctx.unitOfWork.run((tx) =>
@@ -219,52 +219,52 @@ describe('the in-app inbox', () => {
       );
       ctx.clock.advanceBy(1000);
     }
-    const unread = await user.client.get('/dashboard/v1/notifications/unread-count');
+    const unread = await user.client.get('/merchant/v1/notifications/unread-count');
     expect(unread.json().data.unread).toBe(baseline + 3);
-    const list = await user.client.get('/dashboard/v1/notifications?limit=2');
+    const list = await user.client.get('/merchant/v1/notifications?limit=2');
     expect(list.json().data.items).toHaveLength(2);
     expect(list.json().data.nextCursor).toEqual(expect.any(String));
     const rest = await user.client.get(
-      `/dashboard/v1/notifications?limit=2&cursor=${list.json().data.nextCursor}`
+      `/merchant/v1/notifications?limit=2&cursor=${list.json().data.nextCursor}`
     );
     expect(rest.json().data.items.length).toBeGreaterThanOrEqual(1);
 
     const first = list.json().data.items[0];
     expect(first).toMatchObject({ read: false, template: 'complaint.resolved' });
     expect(
-      (await user.client.post(`/dashboard/v1/notifications/${first.id}/read`, {})).statusCode
+      (await user.client.post(`/merchant/v1/notifications/${first.id}/read`, {})).statusCode
     ).toBe(200);
     expect(
-      (await user.client.get('/dashboard/v1/notifications/unread-count')).json().data.unread
+      (await user.client.get('/merchant/v1/notifications/unread-count')).json().data.unread
     ).toBe(baseline + 2);
     // Marking it again is harmless.
     expect(
-      (await user.client.post(`/dashboard/v1/notifications/${first.id}/read`, {})).statusCode
+      (await user.client.post(`/merchant/v1/notifications/${first.id}/read`, {})).statusCode
     ).toBe(200);
 
     // Someone else's notification is "not found", the same as one that does not exist.
     const theirs = await merchant.owner.client.post(
-      `/dashboard/v1/notifications/${first.id}/read`,
+      `/merchant/v1/notifications/${first.id}/read`,
       {}
     );
     expect(theirs.statusCode).toBe(404);
 
-    const all = await user.client.post('/dashboard/v1/notifications/read-all', {});
+    const all = await user.client.post('/merchant/v1/notifications/read-all', {});
     expect(all.json().data).toEqual({ marked: baseline + 2 });
     expect(
-      (await user.client.get('/dashboard/v1/notifications/unread-count')).json().data.unread
+      (await user.client.get('/merchant/v1/notifications/unread-count')).json().data.unread
     ).toBe(0);
-    const unreadOnly = await user.client.get('/dashboard/v1/notifications?unread=true');
+    const unreadOnly = await user.client.get('/merchant/v1/notifications?unread=true');
     expect(unreadOnly.json().data.items).toEqual([]);
     expect(
-      (await user.client.get('/dashboard/v1/notifications?limit=100')).json().data.items.length
+      (await user.client.get('/merchant/v1/notifications?limit=100')).json().data.items.length
     ).toBeGreaterThanOrEqual(3);
   });
 
   it('refuses a request with no session', async () => {
     const anonymous = await ctx.app.inject({
       method: 'GET',
-      url: '/dashboard/v1/notifications/unread-count',
+      url: '/merchant/v1/notifications/unread-count',
     });
     expect(anonymous.statusCode).toBe(401);
   });
@@ -566,7 +566,7 @@ describe('templates and announcements', () => {
     await signIn(merchant.owner);
     await signIn(viewer);
     const inbox = await merchant.owner.client.get(
-      '/dashboard/v1/notifications?unread=true&limit=100'
+      '/merchant/v1/notifications?unread=true&limit=100'
     );
     expect(inbox.json().data.items).toEqual(
       expect.arrayContaining([
@@ -574,7 +574,7 @@ describe('templates and announcements', () => {
       ])
     );
     // The viewer is neither owner nor admin.
-    const viewerInbox = await viewer.client.get('/dashboard/v1/notifications?limit=100');
+    const viewerInbox = await viewer.client.get('/merchant/v1/notifications?limit=100');
     expect(JSON.stringify(viewerInbox.json())).not.toContain('Scheduled maintenance');
   });
 });

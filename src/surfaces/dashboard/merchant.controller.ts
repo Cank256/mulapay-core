@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/merchant` (spec 7.2). The merchant is always the caller's own, taken
+ * `/merchant/v1/merchant` (spec 7.2). The merchant is always the caller's own, taken
  * from the session; no route accepts a merchant id. Settings, limits and fee plan views
  * arrive with the modules that own them (Phases 4 and 6).
  */

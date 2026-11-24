@@ -138,7 +138,7 @@ describe('requesting and downloading a report', () => {
     await succeedTestPayment('12000', { description: '=HYPERLINK("http://evil","click")' });
     await succeedTestPayment('34000');
     await failTestPayment('5000');
-    const res = await merchant.owner.client.post('/dashboard/v1/reports', {
+    const res = await merchant.owner.client.post('/merchant/v1/reports', {
       type: 'transactions',
       environment: 'test',
       params: window(),
@@ -154,14 +154,14 @@ describe('requesting and downloading a report', () => {
     expect(report.id).toMatch(/^rpt_/);
     // Not ready: no file to download yet.
     const early = await merchant.owner.client.get(
-      `/dashboard/v1/reports/${report.id}/download?environment=test`
+      `/merchant/v1/reports/${report.id}/download?environment=test`
     );
     expect(early.statusCode).toBe(409);
     expect(early.json().error.code).toBe('REPORT_NOT_READY');
 
     await ctx.pump();
     const ready = (
-      await merchant.owner.client.get(`/dashboard/v1/reports/${report.id}?environment=test`)
+      await merchant.owner.client.get(`/merchant/v1/reports/${report.id}?environment=test`)
     ).json().data;
     expect(ready).toMatchObject({ status: 'ready', rowCount: 3, error: null });
     expect(ready.fileSize).toBeGreaterThan(100);
@@ -171,7 +171,7 @@ describe('requesting and downloading a report', () => {
     );
 
     const link = await merchant.owner.client.get(
-      `/dashboard/v1/reports/${report.id}/download?environment=test`
+      `/merchant/v1/reports/${report.id}/download?environment=test`
     );
     expect(link.statusCode).toBe(200);
     expect(new Date(link.json().data.expiresAt).getTime() - now().getTime()).toBe(
@@ -205,14 +205,14 @@ describe('requesting and downloading a report', () => {
 
   it('writes a spreadsheet-safe CSV and a JSON array on request', async () => {
     const csv = (
-      await merchant.owner.client.post('/dashboard/v1/reports', {
+      await merchant.owner.client.post('/merchant/v1/reports', {
         type: 'payments',
         environment: 'test',
         params: window(),
       })
     ).json().data;
     const json = (
-      await merchant.owner.client.post('/dashboard/v1/reports', {
+      await merchant.owner.client.post('/merchant/v1/reports', {
         type: 'payments',
         environment: 'test',
         format: 'json',
@@ -270,36 +270,36 @@ describe('requesting and downloading a report', () => {
     expect(
       (await admin.client.get('/admin/v1/reports?limit=100')).json().data.items.length
     ).toBeGreaterThanOrEqual(9);
-    const merchantsView = await merchant.owner.client.get(`/dashboard/v1/reports/${refs[0]}`);
+    const merchantsView = await merchant.owner.client.get(`/merchant/v1/reports/${refs[0]}`);
     expect(merchantsView.statusCode).toBe(404);
   });
 });
 
 describe('who may ask for what', () => {
   it('keeps platform types and other merchants’ reports out of a merchant’s reach', async () => {
-    const platform = await merchant.owner.client.post('/dashboard/v1/reports', {
+    const platform = await merchant.owner.client.post('/merchant/v1/reports', {
       type: 'audit_trail',
       params: window(),
     });
     expect(platform.statusCode).toBe(422);
     expect(platform.json().error.details.reason).toBe('type_not_available');
     const fresh = (
-      await merchant.owner.client.post('/dashboard/v1/reports', {
+      await merchant.owner.client.post('/merchant/v1/reports', {
         type: 'transactions',
         environment: 'test',
         params: window(),
       })
     ).json().data;
     for (const path of [
-      `/dashboard/v1/reports/${fresh.id}?environment=test`,
-      `/dashboard/v1/reports/${fresh.id}/download?environment=test`,
+      `/merchant/v1/reports/${fresh.id}?environment=test`,
+      `/merchant/v1/reports/${fresh.id}/download?environment=test`,
     ]) {
       expect((await other.owner.client.get(path)).statusCode).toBe(404);
     }
-    const theirs = await other.owner.client.get('/dashboard/v1/reports?environment=test&limit=100');
+    const theirs = await other.owner.client.get('/merchant/v1/reports?environment=test&limit=100');
     expect(theirs.json().data.items.map((r: { id: string }) => r.id)).not.toContain(fresh.id);
     // A `merchant` parameter cannot point a merchant's request at someone else's data.
-    const aimed = await other.owner.client.post('/dashboard/v1/reports', {
+    const aimed = await other.owner.client.post('/merchant/v1/reports', {
       type: 'transactions',
       environment: 'test',
       params: { merchant: merchant.ref, ...window() },
@@ -310,7 +310,7 @@ describe('who may ask for what', () => {
     expect(stored(mine.file_key!)!.body.toString('utf8').trimEnd().split('\r\n')).toHaveLength(1);
     // A test key's data never appears in a live report.
     const liveReport = (
-      await merchant.owner.client.post('/dashboard/v1/reports', {
+      await merchant.owner.client.post('/merchant/v1/reports', {
         type: 'transactions',
         params: window(),
       })
@@ -326,8 +326,8 @@ describe('who may ask for what', () => {
 
   it('refuses bad requests with a reason, and unauthorised ones', async () => {
     const owner = merchant.owner.client;
-    expect((await owner.post('/dashboard/v1/reports', { type: 'nonsense' })).statusCode).toBe(400);
-    const xlsx = await owner.post('/dashboard/v1/reports', {
+    expect((await owner.post('/merchant/v1/reports', { type: 'nonsense' })).statusCode).toBe(400);
+    const xlsx = await owner.post('/merchant/v1/reports', {
       type: 'transactions',
       format: 'xlsx',
       environment: 'test',
@@ -337,38 +337,38 @@ describe('who may ask for what', () => {
       code: 'REPORT_INVALID',
       details: { reason: 'format_not_supported' },
     });
-    const long = await owner.post('/dashboard/v1/reports', {
+    const long = await owner.post('/merchant/v1/reports', {
       type: 'transactions',
       environment: 'test',
       params: { from: '2020-01-01T00:00:00Z', to: '2023-01-01T00:00:00Z' },
     });
     expect(long.json().error.details).toMatchObject({ reason: 'window_too_long', maxDays: 366 });
-    const unknown = await owner.post('/dashboard/v1/reports', {
+    const unknown = await owner.post('/merchant/v1/reports', {
       type: 'transactions',
       environment: 'test',
       params: { sneaky: true },
     });
     expect(unknown.json().error.details.reason).toBe('bad_params');
-    const notMine = await owner.post('/dashboard/v1/reports', {
+    const notMine = await owner.post('/merchant/v1/reports', {
       type: 'settlement_statement',
       environment: 'test',
       params: { settlement: 'stl_nope' },
     });
     expect(notMine.json().error.details.reason).toBe('settlement_not_found');
 
-    expect((await supportUser.client.get('/dashboard/v1/reports')).statusCode).toBe(403);
+    expect((await supportUser.client.get('/merchant/v1/reports')).statusCode).toBe(403);
     await loginMerchantUser(developer.client, developer.email, developer.merchantId);
-    expect((await developer.client.get('/dashboard/v1/reports')).statusCode).toBe(200);
+    expect((await developer.client.get('/merchant/v1/reports')).statusCode).toBe(200);
     expect(
       (
-        await developer.client.post('/dashboard/v1/reports', {
+        await developer.client.post('/merchant/v1/reports', {
           type: 'transactions',
           environment: 'test',
         })
       ).statusCode
     ).toBe(403);
     expect(
-      (await ctx.app.inject({ method: 'POST', url: '/dashboard/v1/reports', payload: {} }))
+      (await ctx.app.inject({ method: 'POST', url: '/merchant/v1/reports', payload: {} }))
         .statusCode
     ).toBe(401);
 
@@ -412,14 +412,14 @@ describe('who may ask for what', () => {
     for (let i = 0; i < 3; i++) {
       expect(
         (
-          await busy.owner.client.post('/dashboard/v1/reports', {
+          await busy.owner.client.post('/merchant/v1/reports', {
             type: 'transactions',
             environment: 'test',
           })
         ).statusCode
       ).toBe(202);
     }
-    const fourth = await busy.owner.client.post('/dashboard/v1/reports', {
+    const fourth = await busy.owner.client.post('/merchant/v1/reports', {
       type: 'transactions',
       environment: 'test',
     });
@@ -428,7 +428,7 @@ describe('who may ask for what', () => {
     await ctx.pump();
     expect(
       (
-        await busy.owner.client.post('/dashboard/v1/reports', {
+        await busy.owner.client.post('/merchant/v1/reports', {
           type: 'transactions',
           environment: 'test',
         })
@@ -439,7 +439,7 @@ describe('who may ask for what', () => {
 
 describe('failure, retry and idempotence', () => {
   it('generates once however many workers run it, and leaves a finished report alone', async () => {
-    const res = await merchant.owner.client.post('/dashboard/v1/reports', {
+    const res = await merchant.owner.client.post('/merchant/v1/reports', {
       type: 'fees',
       environment: 'test',
       params: window(),
@@ -458,7 +458,7 @@ describe('failure, retry and idempotence', () => {
   });
 
   it('retries a storage outage, then fails the report, tells the requester, and leaves no file', async () => {
-    const res = await merchant.owner.client.post('/dashboard/v1/reports', {
+    const res = await merchant.owner.client.post('/merchant/v1/reports', {
       type: 'transactions',
       environment: 'test',
       params: window(),
@@ -489,7 +489,7 @@ describe('failure, retry and idempotence', () => {
     );
     expect(told.length).toBeGreaterThanOrEqual(1);
     expect(
-      (await merchant.owner.client.get(`/dashboard/v1/reports/${ref}/download?environment=test`))
+      (await merchant.owner.client.get(`/merchant/v1/reports/${ref}/download?environment=test`))
         .statusCode
     ).toBe(409);
     const reports = await ctx.query(
@@ -500,7 +500,7 @@ describe('failure, retry and idempotence', () => {
   });
 
   it('recovers a worker that died mid-report once its lease lapses', async () => {
-    const res = await merchant.owner.client.post('/dashboard/v1/reports', {
+    const res = await merchant.owner.client.post('/merchant/v1/reports', {
       type: 'transactions',
       environment: 'test',
       params: window(),
@@ -542,7 +542,7 @@ describe('streaming a large report', () => {
       await ctx.query('rollback');
       throw error;
     }
-    const res = await big.owner.client.post('/dashboard/v1/reports', {
+    const res = await big.owner.client.post('/merchant/v1/reports', {
       type: 'transactions',
       environment: 'test',
       params: {
@@ -568,7 +568,7 @@ describe('streaming a large report', () => {
 describe('expiry', () => {
   it('deletes the file after seven days and stops offering links', async () => {
     await loginMerchantUser(merchant.owner.client, merchant.owner.email, merchant.owner.merchantId);
-    const res = await merchant.owner.client.post('/dashboard/v1/reports', {
+    const res = await merchant.owner.client.post('/merchant/v1/reports', {
       type: 'fees',
       environment: 'test',
       params: window(),
@@ -585,7 +585,7 @@ describe('expiry', () => {
     expect((await rowOf(ref)).status).toBe('expired');
     await loginMerchantUser(merchant.owner.client, merchant.owner.email, merchant.owner.merchantId);
     const gone = await merchant.owner.client.get(
-      `/dashboard/v1/reports/${ref}/download?environment=test`
+      `/merchant/v1/reports/${ref}/download?environment=test`
     );
     expect(gone.statusCode).toBe(410);
     expect(gone.json().error.code).toBe('REPORT_EXPIRED');
@@ -604,28 +604,28 @@ describe('report schedules', () => {
       environment: 'test',
     };
     expect(
-      (await c.post('/dashboard/v1/report-schedules', { ...base, cron: 'every day' })).json().error
+      (await c.post('/merchant/v1/report-schedules', { ...base, cron: 'every day' })).json().error
         .details.reason
     ).toBe('invalid_cron');
     expect(
-      (await c.post('/dashboard/v1/report-schedules', { ...base, cron: '*/5 * * * *' })).json()
+      (await c.post('/merchant/v1/report-schedules', { ...base, cron: '*/5 * * * *' })).json()
         .error.details.reason
     ).toBe('too_frequent');
     expect(
       (
-        await c.post('/dashboard/v1/report-schedules', {
+        await c.post('/merchant/v1/report-schedules', {
           ...base,
           recipients: ['stranger@example.com'],
         })
       ).json().error.details.reason
     ).toBe('unknown_recipient');
     expect(
-      (await c.post('/dashboard/v1/report-schedules', { ...base, reportType: 'audit_trail' }))
+      (await c.post('/merchant/v1/report-schedules', { ...base, reportType: 'audit_trail' }))
         .statusCode
     ).toBe(422);
     expect(
       (
-        await c.post('/dashboard/v1/report-schedules', {
+        await c.post('/merchant/v1/report-schedules', {
           ...base,
           reportType: 'settlement_statement',
           params: { settlement: 'stl_x' },
@@ -633,14 +633,14 @@ describe('report schedules', () => {
       ).json().error.details.reason
     ).toBe('type_not_schedulable');
     expect(
-      (await c.post('/dashboard/v1/report-schedules', { ...base, recipients: [] })).statusCode
+      (await c.post('/merchant/v1/report-schedules', { ...base, recipients: [] })).statusCode
     ).toBe(400);
   });
 
   it('creates one report per due time, with its window and history, however many ticks run', async () => {
     await loginMerchantUser(merchant.owner.client, merchant.owner.email, merchant.owner.merchantId);
     const c = merchant.owner.client;
-    const created = await c.post('/dashboard/v1/report-schedules', {
+    const created = await c.post('/merchant/v1/report-schedules', {
       reportType: 'transactions',
       period: 'previous_day',
       cron: '0 6 * * *',
@@ -668,7 +668,7 @@ describe('report schedules', () => {
     await ctx.pump();
     await loginMerchantUser(merchant.owner.client, merchant.owner.email, merchant.owner.merchantId);
 
-    const detail = await c.get(`/dashboard/v1/report-schedules/${schedule.id}?environment=test`);
+    const detail = await c.get(`/merchant/v1/report-schedules/${schedule.id}?environment=test`);
     expect(detail.json().data.history).toHaveLength(1);
     expect(detail.json().data.history[0]).toMatchObject({ status: 'succeeded', error: null });
     expect(detail.json().data.lastStatus).toBe('succeeded');
@@ -700,26 +700,26 @@ describe('report schedules', () => {
     expect(told).toHaveLength(2);
 
     // Switch it off, and nothing more is made.
-    const off = await c.patch(`/dashboard/v1/report-schedules/${schedule.id}?environment=test`, {
+    const off = await c.patch(`/merchant/v1/report-schedules/${schedule.id}?environment=test`, {
       active: false,
     });
     expect(off.json().data).toMatchObject({ active: false });
     ctx.clock.advanceBy(3 * 86_400_000);
     expect(await ctx.schedulesService.tick()).toBe(0);
     await loginMerchantUser(c, merchant.owner.email, merchant.owner.merchantId);
-    const after = await c.get(`/dashboard/v1/report-schedules?environment=test`);
+    const after = await c.get(`/merchant/v1/report-schedules?environment=test`);
     expect(after.json().data.items.map((s: { id: string }) => s.id)).toContain(schedule.id);
     expect(
-      (await c.delete(`/dashboard/v1/report-schedules/${schedule.id}?environment=test`)).json().data
+      (await c.delete(`/merchant/v1/report-schedules/${schedule.id}?environment=test`)).json().data
     ).toEqual({ deleted: true });
     expect(
-      (await c.get(`/dashboard/v1/report-schedules/${schedule.id}?environment=test`)).statusCode
+      (await c.get(`/merchant/v1/report-schedules/${schedule.id}?environment=test`)).statusCode
     ).toBe(404);
     await loginMerchantUser(other.owner.client, other.owner.email, other.owner.merchantId);
     expect(
       (
         await other.owner.client.get(
-          `/dashboard/v1/report-schedules/${schedule.id}?environment=test`
+          `/merchant/v1/report-schedules/${schedule.id}?environment=test`
         )
       ).statusCode
     ).toBe(404);
@@ -729,7 +729,7 @@ describe('report schedules', () => {
     await loginMerchantUser(merchant.owner.client, merchant.owner.email, merchant.owner.merchantId);
     const c = merchant.owner.client;
     const schedule = (
-      await c.post('/dashboard/v1/report-schedules', {
+      await c.post('/merchant/v1/report-schedules', {
         reportType: 'fees',
         period: 'previous_day',
         cron: '0 5 * * *',
@@ -783,13 +783,13 @@ describe('report schedules', () => {
     );
     expect(told.length).toBeGreaterThanOrEqual(1);
     await loginMerchantUser(c, merchant.owner.email, merchant.owner.merchantId);
-    const history = await c.get(`/dashboard/v1/report-schedules/${schedule.id}?environment=test`);
+    const history = await c.get(`/merchant/v1/report-schedules/${schedule.id}?environment=test`);
     expect(history.json().data.history.map((h: { status: string }) => h.status)).toEqual([
       'failed',
       'failed',
     ]);
     // Turning it back on starts it afresh.
-    const on = await c.patch(`/dashboard/v1/report-schedules/${schedule.id}?environment=test`, {
+    const on = await c.patch(`/merchant/v1/report-schedules/${schedule.id}?environment=test`, {
       active: true,
     });
     expect(on.json().data).toMatchObject({
@@ -823,7 +823,7 @@ describe('rollups and analytics', () => {
 
     const c = merchant.owner.client;
     const overview = await c.get(
-      `/dashboard/v1/analytics/overview?environment=test&from=${today}&to=${today}`
+      `/merchant/v1/analytics/overview?environment=test&from=${today}&to=${today}`
     );
     expect(overview.statusCode).toBe(200);
     const ugx = overview
@@ -838,7 +838,7 @@ describe('rollups and analytics', () => {
       successRate: 0.6667,
     });
     const volume = await c.get(
-      `/dashboard/v1/analytics/volume?environment=test&from=${today}&to=${today}`
+      `/merchant/v1/analytics/volume?environment=test&from=${today}&to=${today}`
     );
     expect(volume.json().data.points).toEqual([
       expect.objectContaining({
@@ -849,7 +849,7 @@ describe('rollups and analytics', () => {
       }),
     ]);
     const rate = await c.get(
-      `/dashboard/v1/analytics/success-rate?environment=test&from=${today}&to=${today}`
+      `/merchant/v1/analytics/success-rate?environment=test&from=${today}&to=${today}`
     );
     expect(rate.json().data.points[0]).toMatchObject({
       successCount: 2,
@@ -857,7 +857,7 @@ describe('rollups and analytics', () => {
       successRate: 0.6667,
     });
     const channels = await c.get(
-      `/dashboard/v1/analytics/channels?environment=test&from=${today}&to=${today}`
+      `/merchant/v1/analytics/channels?environment=test&from=${today}&to=${today}`
     );
     const mtn = channels
       .json()
@@ -873,20 +873,20 @@ describe('rollups and analytics', () => {
     ).toMatchObject({ failureCount: 1, successRate: 0 });
 
     // Test and live are separate, and another merchant sees nothing of this.
-    const live = await c.get(`/dashboard/v1/analytics/overview?from=${today}&to=${today}`);
+    const live = await c.get(`/merchant/v1/analytics/overview?from=${today}&to=${today}`);
     expect(live.json().data.currencies).toEqual([]);
     const theirs = await other.owner.client.get(
-      `/dashboard/v1/analytics/overview?environment=test&from=${today}&to=${today}`
+      `/merchant/v1/analytics/overview?environment=test&from=${today}&to=${today}`
     );
     expect(theirs.json().data.currencies).toEqual([]);
 
     // A window over a year is refused; the support role has no analytics.
-    const long = await c.get('/dashboard/v1/analytics/overview?from=2020-01-01&to=2023-01-01');
+    const long = await c.get('/merchant/v1/analytics/overview?from=2020-01-01&to=2023-01-01');
     expect(long.statusCode).toBe(400);
     await loginMerchantUser(supportUser.client, supportUser.email, supportUser.merchantId);
-    expect((await supportUser.client.get('/dashboard/v1/analytics/overview')).statusCode).toBe(403);
+    expect((await supportUser.client.get('/merchant/v1/analytics/overview')).statusCode).toBe(403);
     expect(
-      (await ctx.app.inject({ method: 'GET', url: '/dashboard/v1/analytics/overview' })).statusCode
+      (await ctx.app.inject({ method: 'GET', url: '/merchant/v1/analytics/overview' })).statusCode
     ).toBe(401);
   });
 

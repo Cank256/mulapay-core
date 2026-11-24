@@ -170,7 +170,7 @@ export async function registerMerchantUser(
 ): Promise<MerchantUser> {
   const client = new Client(ctx.app);
   const email = uniqueEmail(label);
-  const res = await client.post('/dashboard/v1/auth/register', {
+  const res = await client.post('/merchant/v1/auth/register', {
     email,
     password: PASSWORD,
     name: `User ${label}`,
@@ -183,7 +183,7 @@ export async function registerMerchantUser(
 }
 
 export async function loginMerchantUser(client: Client, email: string, merchant?: string) {
-  const res = await client.post('/dashboard/v1/auth/login', {
+  const res = await client.post('/merchant/v1/auth/login', {
     email,
     password: PASSWORD,
     ...(merchant ? { merchant } : {}),
@@ -202,10 +202,10 @@ export async function addTeamMember(
   role: 'admin' | 'developer' | 'finance' | 'support' | 'viewer'
 ): Promise<MerchantUser> {
   const email = uniqueEmail(role);
-  const invite = await inviter.client.post('/dashboard/v1/team/invites', { email, role });
+  const invite = await inviter.client.post('/merchant/v1/team/invites', { email, role });
   if (invite.statusCode !== 201) throw new Error(`invite failed: ${invite.body}`);
   const client = new Client(ctx.app);
-  const accept = await client.post('/dashboard/v1/auth/accept-invite', {
+  const accept = await client.post('/merchant/v1/auth/accept-invite', {
     token: invite.json().data.token,
     name: `Member ${role}`,
     password: PASSWORD,

@@ -1,4 +1,4 @@
-/** `/dashboard/v1/api-keys` (spec 7.2): issue, roll and revoke the merchant's API keys. */
+/** `/merchant/v1/api-keys` (spec 7.2): issue, roll and revoke the merchant's API keys. */
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';

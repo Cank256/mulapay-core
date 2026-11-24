@@ -8,7 +8,7 @@
  *
  * Every dashboard tile reads the rollups and never the transactions: its cost is a range scan of
  * a few rows per day however many payments the merchant takes, which is what lets
- * `GET /dashboard/v1/analytics/overview` answer in well under 150 ms (spec 9.1).
+ * `GET /merchant/v1/analytics/overview` answer in well under 150 ms (spec 9.1).
  */
 import { Inject, Injectable } from '@nestjs/common';
 import type { MerchantScope } from '../../common/auth/merchant-scope';

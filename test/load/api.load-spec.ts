@@ -162,7 +162,7 @@ beforeAll(async () => {
   }
   paymentRefs = refs;
   await ctx.rollups.recomputeRecent();
-  const key = await merchant.owner.client.post('/dashboard/v1/api-keys', {
+  const key = await merchant.owner.client.post('/merchant/v1/api-keys', {
     name: 'load',
     environment: 'test',
     scopes: [...API_KEY_SCOPES],
@@ -235,10 +235,10 @@ describe('HTTP latency at a steady arrival rate (p99)', () => {
       'POST /v1/payments runs the whole write path of Phase 4 (AML pre-check, idempotency, transaction, outbox) and no gateway call, because the Provider Gateway client is not built; the target excludes that call.'
     );
   });
-  it('GET /dashboard/v1/analytics/overview', async () => {
+  it('GET /merchant/v1/analytics/overview', async () => {
     const owner = merchant.owner.client;
     const day = new Date().toISOString().slice(0, 10);
-    const path = `/dashboard/v1/analytics/overview?environment=test&from=${day}&to=${day}`;
+    const path = `/merchant/v1/analytics/overview?environment=test&from=${day}&to=${day}`;
     const probe = await owner.get(path);
     expect(probe.statusCode, probe.body).toBe(200);
     const result = await generate({
@@ -249,7 +249,7 @@ describe('HTTP latency at a steady arrival rate (p99)', () => {
       durationMs: DURATION_MS,
       warmupMs: WARMUP_MS,
     });
-    latency('GET /dashboard/v1/analytics/overview', '< 150 ms', 150, result, 200);
+    latency('GET /merchant/v1/analytics/overview', '< 150 ms', 150, result, 200);
   });
 });
 

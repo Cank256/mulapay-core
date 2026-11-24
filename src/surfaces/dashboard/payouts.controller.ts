@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/payouts` (spec 7.2): the merchant's own payouts — list, detail, create.
+ * `/merchant/v1/payouts` (spec 7.2): the merchant's own payouts — list, detail, create.
  * The session is bound to one merchant; the environment is chosen per request.
  */
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';

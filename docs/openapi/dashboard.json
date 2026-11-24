@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/dashboard/v1/auth/register": {
+    "/merchant/v1/auth/register": {
       "post": {
         "operationId": "DashboardAuthController_register",
         "parameters": [],
@@ -179,7 +179,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/login": {
+    "/merchant/v1/auth/login": {
       "post": {
         "operationId": "DashboardAuthController_login",
         "parameters": [],
@@ -345,7 +345,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/mfa/verify": {
+    "/merchant/v1/auth/mfa/verify": {
       "post": {
         "operationId": "DashboardAuthController_verifyMfa",
         "parameters": [],
@@ -511,7 +511,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/mfa/enroll": {
+    "/merchant/v1/auth/mfa/enroll": {
       "post": {
         "operationId": "DashboardAuthController_enrollMfa",
         "parameters": [],
@@ -591,7 +591,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/mfa/disable": {
+    "/merchant/v1/auth/mfa/disable": {
       "post": {
         "operationId": "DashboardAuthController_disableMfa",
         "parameters": [],
@@ -664,7 +664,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/refresh": {
+    "/merchant/v1/auth/refresh": {
       "post": {
         "operationId": "DashboardAuthController_refresh",
         "parameters": [],
@@ -738,7 +738,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/logout": {
+    "/merchant/v1/auth/logout": {
       "post": {
         "operationId": "DashboardAuthController_logout",
         "parameters": [],
@@ -801,7 +801,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/accept-invite": {
+    "/merchant/v1/auth/accept-invite": {
       "post": {
         "operationId": "DashboardAuthController_acceptInvite",
         "parameters": [],
@@ -879,7 +879,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/me": {
+    "/merchant/v1/auth/me": {
       "get": {
         "operationId": "DashboardAuthController_me",
         "parameters": [],
@@ -1001,7 +1001,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/sessions": {
+    "/merchant/v1/auth/sessions": {
       "get": {
         "operationId": "DashboardAuthController_listSessions",
         "parameters": [],
@@ -1100,7 +1100,7 @@
         ]
       }
     },
-    "/dashboard/v1/auth/sessions/{id}": {
+    "/merchant/v1/auth/sessions/{id}": {
       "delete": {
         "operationId": "DashboardAuthController_revokeSession",
         "parameters": [
@@ -1174,7 +1174,7 @@
         ]
       }
     },
-    "/dashboard/v1/merchant": {
+    "/merchant/v1/merchant": {
       "get": {
         "operationId": "DashboardMerchantController_get",
         "parameters": [],
@@ -1460,7 +1460,7 @@
         "x-required-permission": "merchant:update"
       }
     },
-    "/dashboard/v1/team": {
+    "/merchant/v1/team": {
       "get": {
         "operationId": "DashboardTeamController_list",
         "parameters": [],
@@ -1554,7 +1554,7 @@
         "x-required-permission": "team:read"
       }
     },
-    "/dashboard/v1/team/invites": {
+    "/merchant/v1/team/invites": {
       "post": {
         "operationId": "DashboardTeamController_invite",
         "parameters": [],
@@ -1755,7 +1755,7 @@
         "x-required-permission": "team:read"
       }
     },
-    "/dashboard/v1/team/invites/{id}": {
+    "/merchant/v1/team/invites/{id}": {
       "delete": {
         "operationId": "DashboardTeamController_revokeInvite",
         "parameters": [
@@ -1830,7 +1830,7 @@
         "x-required-permission": "team:manage"
       }
     },
-    "/dashboard/v1/team/{userId}": {
+    "/merchant/v1/team/{userId}": {
       "patch": {
         "operationId": "DashboardTeamController_changeRole",
         "parameters": [
@@ -2015,7 +2015,7 @@
         "x-required-permission": "team:manage"
       }
     },
-    "/dashboard/v1/api-keys": {
+    "/merchant/v1/api-keys": {
       "get": {
         "operationId": "DashboardApiKeysController_list",
         "parameters": [],
@@ -2319,7 +2319,7 @@
         "x-required-permission": "api_keys:manage"
       }
     },
-    "/dashboard/v1/api-keys/{id}/roll": {
+    "/merchant/v1/api-keys/{id}/roll": {
       "post": {
         "operationId": "DashboardApiKeysController_roll",
         "parameters": [
@@ -2491,7 +2491,7 @@
         "x-required-permission": "api_keys:manage"
       }
     },
-    "/dashboard/v1/api-keys/{id}": {
+    "/merchant/v1/api-keys/{id}": {
       "delete": {
         "operationId": "DashboardApiKeysController_revoke",
         "parameters": [
@@ -2566,7 +2566,7 @@
         "x-required-permission": "api_keys:manage"
       }
     },
-    "/dashboard/v1/payments": {
+    "/merchant/v1/payments": {
       "get": {
         "operationId": "DashboardPaymentsController_list",
         "parameters": [
@@ -2859,7 +2859,7 @@
         "x-required-permission": "payments:read"
       }
     },
-    "/dashboard/v1/transactions": {
+    "/merchant/v1/transactions": {
       "get": {
         "operationId": "DashboardTransactionsController_list",
         "parameters": [
@@ -3164,7 +3164,7 @@
         "x-required-permission": "transactions:read"
       }
     },
-    "/dashboard/v1/webhook-endpoints": {
+    "/merchant/v1/webhook-endpoints": {
       "get": {
         "operationId": "DashboardWebhookEndpointsController_list",
         "parameters": [
@@ -3461,7 +3461,7 @@
         "x-required-permission": "webhooks:manage"
       }
     },
-    "/dashboard/v1/webhook-endpoints/{id}": {
+    "/merchant/v1/webhook-endpoints/{id}": {
       "get": {
         "operationId": "DashboardWebhookEndpointsController_get",
         "parameters": [
@@ -3857,7 +3857,7 @@
         "x-required-permission": "webhooks:manage"
       }
     },
-    "/dashboard/v1/webhook-endpoints/{id}/rotate-secret": {
+    "/merchant/v1/webhook-endpoints/{id}/rotate-secret": {
       "post": {
         "operationId": "DashboardWebhookEndpointsController_rotate",
         "parameters": [
@@ -4022,7 +4022,7 @@
         "x-required-permission": "webhooks:manage"
       }
     },
-    "/dashboard/v1/webhook-deliveries": {
+    "/merchant/v1/webhook-deliveries": {
       "get": {
         "operationId": "DashboardWebhookDeliveriesController_list",
         "parameters": [
@@ -4302,7 +4302,7 @@
         "x-required-permission": "webhooks:read"
       }
     },
-    "/dashboard/v1/webhook-deliveries/replay": {
+    "/merchant/v1/webhook-deliveries/replay": {
       "post": {
         "description": "Creates a new delivery for each matching delivery whose endpoint is active, at most 500 per request. By default repeats the ones that did not succeed. Repeats are not deduplicated: receivers deduplicate on `MulaPay-Event-Id`.",
         "operationId": "DashboardWebhookDeliveriesController_replay",
@@ -4394,7 +4394,7 @@
         "x-required-permission": "webhooks:manage"
       }
     },
-    "/dashboard/v1/webhook-deliveries/{id}": {
+    "/merchant/v1/webhook-deliveries/{id}": {
       "get": {
         "operationId": "DashboardWebhookDeliveriesController_get",
         "parameters": [
@@ -4564,7 +4564,7 @@
         "x-required-permission": "webhooks:read"
       }
     },
-    "/dashboard/v1/webhook-deliveries/{id}/retry": {
+    "/merchant/v1/webhook-deliveries/{id}/retry": {
       "post": {
         "description": "Creates a new delivery of the same event. The endpoint must be active.",
         "operationId": "DashboardWebhookDeliveriesController_retry",
@@ -4735,7 +4735,7 @@
         "x-required-permission": "webhooks:manage"
       }
     },
-    "/dashboard/v1/request-logs": {
+    "/merchant/v1/request-logs": {
       "get": {
         "operationId": "DashboardRequestLogsController_list",
         "parameters": [
@@ -4969,7 +4969,7 @@
         "x-required-permission": "request_logs:read"
       }
     },
-    "/dashboard/v1/request-logs/{id}": {
+    "/merchant/v1/request-logs/{id}": {
       "get": {
         "operationId": "DashboardRequestLogsController_get",
         "parameters": [
@@ -5120,7 +5120,7 @@
         "x-required-permission": "request_logs:read"
       }
     },
-    "/dashboard/v1/settlements": {
+    "/merchant/v1/settlements": {
       "get": {
         "operationId": "DashboardSettlementsController_list",
         "parameters": [
@@ -5309,7 +5309,7 @@
         "x-required-permission": "settlements:read"
       }
     },
-    "/dashboard/v1/settlements/{ref}": {
+    "/merchant/v1/settlements/{ref}": {
       "get": {
         "operationId": "DashboardSettlementsController_get",
         "parameters": [
@@ -5470,7 +5470,7 @@
         "x-required-permission": "settlements:read"
       }
     },
-    "/dashboard/v1/settlements/{ref}/items": {
+    "/merchant/v1/settlements/{ref}/items": {
       "get": {
         "operationId": "DashboardSettlementsController_items",
         "parameters": [
@@ -5613,7 +5613,7 @@
         "x-required-permission": "settlements:read"
       }
     },
-    "/dashboard/v1/settlements/{ref}/statement": {
+    "/merchant/v1/settlements/{ref}/statement": {
       "get": {
         "description": "Amounts, items, payout reference, masked destination and reconciliation references.",
         "operationId": "DashboardSettlementsController_statement",
@@ -5969,7 +5969,7 @@
         "x-required-permission": "settlements:read"
       }
     },
-    "/dashboard/v1/settlements/{ref}/statement/csv": {
+    "/merchant/v1/settlements/{ref}/statement/csv": {
       "get": {
         "operationId": "DashboardSettlementsController_csv",
         "parameters": [
@@ -6052,7 +6052,7 @@
         "x-required-permission": "settlements:read"
       }
     },
-    "/dashboard/v1/kyc": {
+    "/merchant/v1/kyc": {
       "get": {
         "operationId": "DashboardKycController_get",
         "parameters": [],
@@ -6379,7 +6379,7 @@
         "x-required-permission": "kyc:view"
       }
     },
-    "/dashboard/v1/kyc/requirements": {
+    "/merchant/v1/kyc/requirements": {
       "get": {
         "description": "Resolved from the requirements data for the merchant’s country and business type. `level` defaults to the next level the merchant can apply for.",
         "operationId": "DashboardKycController_requirements",
@@ -6511,7 +6511,7 @@
         "x-required-permission": "kyc:view"
       }
     },
-    "/dashboard/v1/kyc/profile": {
+    "/merchant/v1/kyc/profile": {
       "get": {
         "operationId": "DashboardKycController_profile",
         "parameters": [],
@@ -6687,7 +6687,7 @@
         "x-required-permission": "kyc:submit"
       }
     },
-    "/dashboard/v1/kyc/parties": {
+    "/merchant/v1/kyc/parties": {
       "get": {
         "operationId": "DashboardKycController_parties",
         "parameters": [],
@@ -6897,7 +6897,7 @@
         "x-required-permission": "kyc:submit"
       }
     },
-    "/dashboard/v1/kyc/parties/{id}": {
+    "/merchant/v1/kyc/parties/{id}": {
       "delete": {
         "operationId": "DashboardKycController_removeParty",
         "parameters": [
@@ -6972,7 +6972,7 @@
         "x-required-permission": "kyc:submit"
       }
     },
-    "/dashboard/v1/kyc/submit": {
+    "/merchant/v1/kyc/submit": {
       "post": {
         "description": "Needs everything mandatory that the merchant can supply for the level. A draft merchant becomes `pending_kyc`. Screening starts in the background.",
         "operationId": "DashboardKycController_submit",
@@ -7073,7 +7073,7 @@
         "x-required-permission": "kyc:submit"
       }
     },
-    "/dashboard/v1/kyc/documents/presign": {
+    "/merchant/v1/kyc/documents/presign": {
       "post": {
         "description": "PDF, JPEG or PNG, at most 10 MB. Upload with an HTTP PUT of the file, sending exactly the headers returned, then call `POST /kyc/documents` with the same values. Core never receives the file; the file type is checked from its first bytes, not its name.",
         "operationId": "DashboardKycController_presign",
@@ -7176,7 +7176,7 @@
         "x-required-permission": "kyc:submit"
       }
     },
-    "/dashboard/v1/kyc/documents": {
+    "/merchant/v1/kyc/documents": {
       "post": {
         "operationId": "DashboardKycController_confirm",
         "parameters": [],
@@ -7301,7 +7301,7 @@
         "x-required-permission": "kyc:submit"
       }
     },
-    "/dashboard/v1/kyc/documents/{id}": {
+    "/merchant/v1/kyc/documents/{id}": {
       "delete": {
         "operationId": "DashboardKycController_remove",
         "parameters": [
@@ -7376,7 +7376,7 @@
         "x-required-permission": "kyc:submit"
       }
     },
-    "/dashboard/v1/disputes": {
+    "/merchant/v1/disputes": {
       "get": {
         "operationId": "DashboardDisputesController_list",
         "parameters": [
@@ -7568,7 +7568,7 @@
         "x-required-permission": "disputes:read"
       }
     },
-    "/dashboard/v1/disputes/{ref}": {
+    "/merchant/v1/disputes/{ref}": {
       "get": {
         "operationId": "DashboardDisputesController_get",
         "parameters": [
@@ -7719,7 +7719,7 @@
         "x-required-permission": "disputes:read"
       }
     },
-    "/dashboard/v1/disputes/{ref}/evidence": {
+    "/merchant/v1/disputes/{ref}/evidence": {
       "post": {
         "description": "Allowed until the evidence due date, at most 20 items of 2,000 characters.",
         "operationId": "DashboardDisputesController_addEvidence",
@@ -7881,7 +7881,7 @@
         "x-required-permission": "disputes:write"
       }
     },
-    "/dashboard/v1/complaints/categories": {
+    "/merchant/v1/complaints/categories": {
       "get": {
         "operationId": "DashboardComplaintsController_categories",
         "parameters": [],
@@ -7978,7 +7978,7 @@
         "x-required-permission": "complaints:read"
       }
     },
-    "/dashboard/v1/complaints": {
+    "/merchant/v1/complaints": {
       "post": {
         "description": "Its deadline is the category’s hours from now. A transaction, if named, must be the merchant’s own.",
         "operationId": "DashboardComplaintsController_file",
@@ -8312,7 +8312,7 @@
         "x-required-permission": "complaints:read"
       }
     },
-    "/dashboard/v1/complaints/{ref}": {
+    "/merchant/v1/complaints/{ref}": {
       "get": {
         "operationId": "DashboardComplaintsController_get",
         "parameters": [
@@ -8487,7 +8487,7 @@
         "x-required-permission": "complaints:read"
       }
     },
-    "/dashboard/v1/complaints/{ref}/messages": {
+    "/merchant/v1/complaints/{ref}/messages": {
       "post": {
         "operationId": "DashboardComplaintsController_message",
         "parameters": [
@@ -8672,7 +8672,7 @@
         "x-required-permission": "complaints:write"
       }
     },
-    "/dashboard/v1/complaints/{ref}/close": {
+    "/merchant/v1/complaints/{ref}/close": {
       "post": {
         "description": "A satisfaction score from 1 to 5 can be given once the complaint is resolved.",
         "operationId": "DashboardComplaintsController_close",
@@ -8858,7 +8858,7 @@
         "x-required-permission": "complaints:write"
       }
     },
-    "/dashboard/v1/notifications": {
+    "/merchant/v1/notifications": {
       "get": {
         "operationId": "DashboardNotificationsController_inbox",
         "parameters": [
@@ -9002,7 +9002,7 @@
         ]
       }
     },
-    "/dashboard/v1/notifications/unread-count": {
+    "/merchant/v1/notifications/unread-count": {
       "get": {
         "operationId": "DashboardNotificationsController_unread",
         "parameters": [],
@@ -9064,7 +9064,7 @@
         ]
       }
     },
-    "/dashboard/v1/notifications/read-all": {
+    "/merchant/v1/notifications/read-all": {
       "post": {
         "operationId": "DashboardNotificationsController_readAll",
         "parameters": [],
@@ -9126,7 +9126,7 @@
         ]
       }
     },
-    "/dashboard/v1/notifications/{ref}/read": {
+    "/merchant/v1/notifications/{ref}/read": {
       "post": {
         "operationId": "DashboardNotificationsController_read",
         "parameters": [
@@ -9200,7 +9200,7 @@
         ]
       }
     },
-    "/dashboard/v1/notification-preferences": {
+    "/merchant/v1/notification-preferences": {
       "get": {
         "operationId": "DashboardNotificationsController_preferences",
         "parameters": [],
@@ -9381,7 +9381,7 @@
         ]
       }
     },
-    "/dashboard/v1/notification-destinations": {
+    "/merchant/v1/notification-destinations": {
       "get": {
         "operationId": "DashboardNotificationsController_destinations",
         "parameters": [],
@@ -9465,7 +9465,7 @@
         ]
       }
     },
-    "/dashboard/v1/notification-destinations/{channel}": {
+    "/merchant/v1/notification-destinations/{channel}": {
       "put": {
         "operationId": "DashboardNotificationsController_setDestination",
         "parameters": [
@@ -9634,7 +9634,7 @@
         ]
       }
     },
-    "/dashboard/v1/reports": {
+    "/merchant/v1/reports": {
       "post": {
         "description": "Answers 202 at once with the report reference; the file is produced in the background. Poll `GET /reports/{ref}` or wait for the notification, then call `download`. Types: transactions, payments, payouts, refunds, fees, balance_statement, settlement_statement, merchant_performance. Formats: csv and json (xlsx and pdf are refused). Files are kept 7 days.",
         "operationId": "DashboardReportsController_request",
@@ -10017,7 +10017,7 @@
         "x-required-permission": "reports:read"
       }
     },
-    "/dashboard/v1/reports/{ref}": {
+    "/merchant/v1/reports/{ref}": {
       "get": {
         "operationId": "DashboardReportsController_get",
         "parameters": [
@@ -10183,7 +10183,7 @@
         "x-required-permission": "reports:read"
       }
     },
-    "/dashboard/v1/reports/{ref}/download": {
+    "/merchant/v1/reports/{ref}/download": {
       "get": {
         "description": "Valid for 15 minutes; ask again for a new one while the file exists (7 days).",
         "operationId": "DashboardReportsController_download",
@@ -10277,7 +10277,7 @@
         "x-required-permission": "reports:read"
       }
     },
-    "/dashboard/v1/report-schedules": {
+    "/merchant/v1/report-schedules": {
       "post": {
         "description": "A report is produced for the day, week or month before each run. Recipients must be people of this business: they are told in the dashboard and by email when it is ready. A schedule turns itself off after repeated failures.",
         "operationId": "DashboardReportSchedulesController_create",
@@ -10638,7 +10638,7 @@
         "x-required-permission": "reports:read"
       }
     },
-    "/dashboard/v1/report-schedules/{ref}": {
+    "/merchant/v1/report-schedules/{ref}": {
       "get": {
         "operationId": "DashboardReportSchedulesController_get",
         "parameters": [
@@ -11120,7 +11120,7 @@
         "x-required-permission": "reports:create"
       }
     },
-    "/dashboard/v1/analytics/overview": {
+    "/merchant/v1/analytics/overview": {
       "get": {
         "description": "Daily figures are recomputed every 15 minutes, so the newest numbers can be up to that old.",
         "operationId": "DashboardAnalyticsController_overview",
@@ -11298,7 +11298,7 @@
         "x-required-permission": "analytics:read"
       }
     },
-    "/dashboard/v1/analytics/volume": {
+    "/merchant/v1/analytics/volume": {
       "get": {
         "operationId": "DashboardAnalyticsController_volume",
         "parameters": [
@@ -11450,7 +11450,7 @@
         "x-required-permission": "analytics:read"
       }
     },
-    "/dashboard/v1/analytics/success-rate": {
+    "/merchant/v1/analytics/success-rate": {
       "get": {
         "operationId": "DashboardAnalyticsController_successRate",
         "parameters": [
@@ -11593,7 +11593,7 @@
         "x-required-permission": "analytics:read"
       }
     },
-    "/dashboard/v1/analytics/channels": {
+    "/merchant/v1/analytics/channels": {
       "get": {
         "operationId": "DashboardAnalyticsController_channels",
         "parameters": [
@@ -11751,7 +11751,7 @@
         "x-required-permission": "analytics:read"
       }
     },
-    "/dashboard/v1/status": {
+    "/merchant/v1/status": {
       "get": {
         "operationId": "DashboardStatusController_status",
         "parameters": [],

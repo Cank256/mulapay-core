@@ -118,7 +118,7 @@ describe('key format and secrecy', () => {
     );
     expect(String(dump[0]?.j)).not.toContain(secret);
     // Listing never returns it.
-    const list = await merchant.owner.client.get('/dashboard/v1/api-keys');
+    const list = await merchant.owner.client.get('/merchant/v1/api-keys');
     expect(list.body).not.toContain(secret as string);
     expect(list.body).not.toContain(issued.key);
   });
@@ -141,7 +141,7 @@ describe('key format and secrecy', () => {
     const stored = String(rows[0]?.signing_secret_enc);
     expect(stored).toMatch(/^v1\./);
     expect(stored).not.toContain(issued.signingSecret as string);
-    const list = await merchant.owner.client.get('/dashboard/v1/api-keys');
+    const list = await merchant.owner.client.get('/merchant/v1/api-keys');
     expect(list.body).not.toContain(issued.signingSecret as string);
     const view = list.json().data.find((k: { id: string }) => k.id === issued.ref);
     expect(view).toMatchObject({ hasSigningSecret: true, signingRequired: false });
@@ -244,7 +244,7 @@ describe('revocation and the cache', () => {
     expect(
       await ctx.app.get(ApiKeyCache, { strict: false }).lookup(issued.key.split('_')[2] as string)
     ).toMatchObject({ kind: 'hit' });
-    const revoked = await merchant.owner.client.delete(`/dashboard/v1/api-keys/${issued.ref}`);
+    const revoked = await merchant.owner.client.delete(`/merchant/v1/api-keys/${issued.ref}`);
     expect(revoked.statusCode).toBe(200);
     const after = await issued.client.get('/v1/ping');
     expect(after.statusCode).toBe(401);
@@ -261,7 +261,7 @@ describe('revocation and the cache', () => {
       const onOther = new Client(other.app);
       onOther.token = issued.key;
       expect((await onOther.get('/v1/ping')).statusCode).toBe(200);
-      await merchant.owner.client.delete(`/dashboard/v1/api-keys/${issued.ref}`);
+      await merchant.owner.client.delete(`/merchant/v1/api-keys/${issued.ref}`);
       expect((await onOther.get('/v1/ping')).statusCode).toBe(401);
     } finally {
       await other.close();
@@ -308,7 +308,7 @@ describe('revocation and the cache', () => {
 describe('rotation (grace period 0 to 7 days)', () => {
   async function roll(ref: string, gracePeriodHours?: number) {
     return merchant.owner.client.post(
-      `/dashboard/v1/api-keys/${ref}/roll`,
+      `/merchant/v1/api-keys/${ref}/roll`,
       gracePeriodHours === undefined ? {} : { gracePeriodHours }
     );
   }
@@ -367,7 +367,7 @@ describe('rotation (grace period 0 to 7 days)', () => {
     expect((await roll(key.ref, 1)).statusCode).toBe(201);
     expect((await roll(key.ref, 1)).statusCode).toBe(409);
     const revoked = await issueKey(ctx, merchant.owner, { environment: 'test' });
-    await merchant.owner.client.delete(`/dashboard/v1/api-keys/${revoked.ref}`);
+    await merchant.owner.client.delete(`/merchant/v1/api-keys/${revoked.ref}`);
     expect((await roll(revoked.ref)).statusCode).toBe(409);
     expect((await roll('ak_01JBX7Q2M4N8R5T6V9W0XYZABC')).statusCode).toBe(404);
   });
@@ -375,8 +375,8 @@ describe('rotation (grace period 0 to 7 days)', () => {
   it('reports the status of each key', async () => {
     const active = await issueKey(ctx, merchant.owner, { environment: 'test', name: 'status-a' });
     const revoked = await issueKey(ctx, merchant.owner, { environment: 'test', name: 'status-r' });
-    await merchant.owner.client.delete(`/dashboard/v1/api-keys/${revoked.ref}`);
-    const list = (await merchant.owner.client.get('/dashboard/v1/api-keys')).json().data as Array<{
+    await merchant.owner.client.delete(`/merchant/v1/api-keys/${revoked.ref}`);
+    const list = (await merchant.owner.client.get('/merchant/v1/api-keys')).json().data as Array<{
       id: string;
       status: string;
     }>;
@@ -538,7 +538,7 @@ describe('scopes', () => {
   });
 
   it('refuses to issue a key with a scope that does not exist, so none can be forged', async () => {
-    const res = await merchant.owner.client.post('/dashboard/v1/api-keys', {
+    const res = await merchant.owner.client.post('/merchant/v1/api-keys', {
       name: 'bad',
       environment: 'test',
       scopes: ['payments:read', 'admin:everything'],
@@ -724,7 +724,7 @@ describe('last_used_at', () => {
     expect((await row())[0]?.last_used_at).not.toBeNull();
     // A second flush has nothing left for this key.
     await ctx.app.get(ApiKeyUsageTracker, { strict: false }).flush();
-    const view = (await merchant.owner.client.get('/dashboard/v1/api-keys'))
+    const view = (await merchant.owner.client.get('/merchant/v1/api-keys'))
       .json()
       .data.find((k: { id: string }) => k.id === key.ref);
     expect(view.lastUsedAt).not.toBeNull();

@@ -1,4 +1,4 @@
-/** `/dashboard/v1/request-logs` (spec 7.2): the merchant's API request log. No bodies are stored. */
+/** `/merchant/v1/request-logs` (spec 7.2): the merchant's API request log. No bodies are stored. */
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createZodDto } from 'nestjs-zod';

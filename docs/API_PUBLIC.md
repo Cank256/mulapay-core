@@ -16,7 +16,7 @@ MulaPay keys, not Stripe keys, even though the prefixes match. A **test** key wo
 an active merchant. Test and live data are separate: a test key cannot see live data and the
 other way round.
 
-Keys are created in the dashboard (`POST /dashboard/v1/api-keys`). The response shows the full
+Keys are created in the dashboard (`POST /merchant/v1/api-keys`). The response shows the full
 key, and the key's **signing secret**, once. MulaPay stores only the SHA-256 of the key secret,
 so a lost key cannot be recovered: roll it.
 
@@ -25,10 +25,10 @@ so a lost key cannot be recovered: roll it.
   `customers:read`, `customers:write`, `settlements:read`, `events:read`, `webhooks:read`,
   `webhooks:write`, `disputes:read`, `disputes:write`. A route needs its scope. A key without
   it gets `403 FORBIDDEN`; no other credential substitutes.
-- **Rolling** (`POST /dashboard/v1/api-keys/:id/roll`) issues a new key with the same name,
+- **Rolling** (`POST /merchant/v1/api-keys/:id/roll`) issues a new key with the same name,
   scopes, allowlist and limits, and retires the old one after `gracePeriodHours`: 0 (at once)
   to 168 (7 days). A key is rolled once; roll its successor next.
-- **Revoking** (`DELETE /dashboard/v1/api-keys/:id`) takes effect immediately on every server.
+- **Revoking** (`DELETE /merchant/v1/api-keys/:id`) takes effect immediately on every server.
 - **Status** is `active`, `expired` (past its `expiresAt`, including a rolled key after its
   grace period) or `revoked`.
 - **IP allowlist**: IPv4 or IPv6 addresses or CIDR networks. A request from another address is
@@ -160,7 +160,7 @@ with `PATCH ... {"status":"active"}`. Delivery is at least once and **not ordere
 **Secret rotation.** `POST /v1/webhook-endpoints/:ref/rotate-secret` returns a new secret once.
 For `graceHours` (default 24, at most 72) deliveries carry two `v1` signatures, one per secret.
 
-**Replay and the delivery log** are in the dashboard: `GET /dashboard/v1/webhook-deliveries`,
+**Replay and the delivery log** are in the dashboard: `GET /merchant/v1/webhook-deliveries`,
 `POST .../:id/retry` (one delivery) and `POST .../replay` (by event type and date range, at most
 500 a call). A replay is a new delivery of the same event; replays are not deduplicated, so
 deduplicate on the event id. The endpoint must be active.
@@ -188,7 +188,7 @@ marked with source `job` and failure codes starting `sandbox_`. The delays are
 
 Every authenticated call is logged without its body: request id, key, method, path (no query
 string), route, status, error code, idempotency key, latency, client address, user agent.
-`GET /dashboard/v1/request-logs` (permission `request_logs:read`). Logs are buffered and appear
+`GET /merchant/v1/request-logs` (permission `request_logs:read`). Logs are buffered and appear
 within a few seconds. Calls that failed authentication have no merchant to attach to and are
 counted, not logged.
 

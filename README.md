@@ -243,7 +243,7 @@ Generated from `.env.example`; a unit test fails when a variable there is missin
 
 | Variable                 | Example value | Meaning                                   |
 | ------------------------ | ------------- | ----------------------------------------- |
-| `CORS_DASHBOARD_ORIGINS` | unset         | comma-separated origins for /dashboard/v1 |
+| `CORS_DASHBOARD_ORIGINS` | unset         | comma-separated origins for /merchant/v1 |
 | `CORS_ADMIN_ORIGINS`     | unset         | comma-separated origins for /admin/v1     |
 
 **Observability**

@@ -27,7 +27,7 @@ export const SURFACES: readonly SurfaceDefinition[] = [
   },
   {
     key: 'dashboard',
-    prefix: 'dashboard/v1',
+    prefix: 'merchant/v1',
     title: 'MulaPay Dashboard API',
     description: 'API for the merchant dashboard web application.',
     documentModules: [DashboardSurfaceModule],
@@ -45,6 +45,6 @@ export const SURFACE_MODULES = [PublicSurfaceModule, DashboardSurfaceModule, Adm
 
 export const SURFACE_ROUTES: Routes = [
   { path: 'v1', module: PublicSurfaceModule },
-  { path: 'dashboard/v1', module: DashboardSurfaceModule },
+  { path: 'merchant/v1', module: DashboardSurfaceModule },
   { path: 'admin/v1', module: AdminSurfaceModule },
 ];

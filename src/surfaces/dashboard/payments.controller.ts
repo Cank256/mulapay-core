@@ -1,5 +1,5 @@
 /**
- * `GET /dashboard/v1/payments` and `/transactions` (spec 7.2): the merchant's own lists. The
+ * `GET /merchant/v1/payments` and `/transactions` (spec 7.2): the merchant's own lists. The
  * session is bound to one merchant; the environment is chosen per request (default `live`).
  */
 import { Controller, Get, Param, Query } from '@nestjs/common';

@@ -89,7 +89,7 @@ describe('opening a dispute', () => {
 
     // The merchant sees the dispute, not the staff's note or the hold.
     const owner = merchant.owner.client;
-    const seen = await owner.get(`/dashboard/v1/disputes/${dispute.id}`);
+    const seen = await owner.get(`/merchant/v1/disputes/${dispute.id}`);
     expect(seen.statusCode).toBe(200);
     expect(seen.json().data).toMatchObject({
       id: dispute.id,
@@ -98,7 +98,7 @@ describe('opening a dispute', () => {
     });
     expect(JSON.stringify(seen.json())).not.toContain('Scheme notice');
     expect(seen.json().data.heldMinor).toBeUndefined();
-    const list = (await owner.get('/dashboard/v1/disputes')).json().data;
+    const list = (await owner.get('/merchant/v1/disputes')).json().data;
     expect(list.items.map((d: { id: string }) => d.id)).toEqual([dispute.id]);
   });
 
@@ -194,13 +194,13 @@ describe('investigation and evidence', () => {
     ).toBe(409);
 
     const owner = merchant.owner.client;
-    const added = await owner.post(`/dashboard/v1/disputes/${dispute.id}/evidence`, {
+    const added = await owner.post(`/merchant/v1/disputes/${dispute.id}/evidence`, {
       text: 'Delivered on 2 March; courier receipt DHL-889102.',
     });
     expect(added.statusCode).toBe(200);
     expect(added.json().data.evidence).toHaveLength(1);
     expect(
-      (await owner.post(`/dashboard/v1/disputes/${dispute.id}/evidence`, { text: '' })).statusCode
+      (await owner.post(`/merchant/v1/disputes/${dispute.id}/evidence`, { text: '' })).statusCode
     ).toBe(400);
     const audit = await sql(
       'select after from core.audit_logs where resource_id = $1 and action = $2',
@@ -210,24 +210,24 @@ describe('investigation and evidence', () => {
 
     // A viewer may read but not respond; another merchant cannot see the dispute at all.
     const viewer = await addTeamMember(ctx, merchant.owner, 'viewer');
-    expect((await viewer.client.get(`/dashboard/v1/disputes/${dispute.id}`)).statusCode).toBe(200);
+    expect((await viewer.client.get(`/merchant/v1/disputes/${dispute.id}`)).statusCode).toBe(200);
     expect(
-      (await viewer.client.post(`/dashboard/v1/disputes/${dispute.id}/evidence`, { text: 'x' }))
+      (await viewer.client.post(`/merchant/v1/disputes/${dispute.id}/evidence`, { text: 'x' }))
         .statusCode
     ).toBe(403);
     const stranger = await activeMerchant(ctx, 'stranger');
     const theirs = stranger.owner.client;
-    expect((await theirs.get(`/dashboard/v1/disputes/${dispute.id}`)).statusCode).toBe(404);
+    expect((await theirs.get(`/merchant/v1/disputes/${dispute.id}`)).statusCode).toBe(404);
     expect(
-      (await theirs.post(`/dashboard/v1/disputes/${dispute.id}/evidence`, { text: 'mine' }))
+      (await theirs.post(`/merchant/v1/disputes/${dispute.id}/evidence`, { text: 'mine' }))
         .statusCode
     ).toBe(404);
-    expect((await theirs.get('/dashboard/v1/disputes')).json().data.items).toEqual([]);
+    expect((await theirs.get('/merchant/v1/disputes')).json().data.items).toEqual([]);
 
     // After the due date the merchant can add nothing more.
     ctx.clock.advanceBy(2 * 86_400_000);
     await loginMerchantUser(owner, merchant.owner.email);
-    const late = await owner.post(`/dashboard/v1/disputes/${dispute.id}/evidence`, {
+    const late = await owner.post(`/merchant/v1/disputes/${dispute.id}/evidence`, {
       text: 'too late',
     });
     expect(late.statusCode).toBe(409);
@@ -240,14 +240,14 @@ describe('investigation and evidence', () => {
     const dispute = (await openDispute(staff, merchant, txnRef, '30000')).json().data;
     for (let i = 0; i < 20; i++) {
       const res = await merchant.owner.client.post(
-        `/dashboard/v1/disputes/${dispute.id}/evidence`,
+        `/merchant/v1/disputes/${dispute.id}/evidence`,
         {
           text: `item ${i}`,
         }
       );
       expect(res.statusCode).toBe(200);
     }
-    const over = await merchant.owner.client.post(`/dashboard/v1/disputes/${dispute.id}/evidence`, {
+    const over = await merchant.owner.client.post(`/merchant/v1/disputes/${dispute.id}/evidence`, {
       text: 'one more',
     });
     expect(over.json().error.details.reason).toBe('too_much_evidence');

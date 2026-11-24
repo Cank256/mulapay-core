@@ -14,7 +14,7 @@ describe('resolveSurface', () => {
     ['/v1/status?x=1', 'infra'],
     ['/v1/payments', 'public'],
     ['/v1', 'public'],
-    ['/dashboard/v1/auth/login', 'dashboard'],
+    ['/merchant/v1/auth/login', 'dashboard'],
     ['/admin/v1/merchants', 'admin'],
     ['/docs/public/', 'docs'],
     ['/v10/payments', 'unknown'],
@@ -56,7 +56,7 @@ describe('corsOptionsFor', () => {
   });
 
   it('allows only the configured origins per surface', () => {
-    expect(corsOptionsFor('/dashboard/v1/me', config)).toMatchObject({
+    expect(corsOptionsFor('/merchant/v1/me', config)).toMatchObject({
       origin: ['https://dashboard.mulapay.com'],
       credentials: true,
     });

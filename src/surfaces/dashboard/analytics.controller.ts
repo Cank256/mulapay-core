@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/analytics/*` (spec 7.2, 9.2 rule 4): the dashboard's tiles and charts, read from
+ * `/merchant/v1/analytics/*` (spec 7.2, 9.2 rule 4): the dashboard's tiles and charts, read from
  * `daily_merchant_rollups` only. The merchant comes from the session and the environment from
  * the request (default `live`).
  */

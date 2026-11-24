@@ -100,7 +100,7 @@ beforeAll(async () => {
     [merchant.id]
   );
   // A live key with every read and payment scope.
-  const key = await merchant.owner.client.post('/dashboard/v1/api-keys', {
+  const key = await merchant.owner.client.post('/merchant/v1/api-keys', {
     name: 'soak',
     environment: 'live',
     scopes: API_KEY_SCOPES.filter((s) => !s.includes('payouts')),

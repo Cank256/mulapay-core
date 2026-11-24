@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/complaints` (spec 7.2): the merchant files a complaint, follows its thread (staff
+ * `/merchant/v1/complaints` (spec 7.2): the merchant files a complaint, follows its thread (staff
  * replies, never internal notes), answers, and closes it. The session names the merchant; a
  * customer's complaint about the merchant is not shown here.
  */

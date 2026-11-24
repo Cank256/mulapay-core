@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/notifications`, `/notification-preferences` and `/notification-destinations`
+ * `/merchant/v1/notifications`, `/notification-preferences` and `/notification-destinations`
  * (spec 7.2): the in-app inbox with its unread count, marking read (one or all), the channels the
  * user wants, and where SMS and push go. Every route is about the signed-in user only, so no
  * permission beyond being signed in is needed, and nobody can read another user's inbox.

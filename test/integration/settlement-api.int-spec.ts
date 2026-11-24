@@ -254,8 +254,8 @@ describe('what a merchant sees of its settlements', () => {
     const owner = m.merchant.owner.client;
 
     // A draft is internal: the merchant cannot see it.
-    expect((await owner.get('/dashboard/v1/settlements')).json().data.items).toEqual([]);
-    expect((await owner.get(`/dashboard/v1/settlements/${batch.id}`)).statusCode).toBe(404);
+    expect((await owner.get('/merchant/v1/settlements')).json().data.items).toEqual([]);
+    expect((await owner.get(`/merchant/v1/settlements/${batch.id}`)).statusCode).toBe(404);
 
     await s1.client.post(`${admin}/settlement/batches/${batch.id}/submit`, {});
     await s2.client.post(`${admin}/settlement/batches/${batch.id}/approve`, {});
@@ -271,7 +271,7 @@ describe('what a merchant sees of its settlements', () => {
       })
     );
 
-    const list = await owner.get('/dashboard/v1/settlements');
+    const list = await owner.get('/merchant/v1/settlements');
     expect(list.statusCode).toBe(200);
     const view = list.json().data.items[0];
     expect(view).toMatchObject({
@@ -295,30 +295,30 @@ describe('what a merchant sees of its settlements', () => {
       expect(list.body).not.toContain(secret);
     }
 
-    const statement = await owner.get(`/dashboard/v1/settlements/${batch.id}/statement`);
+    const statement = await owner.get(`/merchant/v1/settlements/${batch.id}/statement`);
     expect(statement.json().data).toMatchObject({
       payout: { status: 'succeeded', provider: 'airtel', destination: '+255••••••001' },
       totals: { gross_minor: '600000', net_minor: '594000' },
     });
     expect(statement.json().data.reconciliation.ledgerEntries).toEqual([]);
-    const csv = await owner.get(`/dashboard/v1/settlements/${batch.id}/statement/csv`);
+    const csv = await owner.get(`/merchant/v1/settlements/${batch.id}/statement/csv`);
     expect(csv.json().data).toMatchObject({ filename: `${batch.id}.csv`, contentType: 'text/csv' });
     expect(csv.json().data.content).toContain(`"settlement","${batch.id}"`);
     expect(
-      (await owner.get(`/dashboard/v1/settlements/${batch.id}/items`)).json().data.items.length
+      (await owner.get(`/merchant/v1/settlements/${batch.id}/items`)).json().data.items.length
     ).toBe(1);
 
     // Another merchant cannot read it, and gets the same 404 as for a settlement that does not exist.
     const other = await createTestMerchant(ctx, { active: true, label: 'other' });
-    const foreign = await other.owner.client.get(`/dashboard/v1/settlements/${batch.id}`);
-    const missing = await other.owner.client.get('/dashboard/v1/settlements/stl_missing');
+    const foreign = await other.owner.client.get(`/merchant/v1/settlements/${batch.id}`);
+    const missing = await other.owner.client.get('/merchant/v1/settlements/stl_missing');
     expect(foreign.statusCode).toBe(404);
     expect(foreign.json().error.code).toBe(missing.json().error.code);
-    expect((await other.owner.client.get('/dashboard/v1/settlements')).json().data.items).toEqual(
+    expect((await other.owner.client.get('/merchant/v1/settlements')).json().data.items).toEqual(
       []
     );
     expect(
-      (await other.owner.client.get(`/dashboard/v1/settlements/${batch.id}/statement/csv`))
+      (await other.owner.client.get(`/merchant/v1/settlements/${batch.id}/statement/csv`))
         .statusCode
     ).toBe(404);
   });
@@ -327,7 +327,7 @@ describe('what a merchant sees of its settlements', () => {
     const { m, batch } = await draftThroughApi();
     await s1.client.post(`${admin}/settlement/batches/${batch.id}/submit`, {});
     const issue = async (environment: 'live' | 'test', scopes: string[]) => {
-      const res = await m.merchant.owner.client.post('/dashboard/v1/api-keys', {
+      const res = await m.merchant.owner.client.post('/merchant/v1/api-keys', {
         name: `k ${environment}`,
         environment,
         scopes,
@@ -351,7 +351,7 @@ describe('what a merchant sees of its settlements', () => {
     expect((await noScope.get('/v1/settlements')).statusCode).toBe(403);
 
     const other = await createTestMerchant(ctx, { active: true, label: 'other2' });
-    const otherKey = await other.owner.client.post('/dashboard/v1/api-keys', {
+    const otherKey = await other.owner.client.post('/merchant/v1/api-keys', {
       name: 'k',
       environment: 'live',
       scopes: ['settlements:read'],

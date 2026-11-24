@@ -95,7 +95,7 @@ async function issueKey(
   environment: 'test' | 'live',
   scopes: string[]
 ): Promise<string> {
-  const res = await owner.client.post('/dashboard/v1/api-keys', {
+  const res = await owner.client.post('/merchant/v1/api-keys', {
     name: `${environment} key`,
     environment,
     scopes,

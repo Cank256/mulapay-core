@@ -1,5 +1,5 @@
 /**
- * Self-serve sign-up (`POST /dashboard/v1/auth/register`): creates the user, a `draft`
+ * Self-serve sign-up (`POST /merchant/v1/auth/register`): creates the user, a `draft`
  * merchant and the owner membership in one transaction.
  *
  * Email verification needs the notification service (Phase 8); until then a registered

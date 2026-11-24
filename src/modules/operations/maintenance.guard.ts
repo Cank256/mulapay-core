@@ -23,10 +23,10 @@ export const MAINTENANCE_ALLOWED_WRITES: ReadonlySet<string> = new Set([
   'POST /admin/v1/auth/refresh',
   'POST /admin/v1/auth/logout',
   'POST /admin/v1/auth/step-up',
-  'POST /dashboard/v1/auth/login',
-  'POST /dashboard/v1/auth/mfa/verify',
-  'POST /dashboard/v1/auth/refresh',
-  'POST /dashboard/v1/auth/logout',
+  'POST /merchant/v1/auth/login',
+  'POST /merchant/v1/auth/mfa/verify',
+  'POST /merchant/v1/auth/refresh',
+  'POST /merchant/v1/auth/logout',
 ]);
 
 @Injectable()

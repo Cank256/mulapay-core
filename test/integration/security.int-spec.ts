@@ -114,7 +114,7 @@ beforeAll(async () => {
     logger: logs.logger,
     extraImports: [
       SecurityProbeModule,
-      RouterModule.register([{ path: 'dashboard/v1', module: SecurityProbeModule }]),
+      RouterModule.register([{ path: 'merchant/v1', module: SecurityProbeModule }]),
     ],
   });
   ctx = { app, clock, config, close: () => app.close() };
@@ -154,7 +154,7 @@ describe('route declarations', () => {
   });
 
   it('a route without a policy is refused (fail closed)', async () => {
-    const res = await new Client(ctx.app).get('/dashboard/v1/__security/open');
+    const res = await new Client(ctx.app).get('/merchant/v1/__security/open');
     expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe('FORBIDDEN');
   });
@@ -169,7 +169,7 @@ describe('audit interceptor', () => {
 
   it('writes a backstop row for a successful write that the service did not audit', async () => {
     const user = await registerMerchantUser(ctx);
-    expect((await user.client.post('/dashboard/v1/__security/noop')).statusCode).toBe(201);
+    expect((await user.client.post('/merchant/v1/__security/noop')).statusCode).toBe(201);
     const rows = await rowsFor('test.noop');
     expect(rows[0]).toMatchObject({
       outcome: 'success',
@@ -180,13 +180,13 @@ describe('audit interceptor', () => {
 
   it('records failed writes of an authenticated actor as error', async () => {
     const user = await registerMerchantUser(ctx);
-    expect((await user.client.post('/dashboard/v1/__security/fail')).statusCode).toBe(409);
+    expect((await user.client.post('/merchant/v1/__security/fail')).statusCode).toBe(409);
     const rows = await rowsFor('test.fail');
     expect(rows[0]).toMatchObject({ outcome: 'error', actorId: user.userId });
   });
 
   it('does not audit anonymous failures', async () => {
-    expect((await new Client(ctx.app).post('/dashboard/v1/__security/fail')).statusCode).toBe(401);
+    expect((await new Client(ctx.app).post('/merchant/v1/__security/fail')).statusCode).toBe(401);
   });
 });
 
@@ -203,22 +203,22 @@ describe('Phase 1 exit criteria', () => {
     const { merchant, ownerInvitation } = created.json().data;
 
     const owner = new Client(ctx.app);
-    await owner.post('/dashboard/v1/auth/accept-invite', {
+    await owner.post('/merchant/v1/auth/accept-invite', {
       token: ownerInvitation.token,
       name: 'Exit Owner',
       password: PASSWORD,
     });
     await loginMerchantUser(owner, ownerEmail);
-    const { secret } = (await owner.post('/dashboard/v1/auth/mfa/enroll', {})).json().data;
-    await owner.post('/dashboard/v1/auth/mfa/enroll', { code: nextTotp(ctx.clock, secret) });
+    const { secret } = (await owner.post('/merchant/v1/auth/mfa/enroll', {})).json().data;
+    await owner.post('/merchant/v1/auth/mfa/enroll', { code: nextTotp(ctx.clock, secret) });
 
     const device = new Client(ctx.app);
-    const challenge = await device.post('/dashboard/v1/auth/login', {
+    const challenge = await device.post('/merchant/v1/auth/login', {
       email: ownerEmail,
       password: PASSWORD,
     });
     expect(challenge.json().data.status).toBe('mfa_required');
-    const session = await device.post('/dashboard/v1/auth/mfa/verify', {
+    const session = await device.post('/merchant/v1/auth/mfa/verify', {
       mfaToken: challenge.json().data.mfaToken,
       code: nextTotp(ctx.clock, secret),
     });
@@ -254,15 +254,15 @@ describe('secrets in logs', () => {
   it('never writes passwords, tokens, API keys or TOTP secrets to any log line', async () => {
     const user = await registerMerchantUser(ctx);
     const key = (
-      await user.client.post('/dashboard/v1/api-keys', {
+      await user.client.post('/merchant/v1/api-keys', {
         name: 'k',
         environment: 'test',
         scopes: ['payments:read'],
       })
     ).json().data.key as string;
     await new Client(ctx.app).get('/v1/ping', { authorization: `Bearer ${key}` });
-    const { secret } = (await user.client.post('/dashboard/v1/auth/mfa/enroll', {})).json().data;
-    await new Client(ctx.app).post('/dashboard/v1/auth/login', {
+    const { secret } = (await user.client.post('/merchant/v1/auth/mfa/enroll', {})).json().data;
+    await new Client(ctx.app).post('/merchant/v1/auth/login', {
       email: user.email,
       password: 'a-wrong-password-xyz',
     });

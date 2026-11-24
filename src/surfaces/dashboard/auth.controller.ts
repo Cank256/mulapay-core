@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/auth` (spec 7.2). Thin: validation, policy, shape mapping and cookies.
+ * `/merchant/v1/auth` (spec 7.2). Thin: validation, policy, shape mapping and cookies.
  */
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';

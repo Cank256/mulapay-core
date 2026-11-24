@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1` surface (spec section 4.2): the merchant dashboard, authenticated by a
+ * `/merchant/v1` surface (spec section 4.2): the merchant dashboard, authenticated by a
  * dashboard JWT and scoped to the merchant the session is bound to.
  *
  * Controllers for this surface live in this module tree only. Domain services are

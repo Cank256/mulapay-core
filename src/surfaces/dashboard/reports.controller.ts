@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/reports` and `/report-schedules` (spec 7.2, 6.12). Reports are asynchronous:
+ * `/merchant/v1/reports` and `/report-schedules` (spec 7.2, 6.12). Reports are asynchronous:
  * `POST` answers 202 with the report, a worker produces the file, and `download` returns a
  * presigned link valid for 15 minutes. The merchant comes from the session; the environment is
  * chosen per request (default `live`).

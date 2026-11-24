@@ -305,17 +305,17 @@ describe('the dashboard lists', () => {
   it('shows a merchant user its own payments and transactions, in the environment it asks for', async () => {
     const owner = merchant.owner.client;
     const live = await createPayment(merchant.live!);
-    const test = (await owner.get('/dashboard/v1/payments?environment=test&limit=100')).json().data;
+    const test = (await owner.get('/merchant/v1/payments?environment=test&limit=100')).json().data;
     expect(test.items.map((p: { id: string }) => p.id)).toContain(made.succeeded!.id);
     expect(test.items.map((p: { id: string }) => p.id)).not.toContain(live.id);
     // The default is live.
-    const byDefault = (await owner.get('/dashboard/v1/payments?limit=100')).json().data;
+    const byDefault = (await owner.get('/merchant/v1/payments?limit=100')).json().data;
     expect(byDefault.items.map((p: { id: string }) => p.id)).toContain(live.id);
     expect(byDefault.items.every((p: { environment: string }) => p.environment === 'live')).toBe(
       true
     );
     const transactions = (
-      await owner.get('/dashboard/v1/transactions?environment=test&status=succeeded&limit=100')
+      await owner.get('/merchant/v1/transactions?environment=test&status=succeeded&limit=100')
     ).json().data;
     expect(transactions.items.map((t: { id: string }) => t.id)).toEqual([
       made.succeeded!.transactionId,
@@ -323,11 +323,11 @@ describe('the dashboard lists', () => {
   });
 
   it('never shows another merchant’s data', async () => {
-    const res = await rival.owner.client.get('/dashboard/v1/payments?environment=test&limit=100');
+    const res = await rival.owner.client.get('/merchant/v1/payments?environment=test&limit=100');
     const ids = res.json().data.items.map((p: { id: string }) => p.id);
     expect(ids).not.toContain(made.succeeded!.id);
     const tx = await rival.owner.client.get(
-      '/dashboard/v1/transactions?environment=test&limit=100'
+      '/merchant/v1/transactions?environment=test&limit=100'
     );
     expect(tx.json().data.items.map((t: { id: string }) => t.id)).not.toContain(
       made.succeeded!.transactionId
@@ -337,12 +337,12 @@ describe('the dashboard lists', () => {
   it('is open to every team role that can read, and closed to anyone else', async () => {
     // `support`, not `viewer`: another suite edits the seeded viewer role while this one runs.
     const viewer = await addTeamMember(ctx, merchant.owner, 'support');
-    const res = await viewer.client.get('/dashboard/v1/payments?environment=test&limit=100');
+    const res = await viewer.client.get('/merchant/v1/payments?environment=test&limit=100');
     expect(res.statusCode).toBe(200);
     expect(res.json().data.items.map((p: { id: string }) => p.id)).toContain(made.succeeded!.id);
-    expect((await new Client(ctx.app).get('/dashboard/v1/payments')).statusCode).toBe(401);
+    expect((await new Client(ctx.app).get('/merchant/v1/payments')).statusCode).toBe(401);
     // An API key is not a dashboard credential.
-    const asKey = await new Client(ctx.app).get('/dashboard/v1/payments', {
+    const asKey = await new Client(ctx.app).get('/merchant/v1/payments', {
       authorization: `Bearer ${merchant.testKey}`,
     });
     expect(asKey.statusCode).toBe(401);
@@ -350,7 +350,7 @@ describe('the dashboard lists', () => {
 
   it('validates its query', async () => {
     for (const query of ['environment=staging', 'status=bogus', 'limit=0', 'extra=1']) {
-      const res = await merchant.owner.client.get(`/dashboard/v1/payments?${query}`);
+      const res = await merchant.owner.client.get(`/merchant/v1/payments?${query}`);
       expect(res.statusCode, query).toBe(400);
     }
   });

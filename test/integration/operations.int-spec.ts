@@ -67,7 +67,7 @@ describe('maintenance mode', () => {
   it('refuses writes with 503 and Retry-After on every surface, keeps reads, and audits both switches', async () => {
     const a = await ops();
     const reader = await boss();
-    const before = await merchant.owner.client.post('/dashboard/v1/complaints', {
+    const before = await merchant.owner.client.post('/merchant/v1/complaints', {
       category: 'other',
       subject: 'before',
       description: 'd',
@@ -88,7 +88,7 @@ describe('maintenance mode', () => {
 
     // Dashboard, public API and admin writes: all refused, with the standard error.
     const writes = [
-      await merchant.owner.client.post('/dashboard/v1/complaints', {
+      await merchant.owner.client.post('/merchant/v1/complaints', {
         category: 'other',
         subject: 'x',
         description: 'd',
@@ -113,7 +113,7 @@ describe('maintenance mode', () => {
     ).toEqual([]);
 
     // Reads, signing in and turning it off still work.
-    expect((await merchant.owner.client.get('/dashboard/v1/complaints')).statusCode).toBe(200);
+    expect((await merchant.owner.client.get('/merchant/v1/complaints')).statusCode).toBe(200);
     expect((await merchant.test.get('/v1/ping')).statusCode).toBe(200);
     expect((await reader.client.get('/admin/v1/ops/overview')).statusCode).toBe(200);
     expect((await ctx.app.inject({ method: 'GET', url: '/v1/health' })).statusCode).toBe(200);
@@ -126,7 +126,7 @@ describe('maintenance mode', () => {
     const off = await a.client.post('/admin/v1/ops/maintenance-mode', { enabled: false });
     expect(off.statusCode).toBe(200);
     expect(off.json().data).toMatchObject({ enabled: false, message: null });
-    const after = await merchant.owner.client.post('/dashboard/v1/complaints', {
+    const after = await merchant.owner.client.post('/merchant/v1/complaints', {
       category: 'other',
       subject: 'after',
       description: 'd',

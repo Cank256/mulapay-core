@@ -14,7 +14,7 @@ function matchesPrefix(path: string, prefix: string): boolean {
 export function resolveSurface(url: string): Surface {
   const path = url.split('?')[0] ?? url;
   if (INFRA_PATHS.has(path)) return 'infra';
-  if (matchesPrefix(path, '/dashboard/v1')) return 'dashboard';
+  if (matchesPrefix(path, '/merchant/v1')) return 'dashboard';
   if (matchesPrefix(path, '/admin/v1')) return 'admin';
   if (matchesPrefix(path, '/docs')) return 'docs';
   if (matchesPrefix(path, '/v1')) return 'public';

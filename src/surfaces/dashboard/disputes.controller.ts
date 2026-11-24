@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/disputes` (spec 7.2): the merchant's disputes and chargebacks, and its
+ * `/merchant/v1/disputes` (spec 7.2): the merchant's disputes and chargebacks, and its
  * evidence. Live only: a dispute is about real money. The session names the merchant.
  */
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';

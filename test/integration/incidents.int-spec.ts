@@ -231,10 +231,10 @@ describe('the public status feed', () => {
     ).toBe('minor');
 
     // The dashboard serves the same feed to signed-in merchants only.
-    const dash = await merchant.owner.client.get('/dashboard/v1/status');
+    const dash = await merchant.owner.client.get('/merchant/v1/status');
     expect(dash.statusCode).toBe(200);
     expect(dash.json().data.incidents.map((i: { id: string }) => i.id)).toContain(opened.id);
-    expect((await ctx.app.inject({ method: 'GET', url: '/dashboard/v1/status' })).statusCode).toBe(
+    expect((await ctx.app.inject({ method: 'GET', url: '/merchant/v1/status' })).statusCode).toBe(
       401
     );
 

@@ -1,4 +1,4 @@
-/** `GET /dashboard/v1/status` (spec 7.2): the same public incident feed as `GET /v1/status`, for the dashboard. */
+/** `GET /merchant/v1/status` (spec 7.2): the same public incident feed as `GET /v1/status`, for the dashboard. */
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Authenticated } from '../../common/authz/policy.decorators';

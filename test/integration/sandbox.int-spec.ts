@@ -494,7 +494,7 @@ describe('exit criterion: integrating against the sandbox without platform invol
 
       // 7. Their request log shows the calls, with no bodies.
       await ctx.requestLogs.flush();
-      const logs = await dev.owner.client.get('/dashboard/v1/request-logs?environment=test');
+      const logs = await dev.owner.client.get('/merchant/v1/request-logs?environment=test');
       expect(logs.statusCode).toBe(200);
       const methods = (logs.json().data.items as Array<{ method: string; route: string }>).map(
         (l) => `${l.method} ${l.route}`

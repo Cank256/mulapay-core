@@ -1,5 +1,5 @@
 /**
- * `/dashboard/v1/kyc` (spec 7.2): the merchant's KYC status and requirements, its business
+ * `/merchant/v1/kyc` (spec 7.2): the merchant's KYC status and requirements, its business
  * details and directors, document upload (presign, then confirm) and submission.
  *
  * Merchant-bound: the session names the merchant, and every service call takes it from the
