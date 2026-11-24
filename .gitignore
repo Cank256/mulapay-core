@@ -31,3 +31,5 @@ Thumbs.db
 secrets/
 credentials/
 test/load/results/
+
+.flyenv
