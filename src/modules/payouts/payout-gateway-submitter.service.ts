@@ -104,7 +104,7 @@ export class PayoutGatewaySubmitter {
         await this.unitOfWork.run((tx) =>
           this.lifecycle.apply(tx, input.payoutId, {
             eventKey: `gateway:accepted:${result.referenceId}`,
-            source: 'gateway',
+            source: 'gateway_event',
             occurredAt: this.clock.now(),
             signal: { kind: 'processing', outcomeUnknown: false },
             gatewayDetails: { provider, referenceId: result.referenceId },

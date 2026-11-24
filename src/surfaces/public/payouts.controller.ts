@@ -34,7 +34,15 @@ const createPayoutSchema = z.object({
 
 const listPayoutsSchema = z.object({
   status: z
-    .enum(['created', 'pending_approval', 'processing', 'succeeded', 'failed', 'expired', 'cancelled'])
+    .enum([
+      'created',
+      'pending_approval',
+      'processing',
+      'succeeded',
+      'failed',
+      'expired',
+      'cancelled',
+    ])
     .optional(),
   currency: z.string().length(3).optional(),
   from: z.string().datetime({ offset: true }).optional(),
@@ -132,8 +140,9 @@ export class PayoutsController {
     summary: 'Create a payout',
     description:
       'Requires an `Idempotency-Key`. Creates a payout and places a hold on the merchant balance. ' +
-      'If the amount exceeds the approval threshold, the payout enters `pending_approval` status ' +
-      'and requires manual approval before submission to the gateway.',
+      'If the amount exceeds the approval threshold, the payout enters `pending_approval` until a ' +
+      'staff member approves it. A returned status of `processing` means the gateway has been asked. ' +
+      'The disbursement is posted to the ledger only when a later read shows `succeeded`.',
   })
   @ApiEnvelopedResponses({ 201: payoutViewSchema })
   async create(
@@ -142,15 +151,18 @@ export class PayoutsController {
     @IdempotencyKey() idempotency: IdempotencyContext
   ) {
     const scope = scopeOfApiKey(key);
-    return this.payouts.create(scope, {
-      amountMinor: BigInt(body.amountMinor),
-      currency: body.currency,
-      channel: body.channel,
-      destination: body.destination,
-      description: body.description,
-      metadata: body.metadata,
-      idempotencyKey: idempotency.key,
-    });
+    return this.payouts.create(
+      scope,
+      {
+        amountMinor: BigInt(body.amountMinor),
+        currency: body.currency,
+        channel: body.channel,
+        destination: body.destination,
+        description: body.description,
+        metadata: body.metadata,
+      },
+      idempotency
+    );
   }
 
   @Get(':ref')

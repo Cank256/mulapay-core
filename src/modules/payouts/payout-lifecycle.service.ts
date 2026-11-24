@@ -48,6 +48,7 @@ import {
   TransactionsRepository,
   type TransactionRow,
 } from '../transactions/transactions.repository';
+import { FeeCalculatorService } from '../fees/fee-calculator.service';
 import { toPayoutView } from './payout.views';
 import { PayoutsRepository, type PayoutRow } from './payouts.repository';
 import { payoutPostingLines } from './domain/payout-posting';
@@ -124,6 +125,7 @@ export class PayoutLifecycleService {
     private readonly holdsRepo: HoldsRepository,
     private readonly events: MerchantEventsService,
     private readonly monitoring: AmlMonitoringTrigger,
+    private readonly fees: FeeCalculatorService,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
@@ -274,6 +276,33 @@ export class PayoutLifecycleService {
     if (provider === null || !isPayoutProvider(provider)) {
       throw invariantViolation(`payout ${payout.ref} succeeded without a provider`);
     }
+
+    // Use fee from the gateway signal when present, otherwise calculate from the fee plan.
+    // Provider fees remain 0 until the gateway passes them through (P4-D6).
+    let feeMinor = signal.feeMinor ?? 0n;
+    let providerFeeMinor = signal.providerFeeMinor ?? 0n;
+    if (feeMinor === 0n) {
+      try {
+        const breakdown = await this.fees.calculateFee({
+          operationType: 'payout',
+          amountMinor: transaction.amountMinor,
+          currency: payout.currency,
+          merchantId: payout.merchantId,
+          provider,
+          channel: payout.channel,
+        });
+        feeMinor = breakdown.merchantFeeMinor;
+        providerFeeMinor = breakdown.providerFeeMinor;
+      } catch (error) {
+        // A missing fee plan is non-fatal: post with zero fees so the payout succeeds.
+        // The reconciliation run will flag the missing fee for manual review.
+        this.logger.warn(
+          { payoutRef: payout.ref, err: error },
+          'fee calculation failed, posting payout with zero fees'
+        );
+      }
+    }
+
     const sourceId = `${payout.ref}:${event.eventKey}`;
     const posted = await this.posting.postEntry(tx, {
       idempotencyKey: ledgerIdempotencyKey('payout', sourceId),
@@ -289,8 +318,8 @@ export class PayoutLifecycleService {
         provider,
         merchantRef: merchant.ref,
         grossMinor: transaction.amountMinor,
-        feeMinor: signal.feeMinor ?? 0n,
-        providerFeeMinor: signal.providerFeeMinor ?? 0n,
+        feeMinor,
+        providerFeeMinor,
       }),
       createdBy: { type: 'system', id: 'payouts' },
     });

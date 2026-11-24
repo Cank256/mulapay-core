@@ -7,10 +7,10 @@ import { LEDGER_PROVIDERS } from '../../accounts/domain/chart-of-accounts';
 import type { PaymentProvider } from '../../payments/domain/payment-event';
 import type { PayoutStatus } from './payout-state-machine';
 
-export type PayoutEventSource = 'gateway' | 'api' | 'chase' | 'expiry' | 'manual';
+export type PayoutEventSource = 'gateway_event' | 'api' | 'chase' | 'expiry' | 'manual';
 
 const PAYOUT_EVENT_SOURCES: readonly PayoutEventSource[] = [
-  'gateway',
+  'gateway_event',
   'api',
   'chase',
   'expiry',

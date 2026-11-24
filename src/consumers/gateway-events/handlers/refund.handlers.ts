@@ -7,6 +7,7 @@ import type { Logger } from 'pino';
 import { ROOT_LOGGER } from '../../../common/tokens';
 import type { Transaction } from '../../../common/db/database.types';
 import type { GatewayEvent } from '../../../integrations/gateway/gateway-event-source.port';
+import { toMinor } from '../../../integrations/gateway/money';
 import type { EventHandler } from '../handler.port';
 import { TransactionsRepository } from '../../../modules/transactions/transactions.repository';
 import { RefundsRepository } from '../../../modules/refunds/refunds.repository';
@@ -128,7 +129,7 @@ export class RefundSuccessfulHandler implements EventHandler {
       return true;
     }
 
-    const amountMinor = BigInt(event.amount);
+    const amountMinor = toMinor(event.amount, event.currency);
 
     await this.lifecycle.apply(tx, refund.id, {
       eventKey: event.eventId,

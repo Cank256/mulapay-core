@@ -92,6 +92,18 @@ export class PayoutsRepository {
   }
 
   /**
+   * Find a payout by ref without merchant scoping. For admin use only — never expose to
+   * merchant-scoped routes.
+   */
+  async findDetailByRefAdmin(
+    ref: string,
+    executor: Executor = this.db
+  ): Promise<PayoutDetail | undefined> {
+    const [row] = await this.detailQuery(executor).where(eq(payouts.ref, ref)).limit(1);
+    return row;
+  }
+
+  /**
    * Find payout by transaction ID. Used by event handlers to locate the payout for a
    * gateway event.
    */
@@ -119,7 +131,7 @@ export class PayoutsRepository {
     return row;
   }
 
-  /** Newest first, keyset on `(created_at, ref)`; returns `limit + 1` rows. */
+  /** Newest first, keyset on `(created_at, ref)`. The caller passes `limit + 1`. */
   list(filter: PayoutListFilter, executor: Executor = this.db): Promise<PayoutDetail[]> {
     const { scope } = filter;
     const conditions: (SQL | undefined)[] = [
@@ -137,16 +149,42 @@ export class PayoutsRepository {
     return this.detailQuery(executor)
       .where(and(...conditions))
       .orderBy(...newestFirst(payouts.createdAt, payouts.ref))
-      .limit(filter.limit + 1);
+      .limit(filter.limit);
   }
 
   /**
    * Payouts due for expiry: created but never submitted, past expiration time.
    * Not locked: the lifecycle locks each and checks status again.
    */
-  async findDueForExpiry(now: Date, limit: number, executor: Executor = this.db): Promise<string[]> {
-    // Payouts don't have expiresAt in the schema yet, but when they do:
-    // For now, return empty array since payouts don't auto-expire in the same way
+  async findDueForExpiry(_now: Date, _limit: number): Promise<string[]> {
+    // Payouts don't have expiresAt in the schema yet.
+    // For now, return empty array since payouts don't auto-expire in the same way.
     return [];
+  }
+
+  /** List payouts without merchant scoping — admin use only. The caller passes `limit + 1`. */
+  async listAdmin(filter: {
+    status?: string;
+    currency?: string;
+    merchantId?: string;
+    from: Date;
+    to: Date;
+    after?: CursorKey;
+    limit: number;
+  }): Promise<PayoutDetail[]> {
+    const conditions: (SQL | undefined)[] = [
+      gte(payouts.createdAt, filter.from),
+      lte(payouts.createdAt, filter.to),
+      filter.status ? eq(payouts.status, filter.status) : undefined,
+      filter.currency ? eq(payouts.currency, filter.currency) : undefined,
+      filter.merchantId ? eq(payouts.merchantId, filter.merchantId) : undefined,
+    ];
+    if (filter.after) {
+      conditions.push(...olderThan(payouts.createdAt, payouts.ref, filter.after));
+    }
+    return this.detailQuery(this.db)
+      .where(and(...conditions))
+      .orderBy(...newestFirst(payouts.createdAt, payouts.ref))
+      .limit(filter.limit);
   }
 }

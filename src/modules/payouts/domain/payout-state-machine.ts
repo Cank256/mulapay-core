@@ -64,7 +64,7 @@ export function decideTransition(from: PayoutStatus, to: PayoutStatus): Transiti
   // Valid transitions from non-terminal states
   switch (from) {
     case 'created':
-      if (['pending_approval', 'processing', 'cancelled'].includes(to)) {
+      if (['pending_approval', 'processing', 'failed', 'cancelled'].includes(to)) {
         return { kind: 'apply' };
       }
       break;

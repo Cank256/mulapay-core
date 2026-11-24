@@ -342,6 +342,18 @@ export const ERROR_CATALOGUE = {
     retryable: false,
     exposeDetails: true,
   },
+  PAYOUT_NOT_PENDING_APPROVAL: {
+    httpStatus: 409,
+    message: 'The payout is not in pending_approval status',
+    retryable: false,
+    exposeDetails: true,
+  },
+  PAYOUT_INVALID_TRANSITION: {
+    httpStatus: 409,
+    message: 'The payout cannot be moved from its current status',
+    retryable: false,
+    exposeDetails: true,
+  },
   MERCHANT_INACTIVE: {
     httpStatus: 403,
     message: 'The merchant account is inactive',

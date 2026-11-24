@@ -92,6 +92,37 @@ export class RefundsRepository {
     return row;
   }
 
+  /** Find a refund by ref without merchant scoping — admin use only. */
+  async findDetailByRefAdmin(
+    ref: string,
+    executor: Executor = this.db
+  ): Promise<RefundDetail | undefined> {
+    const [row] = await this.detailQuery(executor).where(eq(refunds.ref, ref)).limit(1);
+    return row;
+  }
+
+  /** List refunds without merchant scoping — admin use only. */
+  async listAdmin(filter: {
+    status?: string;
+    currency?: string;
+    paymentRef?: string;
+    from: Date;
+    to: Date;
+    limit: number;
+  }): Promise<RefundDetail[]> {
+    const conditions: (SQL | undefined)[] = [
+      gte(refunds.createdAt, filter.from),
+      lte(refunds.createdAt, filter.to),
+    ];
+    if (filter.status) conditions.push(eq(refunds.status, filter.status));
+    if (filter.currency) conditions.push(eq(refunds.currency, filter.currency));
+    if (filter.paymentRef) conditions.push(eq(payments.ref, filter.paymentRef));
+    return this.detailQuery(this.db)
+      .where(and(...conditions))
+      .orderBy(...newestFirst(refunds.createdAt, refunds.ref))
+      .limit(filter.limit);
+  }
+
   async findDetailById(
     id: string,
     executor: Executor = this.db

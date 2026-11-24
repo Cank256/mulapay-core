@@ -77,6 +77,7 @@ export const STAFF_PERMISSIONS = [
   'ops:read',
   'ops:manage',
   'ops:approve',
+  'payouts:approve',
   'reports:platform',
   'notification_templates:manage',
 ] as const;

@@ -172,8 +172,8 @@ BEGIN
       RAISE EXCEPTION 'payout status cannot change from terminal status % (payout %)', OLD.status, OLD.ref;
     END IF;
 
-    -- created → pending_approval, processing
-    IF OLD.status = 'created' AND NEW.status NOT IN ('pending_approval', 'processing', 'cancelled') THEN
+    -- created → pending_approval, processing, failed, cancelled
+    IF OLD.status = 'created' AND NEW.status NOT IN ('pending_approval', 'processing', 'failed', 'cancelled') THEN
       RAISE EXCEPTION 'payout % cannot transition from created to %', OLD.ref, NEW.status;
     END IF;
 
@@ -214,8 +214,8 @@ BEGIN
       RAISE EXCEPTION 'refund status cannot change from terminal status % (refund %)', OLD.status, OLD.ref;
     END IF;
 
-    -- created → pending_approval, processing
-    IF OLD.status = 'created' AND NEW.status NOT IN ('pending_approval', 'processing', 'cancelled') THEN
+    -- created → pending_approval, processing, failed, cancelled
+    IF OLD.status = 'created' AND NEW.status NOT IN ('pending_approval', 'processing', 'failed', 'cancelled') THEN
       RAISE EXCEPTION 'refund % cannot transition from created to %', OLD.ref, NEW.status;
     END IF;
 

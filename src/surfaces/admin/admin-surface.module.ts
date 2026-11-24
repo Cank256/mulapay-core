@@ -20,7 +20,9 @@ import { KycModule } from '../../modules/kyc/kyc.module';
 import { MerchantsModule } from '../../modules/merchants/merchants.module';
 import { NotificationsModule } from '../../modules/notifications/notifications.module';
 import { OperationsModule } from '../../modules/operations/operations.module';
+import { PayoutsModule } from '../../modules/payouts/payouts.module';
 import { ReconciliationModule } from '../../modules/reconciliation/reconciliation.module';
+import { RefundsModule } from '../../modules/refunds/refunds.module';
 import { ReportsModule } from '../../modules/reports/reports.module';
 import { SettlementModule } from '../../modules/settlement/settlement.module';
 import { AdminAmlCasesController } from './admin-aml-cases.controller';
@@ -43,6 +45,8 @@ import { AdminLedgerController } from './admin-ledger.controller';
 import { AdminAuditController } from './admin-audit.controller';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminMerchantsController } from './admin-merchants.controller';
+import { AdminPayoutsController } from './admin-payouts.controller';
+import { AdminRefundsController } from './admin-refunds.controller';
 import { AdminRolesController } from './admin-roles.controller';
 
 @Module({
@@ -53,6 +57,8 @@ import { AdminRolesController } from './admin-roles.controller';
     IncidentsModule,
     NotificationsModule,
     OperationsModule,
+    PayoutsModule,
+    RefundsModule,
     ReportsModule,
     KycModule,
     AuthModule,
@@ -85,6 +91,8 @@ import { AdminRolesController } from './admin-roles.controller';
     AdminRoutingRulesController,
     AdminNotificationsController,
     AdminReportsController,
+    AdminPayoutsController,
+    AdminRefundsController,
   ],
 })
 export class AdminSurfaceModule {}

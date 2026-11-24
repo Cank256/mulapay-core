@@ -10,6 +10,7 @@
  * not revealed.
  */
 import { Inject, Injectable } from '@nestjs/common';
+import type { Logger } from 'pino';
 import type { MerchantScope } from '../../common/auth/merchant-scope';
 import type { Clock } from '../../common/clock/clock';
 import { UnitOfWork } from '../../common/db/unit-of-work';
@@ -22,11 +23,12 @@ import type {
   IdempotentResponse,
 } from '../../common/idempotency/idempotency.types';
 import { decodeCursor, filterFingerprint, toPage } from '../../common/pagination/cursor';
-import { CLOCK } from '../../common/tokens';
+import { CLOCK, ROOT_LOGGER } from '../../common/tokens';
 import { TransactionsRepository } from '../transactions/transactions.repository';
 import { toTimeline, type TimelineEntryView } from '../transactions/transaction.views';
 import type { RefundStatus } from './domain/refund-state-machine';
 import { RefundCreator } from './refund-creator';
+import { RefundGatewaySubmitter } from './refund-gateway-submitter.service';
 import { RefundLifecycleService } from './refund-lifecycle.service';
 import { toRefundView, type RefundView } from './refund.views';
 import { RefundsRepository, type RefundDetail } from './refunds.repository';
@@ -55,10 +57,12 @@ export class RefundsService {
     private readonly transactions: TransactionsRepository,
     private readonly creator: RefundCreator,
     private readonly lifecycle: RefundLifecycleService,
+    private readonly submitter: RefundGatewaySubmitter,
     private readonly idempotency: IdempotencyService,
     private readonly unitOfWork: UnitOfWork,
     private readonly audit: AuditService,
-    @Inject(CLOCK) private readonly clock: Clock
+    @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(ROOT_LOGGER) private readonly logger: Logger
   ) {}
 
   /**
@@ -106,9 +110,27 @@ export class RefundsService {
             },
           });
 
-          // Submit refund to gateway after transaction commits (Phase 4)
-          // This will be implemented in refund-gateway-submitter.service.ts
-          // For now, refund stays in 'created' status until gateway integration is complete
+          // Submit refund to gateway after transaction commits (Phase 4).
+          // Only live refunds are sent to the provider — test refunds stay in `created`
+          // and can be resolved via the sandbox or the chase job.
+          if (scope.environment === 'live') {
+            this.submitter
+              .submit({
+                refundId: detail.refund.id,
+                refundRef: detail.refund.ref,
+                gatewayExternalId: detail.transaction.gatewayExternalId!,
+                amountMinor: detail.refund.amountMinor,
+                currency: detail.refund.currency,
+                merchantId: scope.merchantId,
+                environment: 'live',
+              })
+              .catch((error) => {
+                this.logger.error(
+                  { refundRef: detail.refund.ref, err: error },
+                  'refund gateway submission failed; chase job will resolve'
+                );
+              });
+          }
         },
       };
     });

@@ -7,6 +7,7 @@ import type { Logger } from 'pino';
 import { ROOT_LOGGER } from '../../../common/tokens';
 import type { Transaction } from '../../../common/db/database.types';
 import type { GatewayEvent } from '../../../integrations/gateway/gateway-event-source.port';
+import { toMinor } from '../../../integrations/gateway/money';
 import type { EventHandler } from '../handler.port';
 import { TransactionsRepository } from '../../../modules/transactions/transactions.repository';
 import { PaymentsRepository } from '../../../modules/payments/payments.repository';
@@ -35,7 +36,10 @@ export class CollectionPendingHandler implements EventHandler {
     );
 
     if (!transaction) {
-      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection event');
+      this.logger.warn(
+        { externalId: event.externalId },
+        'transaction not found for collection event'
+      );
       return true; // Event for unknown transaction, ignore
     }
 
@@ -85,7 +89,10 @@ export class CollectionUnknownHandler implements EventHandler {
     );
 
     if (!transaction) {
-      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection unknown');
+      this.logger.warn(
+        { externalId: event.externalId },
+        'transaction not found for collection unknown'
+      );
       return true;
     }
 
@@ -134,7 +141,10 @@ export class CollectionSuccessfulHandler implements EventHandler {
     );
 
     if (!transaction) {
-      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection success');
+      this.logger.warn(
+        { externalId: event.externalId },
+        'transaction not found for collection success'
+      );
       return true;
     }
 
@@ -144,8 +154,7 @@ export class CollectionSuccessfulHandler implements EventHandler {
       return true;
     }
 
-    // Parse amount from string to bigint
-    const amountMinor = BigInt(event.amount);
+    const amountMinor = toMinor(event.amount, event.currency);
 
     // Apply succeeded transition (idempotent, posts ledger entry)
     await this.lifecycle.apply(tx, payment.id, {
@@ -191,7 +200,10 @@ export class CollectionFailedHandler implements EventHandler {
     );
 
     if (!transaction) {
-      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection failed');
+      this.logger.warn(
+        { externalId: event.externalId },
+        'transaction not found for collection failed'
+      );
       return true;
     }
 
@@ -244,7 +256,10 @@ export class CollectionExpiredHandler implements EventHandler {
     );
 
     if (!transaction) {
-      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection expired');
+      this.logger.warn(
+        { externalId: event.externalId },
+        'transaction not found for collection expired'
+      );
       return true;
     }
 
@@ -297,7 +312,10 @@ export class CollectionCancelledHandler implements EventHandler {
     );
 
     if (!transaction) {
-      this.logger.warn({ externalId: event.externalId }, 'transaction not found for collection cancelled');
+      this.logger.warn(
+        { externalId: event.externalId },
+        'transaction not found for collection cancelled'
+      );
       return true;
     }
 

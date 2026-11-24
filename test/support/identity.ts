@@ -30,7 +30,7 @@ export function randomIp(): string {
   return `10.${randomInt(256)}.${randomInt(256)}.${randomInt(1, 255)}`;
 }
 
-export const PASSWORD = 'correct-horse-battery-staple';
+export const PASSWORD = 'CorrectHorseBattery99@';
 
 export interface TestContext {
   readonly app: NestFastifyApplication;

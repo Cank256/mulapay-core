@@ -1,8 +1,9 @@
 /**
  * Session cookies (spec 8.3).
  *
- * - `mp_refresh`: the refresh token. `HttpOnly; Secure; SameSite=Strict`, path limited to
- *   the surface's auth routes (`/dashboard/v1/auth` or `/admin/v1/auth`).
+ * - `mp_refresh`: the refresh token. `HttpOnly; SameSite=Strict`, path limited to the
+ *   surface's auth routes (`/dashboard/v1/auth` or `/admin/v1/auth`). `Secure` is set only
+ *   when `NODE_ENV` is production, so a local HTTP dashboard can keep the refresh cookie.
  * - `mp_csrf`: double-submit CSRF token, same path, readable by the client. Refresh
  *   requires the `X-CSRF-Token` header to equal it. The token is also in the login
  *   response body, because a dashboard on another origin cannot read API cookies.
@@ -22,10 +23,14 @@ export function authCookiePath(surface: AuthSurface): string {
   return surface === 'admin' ? '/admin/v1/auth' : '/dashboard/v1/auth';
 }
 
+function sessionCookieSecure(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
 export function setSessionCookies(reply: FastifyReply, surface: AuthSurface, tokens: TokenBundle) {
   const common = {
     path: authCookiePath(surface),
-    secure: true,
+    secure: sessionCookieSecure(),
     sameSite: 'strict' as const,
     expires: tokens.refreshTokenExpiresAt,
   };
@@ -34,7 +39,11 @@ export function setSessionCookies(reply: FastifyReply, surface: AuthSurface, tok
 }
 
 export function clearSessionCookies(reply: FastifyReply, surface: AuthSurface) {
-  const options = { path: authCookiePath(surface), secure: true, sameSite: 'strict' as const };
+  const options = {
+    path: authCookiePath(surface),
+    secure: sessionCookieSecure(),
+    sameSite: 'strict' as const,
+  };
   void reply.clearCookie(REFRESH_COOKIE, { ...options, httpOnly: true });
   void reply.clearCookie(CSRF_COOKIE, options);
 }

@@ -67,7 +67,7 @@ export function decideTransition(from: RefundStatus, to: RefundStatus): Transiti
 }
 
 const ALLOWED_TRANSITIONS: Record<RefundStatus, readonly RefundStatus[]> = {
-  created: ['pending_approval', 'processing', 'cancelled'],
+  created: ['pending_approval', 'processing', 'failed', 'cancelled'],
   pending_approval: ['processing', 'cancelled'],
   processing: ['succeeded', 'failed'],
   // Terminal states cannot transition

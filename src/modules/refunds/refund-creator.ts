@@ -20,7 +20,7 @@ import type { MerchantScope } from '../../common/auth/merchant-scope';
 import type { Clock } from '../../common/clock/clock';
 import type { Transaction } from '../../common/db/database.types';
 import { AppError } from '../../common/errors/app-error';
-import { uuidv7 } from '../../common/ids/ids';
+import { uuidv7, publicId } from '../../common/ids/ids';
 import { CLOCK } from '../../common/tokens';
 import { PaymentsRepository } from '../payments/payments.repository';
 import { TransactionsRepository } from '../transactions/transactions.repository';
@@ -47,12 +47,11 @@ function notFound(): AppError {
 }
 
 /**
- * Generates a new refund ref and its gateway external ID.
+ * Generates a new refund ref and its gateway external ID using proper ULID-based public IDs.
  */
 function newRefundIds(now: Date): { ref: string; gatewayExternalId: string } {
-  const id = uuidv7(now);
-  const ref = `rfd_${id}`;
-  const gatewayExternalId = `rfd_${id}`;
+  const ref = publicId('refund', now);
+  const gatewayExternalId = ref;
   return { ref, gatewayExternalId };
 }
 

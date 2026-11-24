@@ -47,6 +47,11 @@ export const PAYMENT_STATUS_SQL = sql.raw(
 );
 const TERMINAL_PAYMENT_STATUS_SQL = sql.raw("'succeeded', 'failed', 'cancelled', 'expired'");
 
+/** Statuses shared across payments, payouts and refunds (includes pending_approval). */
+const TRANSACTION_EVENT_STATUS_SQL = sql.raw(
+  "'created', 'requires_action', 'processing', 'succeeded', 'failed', 'cancelled', 'expired', 'pending_approval'"
+);
+
 /** Uniqueness and lookup registry for the partitioned `transactions`. Insert-only. */
 export const transactionKeys = core.table(
   'transaction_keys',
@@ -240,7 +245,7 @@ export const transactionEvents = core.table(
     ),
     check(
       'transaction_events_status_check',
-      sql`(${t.fromStatus} is null or ${t.fromStatus} in (${PAYMENT_STATUS_SQL})) and ${t.toStatus} in (${PAYMENT_STATUS_SQL})`
+      sql`(${t.fromStatus} is null or ${t.fromStatus} in (${TRANSACTION_EVENT_STATUS_SQL})) and ${t.toStatus} in (${TRANSACTION_EVENT_STATUS_SQL})`
     ),
   ]
 );

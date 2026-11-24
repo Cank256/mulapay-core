@@ -14,6 +14,7 @@ import type { Logger } from 'pino';
 import { ROOT_LOGGER } from '../../../common/tokens';
 import type { Transaction } from '../../../common/db/database.types';
 import type { GatewayEvent } from '../../../integrations/gateway/gateway-event-source.port';
+import { toMinor } from '../../../integrations/gateway/money';
 import type { EventHandler } from '../handler.port';
 import { PayoutLifecycleService } from '../../../modules/payouts/payout-lifecycle.service';
 import { TransactionsRepository } from '../../../modules/transactions/transactions.repository';
@@ -65,7 +66,7 @@ export class DisbursementPendingHandler implements EventHandler {
 
     await this.lifecycle.apply(tx, payoutId, {
       eventKey: `gateway:pending:${event.id}`,
-      source: 'gateway',
+      source: 'gateway_event',
       occurredAt: event.occurredAt,
       signal: { kind: 'processing', outcomeUnknown: false },
       gatewayDetails: { referenceId: event.referenceId ?? undefined },
@@ -94,7 +95,7 @@ export class DisbursementUnknownHandler implements EventHandler {
 
     await this.lifecycle.apply(tx, payoutId, {
       eventKey: `gateway:unknown:${event.id}`,
-      source: 'gateway',
+      source: 'gateway_event',
       occurredAt: event.occurredAt,
       signal: { kind: 'processing', outcomeUnknown: true },
       gatewayDetails: { referenceId: event.referenceId ?? undefined },
@@ -115,7 +116,7 @@ export class DisbursementSuccessfulHandler implements EventHandler {
 
   async handle(tx: Transaction, event: GatewayEvent): Promise<boolean> {
     if (isSettlementPayout(event.externalId)) {
-      const amountMinor = event.amount ? BigInt(event.amount) : undefined;
+      const amountMinor = event.amount ? toMinor(event.amount, event.currency) : undefined;
       await this.settlementOutcome.apply(tx, {
         payoutRef: event.externalId,
         eventKey: `gateway:successful:${event.id}`,
@@ -141,16 +142,16 @@ export class DisbursementSuccessfulHandler implements EventHandler {
     // The hold is captured and the disbursement posted inside PayoutLifecycleService.
     await this.lifecycle.apply(tx, payoutId, {
       eventKey: `gateway:successful:${event.id}`,
-      source: 'gateway',
+      source: 'gateway_event',
       occurredAt: event.occurredAt,
       signal: {
         kind: 'succeeded',
-        amountMinor: event.amount ? BigInt(event.amount) : undefined,
+        amountMinor: event.amount ? toMinor(event.amount, event.currency) : undefined,
         currency: event.currency ?? undefined,
       },
       gatewayDetails: {
         referenceId: event.referenceId ?? undefined,
-        amountMinor: event.amount ? BigInt(event.amount) : undefined,
+        amountMinor: event.amount ? toMinor(event.amount, event.currency) : undefined,
         currency: event.currency ?? undefined,
       },
     });
@@ -187,7 +188,7 @@ export class DisbursementFailedHandler implements EventHandler {
     // The hold is released inside PayoutLifecycleService.
     await this.lifecycle.apply(tx, payoutId, {
       eventKey: `gateway:failed:${event.id}`,
-      source: 'gateway',
+      source: 'gateway_event',
       occurredAt: event.occurredAt,
       signal: { kind: 'failed', code: 'gateway_failed' },
       gatewayDetails: { referenceId: event.referenceId ?? undefined },
@@ -218,7 +219,7 @@ export class DisbursementExpiredHandler implements EventHandler {
     // failed for hold purposes).
     await this.lifecycle.apply(tx, payoutId, {
       eventKey: `gateway:expired:${event.id}`,
-      source: 'gateway',
+      source: 'gateway_event',
       occurredAt: event.occurredAt,
       signal: { kind: 'expired', code: 'gateway_expired' },
       gatewayDetails: { referenceId: event.referenceId ?? undefined },
@@ -251,7 +252,7 @@ export class DisbursementCancelledHandler implements EventHandler {
     // The hold is released inside PayoutLifecycleService.
     await this.lifecycle.apply(tx, payoutId, {
       eventKey: `gateway:cancelled:${event.id}`,
-      source: 'gateway',
+      source: 'gateway_event',
       occurredAt: event.occurredAt,
       signal: { kind: 'cancelled', code: 'gateway_cancelled' },
       gatewayDetails: { referenceId: event.referenceId ?? undefined },

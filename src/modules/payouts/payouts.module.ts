@@ -3,13 +3,16 @@ import { IdempotencyModule } from '../../common/idempotency/idempotency.module';
 import { OutboxModule } from '../../common/outbox/outbox.module';
 import { GatewayOperationsModule } from '../../integrations/gateway/gateway-operations.module';
 import { AmlModule } from '../aml/aml.module';
+import { AuditModule } from '../../common/audit/audit.module';
 import { BalancesModule } from '../balances/balances.module';
 import { EventsModule } from '../events/events.module';
+import { FeesModule } from '../fees/fees.module';
 import { HoldsModule } from '../holds/holds.module';
 import { LedgerModule } from '../ledger/ledger.module';
 import { MerchantsModule } from '../merchants/merchants.module';
 import { OperationsModule } from '../operations/operations.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { PayoutApprovalService } from './payout-approval.service';
 import { PayoutCreator } from './payout-creator';
 import { PayoutGatewaySubmitter } from './payout-gateway-submitter.service';
 import { PayoutLifecycleService } from './payout-lifecycle.service';
@@ -22,8 +25,10 @@ import { PayoutsService } from './payouts.service';
 @Module({
   imports: [
     AmlModule,
+    AuditModule,
     BalancesModule,
     EventsModule,
+    FeesModule,
     GatewayOperationsModule,
     HoldsModule,
     IdempotencyModule,
@@ -38,8 +43,9 @@ import { PayoutsService } from './payouts.service';
     PayoutCreator,
     PayoutLifecycleService,
     PayoutGatewaySubmitter,
+    PayoutApprovalService,
     PayoutsService,
   ],
-  exports: [PayoutsService, PayoutLifecycleService, PayoutsRepository],
+  exports: [PayoutsService, PayoutLifecycleService, PayoutsRepository, PayoutApprovalService],
 })
 export class PayoutsModule {}
